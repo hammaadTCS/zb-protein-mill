@@ -5,6 +5,7 @@ use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashCountController;
 use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\DashboardController;
@@ -185,6 +186,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company-settings.edit')->can('settings.manage');
     Route::put('settings', [CompanySettingsController::class, 'update'])->name('company-settings.update')->can('settings.manage');
 
+    // Page 48: backup status, read-only (T7.6).
+    Route::get('settings/backups', [BackupController::class, 'show'])->name('backups.show')->can('backup.view');
     Route::get('settings/opening-balances', [OpeningBalanceController::class, 'index'])->name('opening-balances.index')->can('opening.manage');
     Route::post('settings/opening-balances', [OpeningBalanceController::class, 'store'])->name('opening-balances.store')->can('opening.manage');
     Route::post('settings/opening-balances/complete', [OpeningBalanceController::class, 'complete'])->name('opening-balances.complete')->can('opening.manage');

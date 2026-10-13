@@ -11,6 +11,7 @@ import {
     CalendarRange,
     CheckCheck,
     Coins,
+    DatabaseBackup,
     Clock,
     Tags,
     FileSpreadsheet,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as accounts } from '@/routes/accounts';
+import { show as backups } from '@/routes/backups';
 import { index as cashCounts } from '@/routes/cash-counts';
 import { index as auditLog } from '@/routes/audit-log';
 import { edit as companySettings } from '@/routes/company-settings';
@@ -262,6 +264,14 @@ export const navigation: NavEntry[] = [
         permission: 'opening.manage',
         mobileFirst: false,
         icon: BookOpen,
+    },
+    {
+        group: 'Settings',
+        label: 'Backups',
+        href: backups(),
+        permission: 'backup.view',
+        mobileFirst: false,
+        icon: DatabaseBackup,
     },
 ];
 

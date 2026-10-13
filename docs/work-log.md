@@ -363,3 +363,10 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - Test helpers `freezeToday()` and `closeMonthForTest()` in `tests/Pest.php`; morph alias `period`.
 - Tests: Karachi date at 20:30 UTC; BR-GEN-02 future and before start (message shows 01-01-2026); BR-MEC-07 closed month; valid dates accepted; error on field `date`; BR-LED-07 PostingService refuses a closed month.
 - Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.
+
+### T1.10 Trial balance query
+
+- `App\Domain\Reports\Queries\TrialBalance::asOf($ymd, $withParties)` returning `TrialBalanceResult` (rows, totals, `balanced`) of `TrialBalanceRow` (code, name, party id/code, debit/credit totals, balance debit/credit). Sums in SQL on `numeric`, cast to text with 2 decimals; totals with `Decimal`. Rows with both totals zero are omitted; an account that nets to zero is kept with 0.00/0.00.
+- **"With parties":** grouped by `party_id` now; `party_code` stays null until the parties table exists (T2.4 adds the lookup).
+- Tests: R-07 three hand-made journals (full rows and totals 42,000 = 42,000); as-of excludes later postings (40,000 = 40,000); zero-net account kept; empty before the first posting.
+- Checks: Pint, Larastan pass; tests pass except the known T0.3 Actions rule.

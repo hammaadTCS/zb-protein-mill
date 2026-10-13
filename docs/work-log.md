@@ -8,10 +8,10 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Item | Status |
 | --- | --- |
 | Current task | T0.1 Laravel app, React starter kit, Pest, PostgreSQL, CI |
-| State | **Waiting for you:** apply the G-30 `[spec-change]` (steps in "Your steps" below), merge it, then tell me "merged" |
-| Branch | `claude/lucid-ptolemy-w3fhsy`, pull request [hammaadTCS/zb-protein-mill#1](https://github.com/hammaadTCS/zb-protein-mill/pull/1). Holds this log and the proposed patch; no app code yet. **Do not merge it yet** |
-| Tasks ticked in `docs/tasks.md` | none |
-| Next task | T0.1 continues in this session after G-30 is merged. T0.2 only after T0.1 is merged into `main` |
+| State | **T0.1 built; all local checks pass.** Waiting for CI on the pull request, then your review. G-30 (`[spec-change]`) still to be applied and merged by you |
+| Branch | `claude/lucid-ptolemy-w3fhsy`, pull request [hammaadTCS/zb-protein-mill#1](https://github.com/hammaadTCS/zb-protein-mill/pull/1) |
+| Tasks ticked in `docs/tasks.md` | T0.1 |
+| Next task | T0.2, in a new session, after T0.1 is merged into `main` |
 
 ---
 
@@ -160,5 +160,84 @@ gh pr create --title "[spec-change] G-30 cloud sessions: PHP packages through gi
 
 Then on GitHub: read the diff, wait until **CI and Infra** are both green (Infra runs because `scripts/` changed), and merge. Then tell me "merged" in this session. I will then:
 1. merge `main` into this branch;
-2. delete `docs/proposals/G-30-cloud-composer.patch` (it will be on `main` by then);
-3. continue T0.1 from step 2 with the new cloud block.
+2. delete `docs/proposals/G-30-cloud-composer.patch` (it will be on `main` by then).
+
+(Update: you asked me to carry on building, so T0.1 was built before G-30 reached `main`. See "T0.1 build" below.)
+
+### T0.1 build (13 October 2026)
+
+You asked me to build the project, checked against the client PDF, as a senior developer. The project rules allow one task per session and pull request, so this session builds **T0.1 only**. T0.2 starts in a new session after you merge T0.1.
+
+**The PDF:** the file you uploaded is byte-for-byte the same as `docs/client/Accounts_System_Requirements_v1.2.pdf` (same SHA-256). I read all 12 pages. T0.1 covers only the base app and its login features: no self-registration, no e-mail verification, two-step login kept (PDF §11 "Two-step login ... available for every user"; spec BR-USR-06). That matches.
+
+**One difference between the PDF and the spec (question for you and the client):** PDF Appendix A, page 1 "Login" says "Username and password". The spec and the starter kit log in with an **e-mail address** (spec BR-USR-09 uses `zb:reset-password {email}`; the test user is `test@example.com`). Nothing in T0.1 changes the login. It must be settled before T5.2 (Users page): either the client accepts e-mail login, or a `[spec-change]` adds usernames.
+
+**Steps, as in the card (cloud blocks from G-30):**
+
+| Step | Result |
+| --- | --- |
+| 1 Tools | PHP 8.3.6, Composer 2.8.12, Node 22.22.0, npm 10.9.4, PostgreSQL works |
+| 2 Create the app | Kit `dev-main 717b8f55aefd82d25d4119eaebdc8e3a72b8d7e5` (same as the baseline); 139 packages from the git-built cache |
+| 3 Feature installer | Kept only `2fa` and `password-confirmation`. `chisel.php`, `chisel-paths.php`, `InstallFeaturesCommand.php` gone; `composer.json` no longer mentions `install:features`. Removed: registration, e-mail verification, passkeys (pages, tests, migration) |
+| 4 Platform and Pest | `platform.php` 8.3.6; Pest 4.7.8, pest-plugin-laravel 4.1.0; `tests/Pest.php` created |
+| 5 Font | `@fontsource/ibm-plex-sans` 5.3.0; `vite.config.ts` uses `fontsource('IBM Plex Sans')`; `app.css` font stack changed; build has 6 font files of its own and no link to an outside font site |
+| 6 Settings files | `.env.example` and `phpunit.xml` exactly as the card lists; `database/database.sqlite` deleted |
+| 7 Move into the repository | 168 kit files copied, none overwritten, no protected path. Not copied: kit `.github/`, `.gitattributes`, `README.md`. `.gitignore`: removed `/.claude` and `/CLAUDE.md`, added `.claude/settings.local.json` |
+| 8 In the repository | `composer install`, `npm ci`, `.env` from `.env.example`, `key:generate`, `migrate` (PostgreSQL) all passed |
+| 9 Versions | `docs/installed-versions.md` written, with 6 differences from the baseline |
+
+**Problems found and how each was handled:**
+
+1. **First feature-installer run stopped half-way.** In a new shell I had not set `COMPOSER_ALLOW_SUPERUSER=1`; Composer then refuses to run scripts as root, so the installer's `composer lint` failed and it quit before deleting its own files. I threw that copy away and redid steps 2 and 3 from scratch with the setting, checking the exit code. The second run was clean.
+2. **`tests/Pest.php` and Pint disagree.** The card says "exactly" this text, and also that `vendor/bin/pint --test` must pass. The kit's Pint rules reject the full class names in that text. I let Pint rewrite it: same three settings, with `use` lines at the top. **Question for you** (below).
+3. **`npm run check` failed on your protected documents.** The kit's formatter checks every file in the repository, including `docs/`, `CLAUDE.md`, `START-HERE.md`, `README.md`, `.claude/` and `infra/README.md` (49 files, all protected). I cannot reformat them. I added exactly those paths to the formatter's ignore list in `vite.config.ts`, with a comment. No app code is excluded.
+4. **`npm run types:check` failed: Laravel 13.35.0 and Wayfinder disagree.** Laravel 13.35.0 (the newest) added the HTTP verb `QUERY`. `Route::redirect()` registers every verb, and Wayfinder 0.1.21 (the newest, also its `main` branch) has no `query` in its TypeScript types. I changed the one `Route::redirect('settings', '/settings/profile')` in `routes/settings.php` to `Route::get(...)` with the same Laravel `RedirectController` and the same target, so it answers GET and HEAD only. Checked with a temporary test (deleted afterwards): logged-in user is redirected to `/settings/profile`, a guest goes to login, POST gets 405. The other choice, holding Laravel at 13.34, would block security updates. **Question for you** (below).
+5. **`check-all.sh` runs the PHP tests before the front-end build.** On a fresh checkout the kit's page tests fail with "Vite manifest not found" until a build exists. CI builds first, so CI is not affected. **Proposed change** to `scripts/check-all.sh` (protected) below.
+
+**Found for later tasks (not changed now):**
+
+- The guard script (required from T0.3) already flags `$user->delete()` in `app/Http/Controllers/Settings/ProfileController.php`. That is the kit's "delete my account" feature, which T0.2 removes. Its rules for `phpunit.xml` and `.gitignore` already pass.
+- `npm audit`: 3 critical advisories, all in development tools (`tinypool` inside `oxfmt` inside `vite-plus` 0.3.0), none in shipped code. The project's audit check passes. A fix needs a newer `vite-plus`: your call, or wait for the monthly Dependabot update.
+
+**Checks:** `bash scripts/check-all.sh`:
+
+```text
+==================== Summary ====================
+PASS  Secret scan
+PASS  Protected files unchanged (or approved)
+PASS  PHP tests (Pest, PostgreSQL)
+PASS  PHP code style (Pint)
+PASS  Static analysis (Larastan level 7)
+PASS  Front-end build (also generates Wayfinder routes)
+PASS  Front-end lint and format (vite-plus)
+PASS  TypeScript
+skip  Front-end unit tests (added in T2.1)
+skip  Project guard (starts in T0.3)
+PASS  Known-vulnerable PHP packages (needs internet)
+PASS  Known-vulnerable JS packages (needs internet)
+
+ALL CHECKS PASSED.
+```
+
+CI on PHP 8.5 cannot be run here; the pull request shows it.
+
+### Questions and proposed spec changes (T0.1)
+
+1. **Login name (client).** PDF Appendix A says "Username and password"; the spec uses e-mail. Ask the client, or decide a `[spec-change]` before T5.2.
+2. **`tests/Pest.php` wording (card T0.1 step 4).** Accept Pint's version, or change the card's text to it:
+   ```php
+   <?php
+
+   use Illuminate\Foundation\Testing\RefreshDatabase;
+   use Tests\TestCase;
+
+   pest()->extend(TestCase::class)
+       ->use(RefreshDatabase::class)
+       ->in('Feature');
+   ```
+3. **`/settings` redirect (Laravel 13.35 + Wayfinder).** Accept the GET-only route, or hold Laravel at 13.34 until Wayfinder supports `QUERY`. I recommend the GET-only route. Suggested addition to `docs/stack-baseline.md`, Laravel table: "Laravel 13.35.0 adds the HTTP verb `QUERY` to `Router::$verbs`; `Route::redirect()` and `Route::any()` register it. Wayfinder 0.1.21 has no `query` in its TypeScript `Method` type, so such routes break `npm run types:check`. Use `Route::get` for redirects."
+4. **`scripts/check-all.sh` order (protected).** Move the front-end build before the PHP tests, as CI does. Exact change: cut the line
+   `run "Front-end build (also generates Wayfinder routes)" npm run build`
+   and paste it directly above
+   `run "PHP tests (Pest, PostgreSQL)" php artisan test`.
+5. **G-30** is still waiting for your `[spec-change]` pull request (steps above). Until it is merged, a new cloud session cannot install PHP packages.

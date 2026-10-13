@@ -8,8 +8,10 @@ import {
     ArrowLeftRight,
     BookOpen,
     CalendarDays,
+    CalendarRange,
     CheckCheck,
     Coins,
+    DatabaseBackup,
     Clock,
     Tags,
     FileSpreadsheet,
@@ -18,6 +20,7 @@ import {
     Banknote,
     Landmark,
     LayoutGrid,
+    Lock,
     Package,
     Receipt,
     Settings2,
@@ -28,11 +31,14 @@ import {
 } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as accounts } from '@/routes/accounts';
+import { show as backups } from '@/routes/backups';
 import { index as cashCounts } from '@/routes/cash-counts';
 import { index as auditLog } from '@/routes/audit-log';
 import { edit as companySettings } from '@/routes/company-settings';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
+import { show as monthEnd } from '@/routes/month-end';
+import { index as months } from '@/routes/months';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
 import { index as partners } from '@/routes/partners';
@@ -42,7 +48,7 @@ import { create as newPayment, index as payments } from '@/routes/payments';
 import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
-import { dailySummary, trialBalance } from '@/routes/reports';
+import { dailySummary, index as reportsHome } from '@/routes/reports';
 import { index as transfers } from '@/routes/transfers';
 import { index as users } from '@/routes/users';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
@@ -180,9 +186,25 @@ export const navigation: NavEntry[] = [
         icon: CalendarDays,
     },
     {
+        group: 'Month-end',
+        label: 'Month-end close',
+        href: monthEnd(),
+        permission: 'period.close',
+        mobileFirst: false,
+        icon: Lock,
+    },
+    {
+        group: 'Month-end',
+        label: 'Months',
+        href: months(),
+        permission: 'period.close',
+        mobileFirst: false,
+        icon: CalendarRange,
+    },
+    {
         group: 'Reports',
-        label: 'Trial balance',
-        href: trialBalance(),
+        label: 'Reports',
+        href: reportsHome(),
         permission: 'report.view',
         mobileFirst: false,
         icon: FileSpreadsheet,
@@ -242,6 +264,14 @@ export const navigation: NavEntry[] = [
         permission: 'opening.manage',
         mobileFirst: false,
         icon: BookOpen,
+    },
+    {
+        group: 'Settings',
+        label: 'Backups',
+        href: backups(),
+        permission: 'backup.view',
+        mobileFirst: false,
+        icon: DatabaseBackup,
     },
 ];
 

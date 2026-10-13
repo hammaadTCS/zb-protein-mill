@@ -8,10 +8,10 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Item | Status |
 | --- | --- |
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
-| State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
+| State | **M0 to M6 done (except your tasks T2.10); M7 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.5 |
-| Next task | T6.6 Expense report (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.4 |
+| Next task | T7.5 Business insights (T2.10 client review is yours) |
 
 ---
 
@@ -952,3 +952,157 @@ Choices and questions:
 - Words not in the glossary: "Accounts" (spec page name), "Account", "Type", "Bank", "Cash", "Balance", "Inactive", "Opening balance", "Closing balance", "In", "Out", "Description", "Party".
 - Tests: the card's R-06 (HBL after AT-1: opening 300000.00, 8 movements on 5 and 6 January, closing 417600.00, equal to `at1.json`) plus a later range starting from the earlier balance, and the pages for the accountant.
 - Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.6 Expense report
+
+Built as the card lists: page 34 `/reports/expenses` (`report.view`): date range (default current month), category and party filters; total per category, then each active expense (date, voucher, category, amount, payment mode, party, note).
+
+Choices and questions:
+- **Category totals come from the journal lines on the category accounts** (spec §12.1 "money from journal lines only"), joined to their expense for the party filter. So the edited #20 counts once at 2000.00 and a cancelled expense counts 0. The list shows active expenses by entry date.
+- The party filter offers suppliers, employees and other parties (the types an expense can have).
+- Words not in the glossary: "Expense report" (spec page name), "By category", "All categories", "All parties", "Payment mode", "Total".
+- Tests: the card's R-05 (Wages 8000.00, Food 4500.00, Tea 600.00, Electricity 15000.00, Vehicle Fuel 5000.00, total 33100.00, #20 once at 2000.00) plus the category filter and the page.
+- Checks: build, check, types, Pint, Larastan, guard pass; **486 PHP tests pass**.
+
+### T6.7 Income vs Spending
+
+Built as the card lists: `IncomeVsSpending::for(from, to)` by posting date (income = Σ credit − debit over income accounts; spending = Σ debit − credit over expense accounts; result = income − spending; pending kg of active rate-pending entries dated in the range; a line per account), page 35 `/reports/income-vs-spending` titled "Income vs Spending" with the glossary §4 banner always visible and the pending-kg line under the result. **The acceptance runner now checks R-08 with this query** (the T4.8 skip is removed; `insights` stays skipped until T7.5).
+
+Choices and questions:
+- **The banner text is sent by the server** from one constant (exact glossary text), so the page cannot drift from it.
+- **The result is shown with its sign** (it can be below zero, as in AT-1).
+- Words not in the glossary: "Income", "Spending", "Account", "Total", "Income − Spending", "Rate pending (not in the amounts above)".
+- Tests: the card's (AT-1 104000.00 / 200500.00 / −96500.00 and AT-2 91000.00 / 80800.00 / 10200.00 with 400.000 kg pending, read from the JSON files; banner present; "profit" appears only in the banner: not in any other prop and not in the page source); AT-1 and AT-2 pass with the report check on.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.8 Rate, weight difference and adjustments reports
+
+Built as the card lists: page 37 `/reports/rates` (per item and party, each fixed rate over time and the weighted average Σ amount ÷ Σ kg, 2 decimals, before agreed adjustments), page 38 `/reports/weight-difference` (per party, only entries with our weight; purchase difference = supplier kg − our kg, sale difference = our kg − buyer kg; % = Σ difference ÷ Σ our kg × 100), page 39 `/reports/adjustments` (per party and reason: total, count, % of that party's sales or purchases in the range), and the party profile tabs "Rate history" and "Weight differences" (suppliers and buyers, since the system start date). Filters: purchases or sales, date range (default current month), party; item (rates), reason (adjustments).
+
+Choices and questions:
+- **A rate correction counts at the corrected rate** in the rate report (it is the rate finally agreed). BR-RPT-03 only says "before agreed adjustments". Tell me if the original rate should show instead.
+- **The adjustment % base** is the party's active fixed-rate entries dated in the same range; adjustments count by their own date.
+- Shared React pieces: `ReportFilters`, `RateHistory`, `WeightDifferences` (used by the reports and the party profile).
+- Words not in the glossary: "Rate report", "Weight difference", "Adjustments report" (spec page names), "Rate history", "Weight differences" (spec §11.11 tab names), "Weighted average", "Their kg", "Our kg", "Difference", "Count", "%", "All items", "All reasons", "Purchases", "Sales".
+- Tests: T-13 (Aslam 800 @ 50 and 1000 @ 52 → 51.11; purchases 1000/960 and 500/500 → 40.000 kg, 2.74%; sale 300/295 → 5.000 kg, 1.67%; AT-2 ABC quality 2000.00, 1 adjustment, 3.17% of 63000.00) plus the profile tab and the three pages.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.9 Reports home and printing
+
+Built as the card lists: page 32 `/reports` (`report.view`) linking every report the user can open (each checked against its own permission: Partner statement needs `partner.view`, Accounts `account.view`); print stylesheet (`@media print` in `resources/css/app.css`) hiding the sidebar, top bar, bottom bar, buttons, inputs, select boxes and toasts; a `PrintHeader` on every report page, shown only on paper, with the company name (from settings, shared with every page), the report title, the filters used and "Printed on {date time} by {user}". The menu's Reports group now opens the reports home.
+
+Choices and questions:
+- **Business insights (page 40) is not listed yet**; T7.5 builds it and adds it to the list.
+- **The menu shows one "Reports" entry** (the home page) instead of each report.
+- **Printed samples checked**: I printed the trial balance and the pending balances to PDF from the browser (A4, print media). Each shows the company name, title, "As of …", "Printed on … by …", and the tables; no sidebar, buttons or filters. I fixed one thing found there: the trial balance printed its filter labels without the inputs, now hidden on paper. You should still print them from your own browser once.
+- Words not in the glossary: "Reports", the one-line description of each report, "Printed on … by …", "From … to …", "As of …".
+- Tests: the card's (reports home lists only permitted reports: the accountant does not see Partner statement; 403 without `report.view`) plus the shared company name.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.10 Statement and entry slip PDFs
+
+Built as the card lists: `barryvdh/laravel-dompdf` (^3.1), `App\Support\Format` (PHP, the same grouping, rounding and date formats as `format.ts`; it hands the work to the existing `NumberFormat` and `Dates`, which already work on strings, so screens, messages and PDFs cannot drift apart), Blade views `pdf/statement.blade.php` (§13.1) and `pdf/slip.blade.php` (§13.2) with one shared style file, the logo copied to `resources/images/zb-logo-96.png` and shown 40 px tall on white, routes `GET /parties/{id}/statement.pdf?from=&to=` (`party.view`), `GET /purchases/{id}/slip.pdf` (`purchase.view`), `GET /sales/{id}/slip.pdf` (`sale.view`), and a "Share PDF" button (Web Share API with the file where the browser allows it, otherwise a download) on the party profile's khata tab and on active purchase and sale pages.
+
+Choices and questions:
+- **Font: DejaVu Sans** (dompdf's built-in). The repository has IBM Plex Sans only as `.woff`/`.woff2` (from `@fontsource`), no TTF, and I may not download fonts. If you want IBM Plex Sans in PDFs, add the TTF files and their OFL licence to `resources/fonts/` and I will switch.
+- **dompdf options set in one place** (`PdfDocument`): remote files off, PHP in templates off, JavaScript off, font subsetting on (a statement is ~40 KB instead of ~900 KB). The logo is embedded as a data URI, so no file access is needed.
+- **Statement rows**: the khata of the period without payments awaiting approval; **a journal and its reversal that are both in the period are left out together** (a cancelled entry, or the old version of an edited one), and the running balance is recomputed from the opening so it still adds up. If the original is before the period and only the reversal is inside it, the reversal row stays (otherwise the balance would be wrong). Notes are never shown.
+- **Rate-pending rows** show "Waste 400 kg – Rate pending" in the details and no amount, as on the screen.
+- **Statement period by default**: system start date to today.
+- **Slip "Balance"**: the party balance right after this entry and its paid-now / received-now payment (every posting before the entry date, and on that date up to the entry's own journals). "Paid now" counts only active, posted payments linked to the entry. Our weight is never sent to the view.
+- **kg follows `kg_decimals`**: with the test value 3 the slip shows "800.000 kg", with 0 it shows "800 kg". The card's T-14 says "800 kg"; my test checks both settings. Tell me if PDFs should drop trailing zeros instead (that would differ from the screens).
+- **Footer page number**: "Page 1" (dompdf cannot print "of N" without PHP in templates, which stays off).
+- Words not in the glossary: "Statement of Account", "Purchase Slip", "Sale Slip" (spec §13 words), "Period", "Details", "Increase", "Decrease", "Balance", "Voucher number", "Kg", "Page", "Generated on … by …".
+- Tests (T-14): Karim after AT-1 (statement contains "Statement of Account", S-0002, all four of his vouchers read from the database, closing "Settled", no "Rate pending"); the statement route returns `application/pdf` starting `%PDF-`; slip for AT-1 #1 (PUR-000001, 800.000 kg / 800 kg, Rs 50.00, Rs 40,000.00, Paid now, "Balance: Settled") and its PDF route; a slip with our weight 793.5 never shows it; a sale slip says "Sale Slip" and "Received now"; Urdu name never in the statement; a cancelled purchase and an awaiting payment are left out and Aslam still closes at "We owe Rs 52,000.00"; guest is sent to login. T-09 route table has the three new routes.
+- Checked by eye: I rendered a statement and a slip from the dev data to images (header with logo and company name, period, rows, opening and closing, footer with "Generated on … by …" and the page number).
+
+### T7.1 Month-end close (backend)
+
+Built as the card lists: migration `bank_reconciliations` (spec §9.5, delete blocked by trigger), `RecordBankStatement` (stores the ledger balance at the last day and the difference = statement − ledger), `PostCashDifference` (PR-23 shortage / PR-24 excess, dated the month's last day, voucher CSH, source `month_end_adjustment` with the period id, note required), `CloseMonth` with the six checks in order (previous months closed, rate-pending entries unless accepted, no payment awaiting approval, trial balance balanced, each active bank's latest statement = live ledger at the last day, each active cash account's latest count on the last day = live ledger), and on success: period `closed` with who and when, a `period_events` row and audit `month_closed`. Any failing check changes nothing. PR-23 and PR-24 are now built in `PostingRules`. The acceptance runner can now run `controls.json` cases that build on `at1.json` (`base`), with the steps `bank_statement`, `cash_count`, `cash_shortage` and `close_month`.
+
+Choices and questions:
+- **A month closes only after it has ended** (today is after its last day). The spec does not say; closing on the last day would let entries of that same day miss the close. Tell me if the Owner should be able to close on the last day itself.
+- **A month before the start month cannot be closed**, and a closed month cannot be closed again (clear messages).
+- **The cash difference must be exactly what is left** (latest count on the last day minus the ledger), in amount and direction. This stops a double tap from posting twice (there is no table to hold an idempotency key for this posting) and stops typing slips. A count on the last day must exist first.
+- **"Business closed" on the last day is not a count**: the cash check fails until a real count is entered. BR-MEC-06 asks for a count on the last day.
+- **Closing cannot race a save**: every save that checks its date takes a shared database lock until it commits, and closing (and posting a cash difference) takes it alone. So a month cannot close while an entry dated in it is half saved, and the entry is refused afterwards. This changes `Periods::assertDateOpen` (T1.9) by one line; the lock is per company and costs nothing noticeable.
+- **Where the CSH voucher lives**: conventions §7 says a month-end adjustment has no table of its own (source id = period id), so its voucher and note are in the journal description ("Cash shortage CSH-000001 – Cash: note"). The account statement now shows such a journal with its voucher and description. T7.8's voucher-gap check will read CSH numbers from there.
+- **Audit for bank statements and cash differences**: there is no morph alias for bank statements (conventions §7 lists the exact aliases), so both are logged as `created` on the period, with the values in `new_values` (and the note as the reason for a cash difference).
+- **Bank statement balance may be below zero** (an overdraft); stored to 2 decimals.
+- Messages not in the glossary: ":month has not ended yet.", ":month is already closed.", ":month is before the system start date.", ":month is closed.", "Select a bank account.", "Enter the statement balance, at most 2 decimals.", "Select shortage or excess.", "Enter a note.", "Enter the cash count for {date} first.", "There is no cash difference to post.", "The cash difference is Rs … short/extra. Post exactly that amount.", journal text "Cash shortage" / "Cash excess".
+- Tests: AT-3 from `controls.json` through the runner (blocked with bank −500.00 and cash −1000.00, then the bank charges expense and the shortage, closed, the January purchase refused with "January 2026 is closed", 6900 debit 1000.00, cash 20900.00, HBL 417100.00, CSH-000001 on 2026-01-31, period closed), plus one closed event and one `month_closed` audit row; PR-23 and PR-24 exact journal lines; the account statement row; the cash-difference rules (count first, note, exact amount, no second post); BR-MEC-01 (February fails `previous_months` with January open, then both close in order); BR-MEC-02 (pending rate blocks, accepted closes, audit says accepted); BR-MEC-03 (awaiting payment blocks); missing statement or count fails, the latest counts; not before month end, not twice, not before the start month; bank statement values.
+
+### T7.2 Month-end pages and reopen
+
+Built as the card lists: page 30 `/month-end` (`period.close`) for the oldest open month, with the steps 1 Rate pending (with the "Close with pending rates" tick when entries remain), 2 Approvals, 3 Trial balance, 4 Bank statement balance (one input per active bank, with the system balance and the difference), 5 Cash count on the last day (one input per active cash account; "Post shortage" / "Post excess" opens a dialog with the exact remaining amount and a required note), 6 Close month (enabled only when every step is Done; the server runs every check again). Page 31 `/months` (`period.close`): every month from the start month to the current month, newest first, with status, closed by and closed on; "Reopen month" only on the latest closed month and only for `period.reopen`, with a reason (`ReopenMonth`: event `reopened` with the reason, audit `month_reopened`). A "Month-end" menu group with both pages.
+
+Choices and questions:
+- **Reopen reason**: at least 5 characters, the same rule and message as cancel reasons (BR-GEN-04). BR-MEC-08 only says "with a reason".
+- **Reopening clears "closed by" and "closed on"** on the month; who closed and reopened it when stays in `period_events` and the audit log.
+- **A month that has not ended** shows "{Month} has not ended yet. It can be closed after {last day}." and no steps.
+- **Previous months** (BR-MEC-01) is not shown as a step: the page always shows the oldest open month, so it always passes. It appears only if it ever fails.
+- **Cash count on page 30** uses its own route (`month-end.cash-count`, `period.close`) with the date fixed to the month's last day, so the Owner stays on the page; it saves through the same `CreateCashCount` as page 28.
+- **Bank statement input allows one leading minus** (overdraft); other money inputs do not.
+- **T-09**: the seven new routes are in the route table, and the test's route parameters now include a month (`period` = 2026-01) for the reopen route.
+- Words not in the glossary: "Months" (menu and page title; spec page name is "Months list"), "Done", "Not done", "Rate pending" step text ("No rate-pending entries in this month."), "Approvals" step text, "Bank statement balance", "System balance", "Counted", "Difference", "Statement balance", "Counted amount", "Post shortage", "Post excess", "Close with pending rates" (spec §10 BR-MEC-02 words), "After closing, nothing dated in {Month} can be added, edited or cancelled.", "Every month up to now is closed.", "Open", "Closed", "Closed by", "Closed on", "Previous months", messages "Bank statement balance saved.", "Cash count saved.", "{Month} is closed.", "{Month} is open again.", "The month cannot close yet. Fix the steps marked Not done.", "Only the latest closed month ({Month}) can be reopened.", "No month is closed.".
+- Tests: the card's three (only the latest closed month can be reopened; reopen requires a reason and logs it with event and audit; the accountant cannot reopen, close, or open either page) plus page 30 walked through its routes from blocked to closed (statement, count, refused close, cash difference with voucher CSH-000001, close, months list).
+- Checked by eye: screenshots of page 30 (desktop and phone) and page 31.
+
+### T7.3 Opening balances lock
+
+Built as the card lists: `SetOpeningBalance` is refused once any month is closed (BR-MEC-09) with "Opening balances are locked because {Month Year} is closed." (the earliest closed month), and the opening balances page becomes read-only with the same text.
+
+Choices and questions:
+- **The lock is checked before "marked complete"**, so the message names the closed month when both apply.
+- **Reopening every closed month unlocks the openings again** (unless they are marked complete). BR-MEC-09 says they lock "when the first month is closed"; it does not say what a reopen does. Tell me if a reopen should keep them locked.
+- Tests: the card's (change after the first close refused, through the Action and the page route, balance unchanged, page shows `locked_by` January 2026) plus: after reopening, openings can change again.
+
+### T7.4 Merge duplicate parties
+
+Built as the card lists: `MergeParties` (Owner; same type, both active, two different parties; if the source has a balance, one journal moves it to the target: source `party_merge`, source id = the target, dated today; the source becomes inactive with `merged_into_id`; audit `merged` on both), page 20 `/parties/merge` (`party.merge`, linked from the parties list) with two party pickers, both balances, the balance after the merge and a confirmation, and the khata rows: the target shows "Balance moved from {source name} ({code})" linking to the source's profile, the source shows "Balance moved to {target name} ({code})"; the source profile shows "Merged into {target}". The acceptance runner can now run the `merge` step and check `merged_into`, `purchase_<ref>_party` and `merge_journal`.
+
+Choices and questions:
+- **Document conflict (please decide):** CLAUDE.md rule 2 says "Posting rules PR-01 to PR-27 are the only postings", but spec BR-PTY-08 and card T7.4 require the merge journal, and spec §8.3 has no PR number for it. I built it as `PostingRules::partyMerge()` in the same place as the others, with a doc comment saying it has no PR number. Proposed spec change (yours, `[spec-change]`): add to §8.3 "PR-28 | Party merge (balance moved) | Source party's control account (P) when it has a credit balance, else target's | the other one | A" and allow PR-28 in CLAUDE.md rule 2.
+- **A source with rate-pending entries or payments awaiting approval cannot be merged** ("{name} has rate-pending entries or payments awaiting approval. Finish them first."). Otherwise a rate added or a payment approved later would post to the inactive source and leave it with a balance again.
+- **Partners**: both 3000 and 3100 are moved, each on its own pair of lines, in the one journal.
+- **A settled source merges without a journal** (nothing to move).
+- **The merge is posted today**, so it needs today's month open (it always is) and shows on the target's khata on that date.
+- Words not in the glossary: "Merge parties" (spec page name), "Duplicate profile (will be inactive)", "Merge into", "After the merge, …", "… keeps its entries and becomes inactive, marked "Merged into …".", "Merge", "This cannot be undone.", "Merged into", "Balance moved from … / to …", messages "Pick two different parties.", "Only parties of the same type can be merged.", "Both parties must be active.", "{source} merged into {target}.".
+- Tests: AT-6 from `controls.json` through the runner (Aslam we owe 15000.00, the duplicate settled, inactive, merged into Aslam, its purchase still its own, the merge journal dated 2026-01-31 with 2000 debit duplicate 10000.00 / credit Aslam 10000.00); T-15 (the source's journal lines are byte-for-byte the same after the merge, plus one new line); a supplier into a buyer is refused; same party, inactive party and pending rate refused; a settled duplicate merges with no journal; page 20 preview and merge (accountant 403), both khata rows with their links, and "Merged into" on the source profile.
+
+### T7.5 Business insights
+
+Built as the card lists: `App\Domain\Insights\BusinessInsights::for(from, to)` per spec §12.5 (kg ratios protein, oil/fat and combined = kg sold ÷ waste kg bought; wood per kg of waste; rough cost per kg sold = Income vs Spending "Spending" ÷ product kg sold; by month: wood per kg of waste and the waste buying rate against each product's selling rate; supplier comparison: kg, average rate, advance outstanding at the period end, weight difference %; buyer comparison: average days to pay and overdue (spec §12.6, the existing `Ageing`), agreed adjustments and their % of his sales, share of all sales %), page 40 `/insights` (`insights.view`) with a date range, every figure and section marked "Rough indicator", the two charts and the two tables; "Business insights" on the reports home for users with `insights.view`. **The acceptance runner now checks `insights`** (its skip list is empty).
+
+Choices and questions:
+- **No chart package.** The card says "shadcn charts", which need the `recharts` package; CLAUDE.md allows only the packages it names, and recharts is not one of them. So the two charts are simple horizontal bars drawn with Tailwind, their lengths worked out on the server as whole percents (no number maths in the browser). If you want shadcn charts, approve `recharts` and I will switch.
+- **Default period**: today minus `insights_period_months` months, to today (for 31 January 2026 with 3 months: 31 October 2025 to 31 January 2026).
+- **Kg** use entry dates and include rate-pending entries (BR-RPT-01, BR-RPT-02); **rates** are Σ amount ÷ Σ kg of fixed-rate entries, at the corrected rate where a rate correction exists (same as the rate report, T6.8).
+- **Which items**: waste = items of type raw material, wood = type fuel, products = type product; "protein" and "oil/fat" are the items with codes PROTEIN and OILFAT.
+- **A figure with nothing to divide by shows "–"**, not 0.
+- **Buyer adjustments** = active agreed adjustments on sales dated in the period; **share of sales** uses fixed-rate sales amounts.
+- **Earlier test changed (please review):** `tests/Feature/Reports/ReportsHomeTest.php` (mine, T6.9) asserted the Owner sees exactly one report more than the Accountant. Business insights is a second Owner-only report, so I replaced that count with a stricter check: the Owner's extra reports are exactly "Partner statement" and "Business insights", and the Accountant has none the Owner lacks. My T6.9 assertion was too narrow; T6.9's card already says the home lists every report the user can see.
+- Words not in the glossary: "Business insights" (spec page name), "Rough indicator" (spec §12.5), "Every figure on this page is a rough indicator.", "Kg ratio, protein / oil/fat / combined", "Wood per kg of waste", "Rough cost per kg sold", "Kg in the period", "Waste bought", "Wood bought", "Product sold", "Wood per kg of waste by month", "Buying vs selling rate by month", "Waste (buying)", "{product} (selling)", "Supplier comparison", "Buyer comparison", "Average rate", "Advance", "Weight difference", "Average days to pay", "Overdue", "Adjustments", "{n}% of his sales", "Share of sales".
+- Tests: the card's (AT-1 from `at1.json`: 0.1786, 0.0000, 0.1786, 1.0714, 401.00, also through the runner), months/suppliers/buyers after AT-1 (Aslam 1800.000 kg at 51.11, no advance), empty ratios when nothing to divide by, page 40 permission and default period, reports home link only with `insights.view`.
+
+### T7.6 Backup status page
+
+Built as the card lists: `config/zb.php` (`backup_status_dir` from `ZB_BACKUP_STATUS_DIR`), `App\Domain\Backups\BackupStatus::read()` (reads `backup-db.json`, `backup-db-last-success.json`, `backup-files.json`, `backup-files-last-success.json` written by the server scripts; a missing folder or file means "not configured on this server", never an error), page 48 `/settings/backups` (`backup.view`, in the Settings menu as "Backups") showing for the database and the uploads: last successful backup (Asia/Karachi time), size in MB, copies made, last attempt result and error text, a red "Late" badge when the last success is older than 2 hours (database) or 26 hours (uploads), and the fixed text "Backups are encrypted and stored off the server. They can only be restored by the key holders." No download button and no download route. Dashboard alert `BackupLate` (owner only, same rule, after the other alerts).
+
+Choices and questions:
+- **README.md is a protected file**, so I did not add the "Backups and restore" section. Proposed text for you to add to `README.md`: "## Backups and restore — Backups are made by the server scripts in `infra/` (hourly database, daily uploads), encrypted and stored off the server. The app's Backups page (Settings → Backups) shows the last success and the last error. How to restore: `docs/operations/runbook.md` §4. What to do when a backup is late or failing: `docs/operations/runbook.md` §9."
+- **"Not configured" per kind**: a kind with neither of its two files shows "Backups are not configured on this server." A configured kind that has never succeeded is Late.
+- **"Copies made"**: for the database the script's `copies` (hourly, daily, monthly); for uploads it writes no copies, so the page shows its `type` (full or incremental) there.
+- **The page is at `resources/js/pages/backups/show.tsx`**, not under `settings/`: the starter kit gives every `settings/*` page its own profile layout.
+- **The restore on staging is yours** (after T8.3, recorded in `docs/release-checks.md`). So I left T7.6 **unticked** in `docs/tasks.md`: its build and tests are done; tick it after your restore.
+- Words not in the glossary: "Backups", "Database", "Uploads", "Late", "OK", "Last successful backup", "Size", "Copies made", "Last attempt", "Succeeded", "Failed", "Error", "Backups are not configured on this server.", "Late when the last successful backup is older than {n} hours.", alert "Backup late".
+- Tests: the card's six with fixture JSON files in a temporary folder (fresh success OK; 3 hours old Late, alert count 2 for the Owner and 0 for the Accountant; a failure shows its error text; missing folder not configured; page needs `backup.view`; the only route with "backup" is GET `settings/backups` and no route is named "download").
+
+### T7.7 Acceptance AT-3 to AT-6
+
+Built as the card lists: the `AcceptanceRunner` runs every step type of `controls.json` (the month-end steps came with T7.1, `merge` with T7.4; this task adds a step's own `expect` — approval status, journal or not, journal posting date, party and money account balances right after it — and the AT-5 checks `purchase_<ref>_unchanged`, `rate_correction` and `rate_correction_journal`). `tests/Acceptance/ControlsTest.php` has one test per case: AT-3, AT-4, AT-5 (with the real close) and AT-6. The runner now **fails on any `expected` or step `expect` key it does not check**, so a new key in the JSON can never be skipped silently.
+
+Choices and questions:
+- **`closeMonthForTest()`**: no acceptance test uses it. Seven older feature tests (T1.9 to T4.x) still do; I left them as they are (the rule is not to change existing tests, and the T7.1 card only forbids it in new tests).
+- **AT-3 and AT-6 also have their own tests** in `tests/Feature/Periods` and `tests/Feature/Parties` from T7.1 and T7.4; I kept them (they add the event, audit and khata checks).
+- Tests: AT-1 to AT-6 all pass.

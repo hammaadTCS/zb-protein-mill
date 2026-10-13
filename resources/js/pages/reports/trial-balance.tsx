@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,7 @@ export default function TrialBalance({
         <>
             <Head title="Trial balance" />
             <div className="flex flex-col gap-4 p-4">
+                <PrintHeader title="Trial balance" asOf={as_of} />
                 <PageHeader title="Trial balance">
                     <span
                         className={cn(
@@ -69,7 +71,10 @@ export default function TrialBalance({
                     </span>
                 </PageHeader>
 
-                <div className="flex flex-wrap items-center gap-4">
+                <div
+                    data-print="hide"
+                    className="flex flex-wrap items-center gap-4"
+                >
                     <Label htmlFor="as_of">As of</Label>
                     <Input
                         id="as_of"

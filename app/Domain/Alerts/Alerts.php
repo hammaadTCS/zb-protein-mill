@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 use App\Domain\Alerts\Providers\AgedAdvances;
+use App\Domain\Alerts\Providers\BackupLate;
 use App\Domain\Alerts\Providers\BankChangesToReview;
 use App\Domain\Alerts\Providers\BuyersOverCreditLimit;
 use App\Domain\Alerts\Providers\MissingCashCount;
@@ -32,6 +33,7 @@ final class Alerts
         MissingCashCount::class,
         NegativeCashBalance::class,
         TrialBalanceError::class,
+        BackupLate::class,
     ];
 
     /**

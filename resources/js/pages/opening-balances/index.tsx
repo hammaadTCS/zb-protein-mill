@@ -65,25 +65,29 @@ const SIDE_WORDS: Record<PartyType, Partial<Record<Side, string>>> = {
 export default function OpeningBalances({
     start_date,
     completed,
+    locked_by,
     equity,
     money_accounts,
     parties,
 }: {
     start_date: string | null;
     completed: boolean;
+    /** BR-MEC-09: the closed month that locks the openings. */
+    locked_by: string | null;
     equity: string;
     money_accounts: AccountRow[];
     parties: PartyRow[];
 }) {
     const formats = useFormats();
     const [confirming, setConfirming] = useState(false);
+    const readOnly = completed || locked_by !== null;
 
     return (
         <>
             <Head title="Opening balances" />
             <div className="flex flex-col gap-6 p-4">
                 <PageHeader title="Opening balances">
-                    {!completed && (
+                    {!readOnly && (
                         <Button onClick={() => setConfirming(true)}>
                             Mark complete
                         </Button>
@@ -107,7 +111,16 @@ export default function OpeningBalances({
                     </span>
                 </div>
 
-                {completed && (
+                {locked_by !== null && (
+                    <Alert>
+                        <AlertDescription>
+                            Opening balances are locked because {locked_by} is
+                            closed.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {completed && locked_by === null && (
                     <Alert>
                         <AlertDescription>
                             Opening balances are marked complete and cannot
@@ -134,7 +147,7 @@ export default function OpeningBalances({
                                     target={{ money_account_id: account.id }}
                                     opening={account.opening}
                                     sides={{ balance: 'Balance' }}
-                                    disabled={completed}
+                                    disabled={readOnly}
                                 />
                             ))}
                         </TableBody>
@@ -159,7 +172,7 @@ export default function OpeningBalances({
                                     target={{ party_id: party.id }}
                                     opening={party.opening}
                                     sides={SIDE_WORDS[party.type]}
-                                    disabled={completed}
+                                    disabled={readOnly}
                                 />
                             ))}
                         </TableBody>

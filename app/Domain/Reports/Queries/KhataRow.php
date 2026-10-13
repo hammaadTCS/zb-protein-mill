@@ -25,5 +25,7 @@ final readonly class KhataRow
         public ?string $route = null,
         public ?string $pendingKg = null,
         public bool $awaitingApproval = false,
+        public ?int $journalId = null,
+        public ?int $reversalOfId = null,
     ) {}
 }

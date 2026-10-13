@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Checks\Actions\CreateCashCount;
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Ledger\PostingService;
 use App\Domain\MoneyAccounts\Actions\CreateMoneyAccount;
@@ -7,6 +8,7 @@ use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Actions\SetOpeningBalance;
 use App\Domain\Parties\Actions\CreateParty;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Periods\Actions\RecordBankStatement;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Today;
@@ -161,4 +163,29 @@ function acceptanceWorld(array $data, User $owner): array
     }
 
     return ['accounts' => $accounts, 'parties' => $parties];
+}
+
+/**
+ * The AT-1 accounts with their openings, and February 2nd as today, so January has ended.
+ *
+ * @return array{User, array<string, MoneyAccount>, array<string, mixed>}
+ */
+function monthEndWorld(): array
+{
+    freezeToday('2026-02-02');
+    $owner = owner();
+    $world = acceptanceWorld(acceptance('at1'), $owner);
+
+    return [$owner, $world['accounts'], $world['parties']];
+}
+
+/**
+ * Bank statement and cash count for January that match the ledger.
+ *
+ * @param  array<string, MoneyAccount>  $accounts
+ */
+function matchJanuary(User $owner, array $accounts): void
+{
+    app(RecordBankStatement::class)->handle($owner, '2026-01', $accounts['hbl'], $accounts['hbl']->balance('2026-01-31'));
+    app(CreateCashCount::class)->handle($owner, $accounts['cash'], '2026-01-31', $accounts['cash']->balance('2026-01-31'));
 }

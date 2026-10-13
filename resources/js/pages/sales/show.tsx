@@ -14,6 +14,7 @@ import type { JournalLineRow } from '@/components/app/JournalLines';
 import { JournalLines } from '@/components/app/JournalLines';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import { SharePdfButton } from '@/components/app/SharePdfButton';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { useCan } from '@/hooks/use-can';
 import { useFormats } from '@/hooks/use-formats';
 import { formatDate, formatRate } from '@/lib/format';
-import { cancel, edit, index, rate } from '@/routes/sales';
+import { cancel, edit, index, rate, slip } from '@/routes/sales';
 import { store as storeAdjustment } from '@/routes/sales/adjustments';
 import { rateCorrection } from '@/routes/sales';
 
@@ -122,6 +123,12 @@ export default function ShowSale({
             <Head title={sale.voucher_no} />
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
                 <PageHeader title={`Sale ${sale.voucher_no}`}>
+                    {sale.status === 'active' && (
+                        <SharePdfButton
+                            href={slip.url(sale.id)}
+                            filename={`${sale.voucher_no}.pdf`}
+                        />
+                    )}
                     {sale.status === 'cancelled' && (
                         <StatusBadge status="cancelled" />
                     )}

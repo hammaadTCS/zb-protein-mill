@@ -7,15 +7,26 @@ import { ChangeHistory } from '@/components/app/ChangeHistory';
 import type { KhataLine, Words } from '@/components/app/KhataTable';
 import { KhataTable } from '@/components/app/KhataTable';
 import { MoneyText } from '@/components/app/MoneyText';
+import type { RateGroup } from '@/components/app/RateHistory';
+import { RateHistory } from '@/components/app/RateHistory';
+import type { WeightGroup } from '@/components/app/WeightDifferences';
+import { WeightDifferences } from '@/components/app/WeightDifferences';
 import type { PartyType } from '@/components/app/PartyPicker';
 import { PageHeader } from '@/components/app/PageHeader';
+import { SharePdfButton } from '@/components/app/SharePdfButton';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCan } from '@/hooks/use-can';
 import { cn } from '@/lib/utils';
-import { edit, index, review as markReviewed, show } from '@/routes/parties';
+import {
+    edit,
+    index,
+    review as markReviewed,
+    show,
+    statement,
+} from '@/routes/parties';
 import { create as newPurchase } from '@/routes/purchases';
 import { create as newSale } from '@/routes/sales';
 import { create as newPayment } from '@/routes/payments';
@@ -27,6 +38,7 @@ type Profile = {
     type: PartyType;
     status: 'active' | 'inactive';
     needs_review: boolean;
+    merged_into: { id: number; code: string; name: string } | null;
     balance: { words: string; amount: string; pending_kg: string };
     partner: { invested: string; withdrawn: string; net: string } | null;
     name: string;
@@ -74,7 +86,13 @@ type Khata = {
     rows: KhataLine[];
 };
 
-const TABS = ['Details', 'Khata', 'Change history'] as const;
+const TABS = [
+    'Details',
+    'Khata',
+    'Rate history',
+    'Weight differences',
+    'Change history',
+] as const;
 
 /** Page 19 (spec §11.11): header with balance in words; tabs Details and Khata. */
 export default function PartyProfile({
@@ -82,11 +100,15 @@ export default function PartyProfile({
     khata,
     history,
     review,
+    rate_history,
+    weights,
 }: {
     party: Profile;
     khata: Khata;
     history: HistoryRow[];
     review: Review;
+    rate_history?: RateGroup[];
+    weights?: WeightGroup[];
 }) {
     const can = useCan();
     const [tab, setTab] = useState<(typeof TABS)[number]>(
@@ -154,6 +176,18 @@ export default function PartyProfile({
                     </Badge>
                     {party.status === 'inactive' && (
                         <Badge variant="outline">Inactive</Badge>
+                    )}
+                    {party.merged_into && (
+                        <span className="text-sm">
+                            Merged into{' '}
+                            <Link
+                                href={show(party.merged_into.id)}
+                                className="font-medium underline underline-offset-4"
+                            >
+                                {party.merged_into.name} (
+                                {party.merged_into.code})
+                            </Link>
+                        </span>
                     )}
                     {party.needs_review && (
                         <StatusBadge status="needs_review" />
@@ -258,7 +292,12 @@ export default function PartyProfile({
                 )}
 
                 <div role="tablist" className="flex gap-1 border-b">
-                    {TABS.map((name) => (
+                    {TABS.filter(
+                        (name) =>
+                            (name !== 'Rate history' &&
+                                name !== 'Weight differences') ||
+                            rate_history !== undefined,
+                    ).map((name) => (
                         <button
                             key={name}
                             role="tab"
@@ -330,6 +369,14 @@ export default function PartyProfile({
 
                 {tab === 'Change history' && <ChangeHistory rows={history} />}
 
+                {tab === 'Rate history' && rate_history && (
+                    <RateHistory groups={rate_history} />
+                )}
+
+                {tab === 'Weight differences' && weights && (
+                    <WeightDifferences groups={weights} />
+                )}
+
                 {tab === 'Khata' && (
                     <div className="grid gap-3">
                         <form
@@ -369,6 +416,17 @@ export default function PartyProfile({
                             <Button type="submit" variant="outline">
                                 Show
                             </Button>
+                            <SharePdfButton
+                                href={statement.url(party.id, {
+                                    query: Object.fromEntries(
+                                        Object.entries({
+                                            from: khata.from ?? '',
+                                            to: khata.to ?? '',
+                                        }).filter(([, v]) => v !== ''),
+                                    ),
+                                })}
+                                filename={`statement-${party.code}.pdf`}
+                            />
                         </form>
                         <KhataTable
                             opening={khata.opening}

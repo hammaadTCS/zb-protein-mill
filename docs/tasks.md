@@ -87,21 +87,21 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T6.3** Ageing service. *Done when:* T-12 passes.
 - [x] **T6.4** Pending balances report. *Done when:* tests pass.
 - [x] **T6.5** Accounts list and account statement. *Done when:* tests pass.
-- [ ] **T6.6** Expense report. *Done when:* tests pass.
-- [ ] **T6.7** Income vs Spending. *Done when:* tests pass.
-- [ ] **T6.8** Rate, weight difference and adjustments reports. *Done when:* T-13 passes.
-- [ ] **T6.9** Reports home and printing. *Done when:* tests pass; printed samples of the trial balance and pending balances checked by you before you finish the task.
-- [ ] **T6.10** Statement and entry slip PDFs. *Done when:* T-14 passes.
+- [x] **T6.6** Expense report. *Done when:* tests pass.
+- [x] **T6.7** Income vs Spending. *Done when:* tests pass.
+- [x] **T6.8** Rate, weight difference and adjustments reports. *Done when:* T-13 passes.
+- [x] **T6.9** Reports home and printing. *Done when:* tests pass; printed samples of the trial balance and pending balances checked by you before you finish the task.
+- [x] **T6.10** Statement and entry slip PDFs. *Done when:* T-14 passes.
 
 ## M7: Month-end and remaining controls  ·  card file `docs/cards/M7.md`
 
-- [ ] **T7.1** Month-end close (backend). *Done when:* tests pass.
-- [ ] **T7.2** Month-end pages and reopen. *Done when:* tests pass.
-- [ ] **T7.3** Opening balances lock. *Done when:* tests pass.
-- [ ] **T7.4** Merge duplicate parties. *Done when:* tests pass.
-- [ ] **T7.5** Business insights. *Done when:* tests pass.
+- [x] **T7.1** Month-end close (backend). *Done when:* tests pass.
+- [x] **T7.2** Month-end pages and reopen. *Done when:* tests pass.
+- [x] **T7.3** Opening balances lock. *Done when:* tests pass.
+- [x] **T7.4** Merge duplicate parties. *Done when:* tests pass.
+- [x] **T7.5** Business insights. *Done when:* tests pass.
 - [ ] **T7.6** Backup status page. *Done when:* tests pass. **[Human]** after T8.3: one restore done on staging (runbook §4) and recorded in `docs/release-checks.md`.
-- [ ] **T7.7** Acceptance AT-3 to AT-6. *Done when:* all four pass in CI.
+- [x] **T7.7** Acceptance AT-3 to AT-6. *Done when:* all four pass in CI.
 - [ ] **T7.8** Integrity check command. *Done when:* tests pass; the schedule is listed by `php artisan schedule:list`.
 
 ## M8: Release and handover  ·  card file `docs/cards/M8.md`

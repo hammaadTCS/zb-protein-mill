@@ -17,9 +17,13 @@ use App\Domain\Parties\PartyBalance;
 use App\Domain\Reports\Queries\ChangeHistory;
 use App\Domain\Reports\Queries\KhataRow;
 use App\Domain\Reports\Queries\PartyKhata;
+use App\Domain\Reports\Queries\RateWeightReports;
+use App\Domain\Settings\SettingKeys;
+use App\Domain\Settings\Settings;
 use App\Http\Requests\Parties\StorePartyRequest;
 use App\Http\Requests\Parties\UpdatePartyRequest;
 use App\Support\Flash;
+use App\Support\Today;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -119,11 +123,15 @@ class PartyController extends Controller
                 'type' => $party->type->value,
                 'status' => $party->status->value,
                 'needs_review' => $party->needs_review || $party->bank_change_needs_review,
+                // BR-PTY-08: "Merged into {target}" on the source profile.
+                'merged_into' => $party->mergedInto === null ? null : ['id' => $party->mergedInto->id, 'code' => $party->mergedInto->code, 'name' => $party->mergedInto->name],
                 'balance' => $balance->toArray(),
                 'partner' => $balance->invested === null ? null : ['invested' => $balance->invested, 'withdrawn' => $balance->withdrawn, 'net' => $balance->net],
                 ...array_map(fn ($value) => $value instanceof \BackedEnum ? $value->value : $value, $party->only(Party::FORM_FIELDS)),
             ],
             'history' => ChangeHistory::for($party),
+            // Spec §11.11 tabs "Rate history" and "Weight differences" (R-10, R-11), since the start date.
+            ...(in_array($party->type, [PartyType::Supplier, PartyType::Buyer], true) ? self::rateAndWeightTabs($party) : []),
             // BR-PTY-06, BR-PTY-07: what the Owner still has to review on this party.
             'review' => [
                 'new_party' => $party->needs_review,
@@ -147,6 +155,22 @@ class PartyController extends Controller
                 ], $khata->rows),
             ],
         ]);
+    }
+
+    /**
+     * @return array{rate_history: list<array<string, mixed>>, weights: list<array<string, mixed>>}
+     */
+    private static function rateAndWeightTabs(Party $party): array
+    {
+        $start = Settings::get(SettingKeys::SYSTEM_START_DATE);
+        $filters = [
+            'type' => $party->type === PartyType::Buyer ? 'sale' : 'purchase',
+            'from' => is_string($start) ? $start : '2000-01-01',
+            'to' => Today::date(),
+            'party_id' => $party->id,
+        ];
+
+        return ['rate_history' => RateWeightReports::rates($filters), 'weights' => RateWeightReports::weights($filters)];
     }
 
     /** BR-PTY-06, BR-PTY-07: "Mark reviewed" (Owner only). */

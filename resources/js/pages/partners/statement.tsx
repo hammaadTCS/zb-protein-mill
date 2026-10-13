@@ -3,6 +3,7 @@ import { MoneyText } from '@/components/app/MoneyText';
 import type { PartyOption } from '@/components/app/PartyPicker';
 import { PartyPicker } from '@/components/app/PartyPicker';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -54,6 +55,11 @@ export default function PartnerStatement({
         <>
             <Head title="Partner statement" />
             <div className="flex flex-col gap-4 p-4">
+                <PrintHeader
+                    title="Partner statement"
+                    from={filters.from}
+                    to={filters.to}
+                />
                 <PageHeader title="Partner statement" />
 
                 <div className="grid gap-2 sm:grid-cols-3">

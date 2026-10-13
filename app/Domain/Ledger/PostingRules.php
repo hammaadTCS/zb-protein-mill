@@ -12,6 +12,7 @@ use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Periods\Models\Period;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Purchases\Models\RateCorrection;
 use App\Domain\Sales\Models\Sale;
@@ -327,9 +328,12 @@ final class PostingRules
      * Debit: 6900.
      * Credit: M (cash).
      */
-    public static function pr23CashShortage(): PostingRequest
+    public static function pr23CashShortage(Period $period, MoneyAccount $cash, string $amount, string $description, string $postingDate): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-23');
+        return self::monthEndAdjustment($period, $description, $postingDate, [
+            PostingLine::debit('6900', $amount),
+            PostingLine::credit($cash->ledger_account_id, $amount),
+        ]);
     }
 
     /**
@@ -337,9 +341,12 @@ final class PostingRules
      * Debit: M (cash).
      * Credit: 6900.
      */
-    public static function pr24CashExcess(): PostingRequest
+    public static function pr24CashExcess(Period $period, MoneyAccount $cash, string $amount, string $description, string $postingDate): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-24');
+        return self::monthEndAdjustment($period, $description, $postingDate, [
+            PostingLine::debit($cash->ledger_account_id, $amount),
+            PostingLine::credit('6900', $amount),
+        ]);
     }
 
     /**
@@ -383,6 +390,45 @@ final class PostingRules
             : [PostingLine::debit($sale->item->ledgerAccountId(), $amount, itemId: $sale->item_id), PostingLine::credit('1200', $amount, $sale->party_id)]);
     }
 
+    /**
+     * BR-PTY-08 merge transfer (card T7.4). Spec §8.3 gives it no PR number: it moves
+     * the source party's balance on each of its control accounts to the target party
+     * of the same type, so the source ends at zero. Source `party_merge`, source id =
+     * the target party (conventions §7), posted today.
+     *
+     * @param  array<string, string>  $nets  control account code => the source's debit minus credit
+     */
+    public static function partyMerge(Party $source, Party $target, array $nets, string $postingDate): PostingRequest
+    {
+        if ($source->type !== $target->type) {
+            throw new InvalidArgumentException('BR-PTY-08: only parties of the same type are merged.');
+        }
+
+        $lines = [];
+
+        foreach ($nets as $code => $net) {
+            if (Decimal::isZero($net)) {
+                continue;
+            }
+
+            $amount = Decimal::abs($net);
+            $lines[] = Decimal::isNegative($net)
+                ? PostingLine::debit((string) $code, $amount, $source->id)
+                : PostingLine::credit((string) $code, $amount, $source->id);
+            $lines[] = Decimal::isNegative($net)
+                ? PostingLine::credit((string) $code, $amount, $target->id)
+                : PostingLine::debit((string) $code, $amount, $target->id);
+        }
+
+        return new PostingRequest(
+            postingDate: $postingDate,
+            sourceType: 'party_merge',
+            sourceId: $target->id,
+            description: "Balance moved from {$source->name} ({$source->code}) to {$target->name} ({$target->code})",
+            lines: $lines,
+        );
+    }
+
     /** Spec §8.3: supplier 2000, buyer 1200, employee 1300, other 2100. */
     public static function controlAccount(Party $party): string
     {
@@ -398,6 +444,23 @@ final class PostingRules
         if (! in_array($party->type, $allowed, true)) {
             throw new InvalidArgumentException("{$rule} does not apply to a {$party->type->value}.");
         }
+    }
+
+    /**
+     * Conventions §7: a month-end cash adjustment has no table of its own; its source is
+     * the period, and its CSH voucher is in the description.
+     *
+     * @param  list<PostingLine>  $lines
+     */
+    private static function monthEndAdjustment(Period $period, string $description, string $postingDate, array $lines): PostingRequest
+    {
+        return new PostingRequest(
+            postingDate: $postingDate,
+            sourceType: 'month_end_adjustment',
+            sourceId: $period->id,
+            description: $description,
+            lines: $lines,
+        );
     }
 
     /**

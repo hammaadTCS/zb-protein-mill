@@ -5,22 +5,32 @@ use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashCountController;
 use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
+use App\Http\Controllers\MonthController;
+use App\Http\Controllers\MonthEndController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartnerTransactionController;
 use App\Http\Controllers\PartyController;
+use App\Http\Controllers\PartyMergeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RateCorrectionController;
 use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\DailySummaryController;
+use App\Http\Controllers\Reports\ExpenseReportController;
+use App\Http\Controllers\Reports\IncomeVsSpendingController;
+use App\Http\Controllers\Reports\InsightsController;
 use App\Http\Controllers\Reports\PendingBalancesController;
+use App\Http\Controllers\Reports\RateWeightReportsController;
+use App\Http\Controllers\Reports\ReportsHomeController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TransferController;
@@ -43,6 +53,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store')->can('purchase.create');
     Route::get('purchases/last-rate', [PurchaseController::class, 'lastRate'])->name('purchases.last-rate')->can('purchase.view');
     Route::get('purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show')->can('purchase.view');
+    Route::get('purchases/{purchase}/slip.pdf', [DocumentController::class, 'purchaseSlip'])->name('purchases.slip')->can('purchase.view');
     Route::get('purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->name('purchases.edit')->can('purchase.update');
     Route::put('purchases/{purchase}', [PurchaseController::class, 'update'])->name('purchases.update')->can('purchase.update');
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel')->can('purchase.cancel');
@@ -93,6 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('sales', [SaleController::class, 'store'])->name('sales.store')->can('sale.create');
     Route::get('sales/last-rate', [SaleController::class, 'lastRate'])->name('sales.last-rate')->can('sale.view');
     Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->can('sale.view');
+    Route::get('sales/{sale}/slip.pdf', [DocumentController::class, 'saleSlip'])->name('sales.slip')->can('sale.view');
     Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.edit')->can('sale.update');
     Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update')->can('sale.update');
     Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel')->can('sale.cancel');
@@ -116,8 +128,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('parties', [PartyController::class, 'index'])->name('parties.index')->can('party.view');
     Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create')->can('party.create');
     Route::get('parties/search', [PartyController::class, 'lookup'])->name('parties.search')->can('party.view');
+    // Page 20: merge duplicate parties (T7.4); before parties/{party}.
+    Route::get('parties/merge', [PartyMergeController::class, 'create'])->name('parties.merge')->can('party.merge');
+    Route::post('parties/merge', [PartyMergeController::class, 'store'])->name('parties.merge.store')->can('party.merge');
     Route::post('parties', [PartyController::class, 'store'])->name('parties.store')->can('party.create');
     Route::get('parties/{party}', [PartyController::class, 'show'])->name('parties.show')->can('party.view');
+    Route::get('parties/{party}/statement.pdf', [DocumentController::class, 'statement'])->name('parties.statement')->can('party.view');
     Route::get('parties/{party}/edit', [PartyController::class, 'edit'])->name('parties.edit')->can('party.update');
     Route::put('parties/{party}', [PartyController::class, 'update'])->name('parties.update')->can('party.update');
     Route::post('parties/{party}/deactivate', [PartyController::class, 'deactivate'])->name('parties.deactivate')->can('party.update');
@@ -126,11 +142,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Page 36: Trial balance (T2.9).
     Route::get('daily-summary', [DailySummaryController::class, 'show'])->name('reports.daily-summary')->can('report.view');
+    Route::get('reports', [ReportsHomeController::class, 'index'])->name('reports.index')->can('report.view');
     Route::get('reports/pending-balances', [PendingBalancesController::class, 'show'])->name('reports.pending-balances')->can('report.view');
+    Route::get('reports/expenses', [ExpenseReportController::class, 'show'])->name('reports.expenses')->can('report.view');
+    Route::get('reports/income-vs-spending', [IncomeVsSpendingController::class, 'show'])->name('reports.income-vs-spending')->can('report.view');
+    Route::get('insights', [InsightsController::class, 'show'])->name('insights.show')->can('insights.view');
+    Route::get('reports/rates', [RateWeightReportsController::class, 'rates'])->name('reports.rates')->can('report.view');
+    Route::get('reports/weight-difference', [RateWeightReportsController::class, 'weights'])->name('reports.weight-difference')->can('report.view');
+    Route::get('reports/adjustments', [RateWeightReportsController::class, 'adjustments'])->name('reports.adjustments')->can('report.view');
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance')->can('report.view');
 
     // Page 47: Opening balances (T2.6).
     // Page 28: daily cash check (T6.1).
+    // Pages 30 and 31: month-end close and the months list (T7.2).
+    Route::get('month-end', [MonthEndController::class, 'show'])->name('month-end.show')->can('period.close');
+    Route::post('month-end/bank-statement', [MonthEndController::class, 'bankStatement'])->name('month-end.bank-statement')->can('period.close');
+    Route::post('month-end/cash-count', [MonthEndController::class, 'cashCount'])->name('month-end.cash-count')->can('period.close');
+    Route::post('month-end/cash-difference', [MonthEndController::class, 'cashDifference'])->name('month-end.cash-difference')->can('period.close');
+    Route::post('month-end/close', [MonthEndController::class, 'close'])->name('month-end.close')->can('period.close');
+    Route::get('months', [MonthController::class, 'index'])->name('months.index')->can('period.close');
+    Route::post('months/{period}/reopen', [MonthController::class, 'reopen'])->name('months.reopen')->can('period.reopen')->where('period', '\\d{4}-\\d{2}');
     Route::get('cash-counts', [CashCountController::class, 'index'])->name('cash-counts.index')->can('cashcount.create');
     Route::get('cash-counts/system-amount', [CashCountController::class, 'systemAmount'])->name('cash-counts.system-amount')->can('cashcount.create');
     Route::post('cash-counts', [CashCountController::class, 'store'])->name('cash-counts.store')->can('cashcount.create');
@@ -155,6 +186,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company-settings.edit')->can('settings.manage');
     Route::put('settings', [CompanySettingsController::class, 'update'])->name('company-settings.update')->can('settings.manage');
 
+    // Page 48: backup status, read-only (T7.6).
+    Route::get('settings/backups', [BackupController::class, 'show'])->name('backups.show')->can('backup.view');
     Route::get('settings/opening-balances', [OpeningBalanceController::class, 'index'])->name('opening-balances.index')->can('opening.manage');
     Route::post('settings/opening-balances', [OpeningBalanceController::class, 'store'])->name('opening-balances.store')->can('opening.manage');
     Route::post('settings/opening-balances/complete', [OpeningBalanceController::class, 'complete'])->name('opening-balances.complete')->can('opening.manage');

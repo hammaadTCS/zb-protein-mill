@@ -10,6 +10,7 @@ use App\Domain\Settings\Settings;
 use App\Support\Dates;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Today;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -17,6 +18,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class Periods
 {
+    /** The advisory lock of the periods, one per company (any fixed number). */
+    private const LOCK_KEY = 460201;
+
     /** A month is closed only when its periods row says so; months without a row are open. */
     public static function isClosed(string $ymd): bool
     {
@@ -38,6 +42,8 @@ final class Periods
      */
     public static function assertDateOpen(string $ymd): void
     {
+        self::lockShared();
+
         if (self::isClosed($ymd)) {
             throw ValidationException::withMessages([
                 'date' => __(':month is closed. Make this change as a correction in an open month.', ['month' => Dates::monthName($ymd)]),
@@ -66,6 +72,24 @@ final class Periods
         }
 
         self::assertDateOpen($ymd);
+    }
+
+    /**
+     * Every save that checks a date holds this lock until it commits, and closing a
+     * month takes it alone (lockExclusive). So a month cannot close while an entry
+     * dated in it is half saved, and the entry is refused once the month is closed.
+     */
+    public static function lockShared(): void
+    {
+        if (DB::transactionLevel() > 0) {
+            DB::select('SELECT pg_advisory_xact_lock_shared(?, ?)', [self::LOCK_KEY, CurrentCompany::id()]);
+        }
+    }
+
+    /** Month-end close and its cash adjustments: no entry is half saved meanwhile. */
+    public static function lockExclusive(): void
+    {
+        DB::select('SELECT pg_advisory_xact_lock(?, ?)', [self::LOCK_KEY, CurrentCompany::id()]);
     }
 
     /**

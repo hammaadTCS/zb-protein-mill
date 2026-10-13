@@ -4,10 +4,11 @@
  */
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, LayoutGrid, Package } from 'lucide-react';
+import { Landmark, LayoutGrid, Package, Users } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
+import { index as parties } from '@/routes/parties';
 
 /** Sidebar groups in the order of spec §15.1. */
 export const NAV_GROUPS = [
@@ -44,6 +45,14 @@ export const navigation: NavEntry[] = [
         permission: null,
         mobileFirst: true,
         icon: LayoutGrid,
+    },
+    {
+        group: 'People',
+        label: 'Parties',
+        href: parties(),
+        permission: 'party.view',
+        mobileFirst: false,
+        icon: Users,
     },
     {
         group: 'Settings',

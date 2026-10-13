@@ -107,12 +107,29 @@ class Party extends Model
     /** The balance in words from the party's control account (spec §8.2). */
     public function balance(): PartyBalance
     {
-        if ($this->type === PartyType::Partner) {
-            return $this->partnerBalance();
+        $codes = $this->type === PartyType::Partner ? ['3000', '3100'] : [(string) $this->type->controlAccountCode()];
+        $nets = [];
+
+        foreach ($codes as $code) {
+            $nets[$code] = LedgerBalance::byCode($code, null, $this->id);
         }
 
-        $code = (string) $this->type->controlAccountCode();
-        $net = LedgerBalance::byCode($code, null, $this->id); // debit minus credit
+        return $this->balanceFrom($nets);
+    }
+
+    /**
+     * The balance in words from already-summed nets (debit minus credit) per
+     * account code, so a list can load all its balances in one query.
+     *
+     * @param  array<int|string, string>  $nets  account code => net (PHP keeps numeric codes as int keys)
+     */
+    public function balanceFrom(array $nets): PartyBalance
+    {
+        if ($this->type === PartyType::Partner) {
+            return $this->partnerBalance($nets['3000'] ?? '0.00', $nets['3100'] ?? '0.00');
+        }
+
+        $net = $nets[(string) $this->type->controlAccountCode()] ?? '0.00';
 
         if (Decimal::isZero($net)) {
             return new PartyBalance('Settled', '0.00', 'zero', $this->pendingKg());
@@ -120,7 +137,7 @@ class Party extends Model
 
         $side = Decimal::isPositive($net) ? 'debit' : 'credit';
 
-        return new PartyBalance(self::words($this->type, $side), Decimal::abs($net), $side, $this->pendingKg());
+        return new PartyBalance(self::words($this->type, $side), Decimal::money(Decimal::abs($net)), $side, $this->pendingKg());
     }
 
     /** Glossary §2: the words for a ledger side, per party type. */
@@ -153,11 +170,11 @@ class Party extends Model
     /**
      * R-09: invested (3000, credit), withdrawn (3100, debit) and net.
      */
-    private function partnerBalance(): PartyBalance
+    private function partnerBalance(string $capitalNet, string $withdrawalsNet): PartyBalance
     {
-        $invested = Decimal::negate(LedgerBalance::byCode('3000', null, $this->id));
-        $withdrawn = LedgerBalance::byCode('3100', null, $this->id);
-        $net = Decimal::sub($invested, $withdrawn);
+        $invested = Decimal::money(Decimal::negate($capitalNet));
+        $withdrawn = Decimal::money($withdrawalsNet);
+        $net = Decimal::money(Decimal::sub($invested, $withdrawn));
 
         if (Decimal::isZero($net)) {
             return new PartyBalance('Settled', '0.00', 'zero', '0.000', $invested, $withdrawn, $net);
@@ -165,7 +182,7 @@ class Party extends Model
 
         $side = Decimal::isPositive($net) ? 'credit' : 'debit';
 
-        return new PartyBalance(self::words(PartyType::Partner, $side), Decimal::abs($net), $side, '0.000', $invested, $withdrawn, $net);
+        return new PartyBalance(self::words(PartyType::Partner, $side), Decimal::money(Decimal::abs($net)), $side, '0.000', $invested, $withdrawn, $net);
     }
 
     protected function casts(): array

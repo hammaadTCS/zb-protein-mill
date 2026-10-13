@@ -50,4 +50,34 @@ final class LedgerBalance
     {
         return JournalLine::query()->where('party_id', $partyId)->exists();
     }
+
+    /**
+     * Debit minus credit per party and account code, for many parties in one query
+     * (party lists).
+     *
+     * @param  list<int>  $partyIds
+     * @return array<int, array<int|string, string>> party id => [account code => net]
+     */
+    public static function partyNets(array $partyIds): array
+    {
+        if ($partyIds === []) {
+            return [];
+        }
+
+        $rows = JournalLine::query()
+            ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
+            ->whereIn('journal_lines.party_id', $partyIds)
+            ->groupBy('journal_lines.party_id', 'ledger_accounts.code')
+            ->toBase()
+            ->selectRaw('journal_lines.party_id, ledger_accounts.code, (SUM(journal_lines.debit) - SUM(journal_lines.credit))::numeric(20, 2)::text AS net')
+            ->get();
+
+        $nets = [];
+
+        foreach ($rows as $row) {
+            $nets[(int) $row->party_id][(string) $row->code] = (string) $row->net;
+        }
+
+        return $nets;
+    }
 }

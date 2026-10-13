@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.4 |
-| Next task | T2.5 Parties UI |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.5 |
+| Next task | T2.6 Opening balances |
 
 ---
 
@@ -488,3 +488,17 @@ Choices and questions:
 - Found while testing: `WarningRequired` cannot have a property called `$code` (PHP's `Exception` already has one), so it is `$warningCode`; the JSON key is still `code`.
 - Tests: the card's nine, plus all five codes, duplicate by name and inactive parties ignored, 422 JSON shape, active again, owner bank change not flagged, type change clears the other type's fields, mobile normalising, buyer/employee/advance words, partner invested/withdrawn/net.
 - Checks: Pint, Larastan, guard pass; **237 PHP tests pass**.
+
+### T2.5 Parties UI
+
+Built as the card lists: page 17 `/parties` (search by name, Urdu name, code, mobile; type and status filters; Code, Name, Area, Mobile, Type, Balance in words, Status; 50 rows per page; "Needs review" badge), page 18 `/parties/create` and `/parties/{id}/edit` (fields by type, Urdu name `dir="rtl" lang="ur"`, type locked once the party has entries, make inactive / active again), `WarningDialog` with a `useWarnings()` hook (reads the 422 warning through Inertia's `onHttpException`, "Go back" / "Save anyway" re-sends with the code confirmed), `ConfirmWithReason` (reason of at least 5 characters, buttons "Close" / "Cancel entry"), `PartyPicker`, and `GET /parties/search` (JSON, active only, up to 20, `party.view`).
+
+Choices and questions:
+- **PartyPicker is not shadcn Command.** Command needs the `cmdk` package, which no card names (CLAUDE.md: no package without asking). The picker is the kit's dialog plus an input and a list with arrow-key and Enter support, so it behaves the same. Tell me if you want `cmdk` added.
+- **Balances on the list come from one grouped query** (`LedgerBalance::partyNets()`), not one query per row.
+- **"Profit share (%)" is labelled "Share (%)"**: glossary §5 forbids the word "Profit" on screen, and the guard script enforces it. The database column stays `profit_share_percent` (spec §9.2).
+- **Rows open the edit page** until the party profile exists (T2.9).
+- Words not in the glossary: "New party", "Search", "All types", "All", "No party found.", "Check before saving" (warning dialog title), "Reason", "Previous" / "Next" / "Page X of Y", field labels taken from spec §9.2 ("Urdu name", "Business name", "Contact person", "NTN", "Credit limit (Rs)", "Payment terms (days)", "Joining date").
+- Tests: the card's two, plus Urdu name and code search, at most 20 results, `party.view` needed, list with balance words, filters and paging, the 422 duplicate warning over HTTP then saving when confirmed, accountant add/edit, no access without `party.create`. Front end: `readWarning()` unit tests.
+- Checked at 375 px: add party, list with toast "Saved. S-0001", and the duplicate warning dialog. No console errors except the expected 422.
+- Checks: build, `npm test` (23), check, types, Pint, Larastan, guard pass; **245 PHP tests pass**.

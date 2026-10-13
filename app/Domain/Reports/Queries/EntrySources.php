@@ -6,6 +6,7 @@ namespace App\Domain\Reports\Queries;
 
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
+use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Enums\RateStatus;
@@ -81,6 +82,12 @@ final class EntrySources
                 ->mapWithKeys(fn (Expense $e) => [$e->id => [
                     'voucher' => $e->voucher_no,
                     'description' => $e->category->name.' – '.$e->note,
+                    'route' => route('expenses.show', $e->id, false),
+                ]])->all(),
+            'partner_transaction' => PartnerTransaction::query()->with('moneyAccount')->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (PartnerTransaction $t) => [$t->id => [
+                    'voucher' => $t->voucher_no,
+                    'description' => $t->type->label().' – '.$t->moneyAccount->name,
                     'route' => null,
                 ]])->all(),
             'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()

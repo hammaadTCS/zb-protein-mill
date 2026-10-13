@@ -9,6 +9,7 @@ use App\Domain\Items\Models\Item;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Periods\Models\Period;
 use App\Domain\Purchases\Models\Purchase;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
             'item' => Item::class,
             'money_account' => MoneyAccount::class,
             'opening_balance' => OpeningBalance::class,
+            'partner_transaction' => PartnerTransaction::class,
             'party' => Party::class,
             'payment' => Payment::class,
             'period' => Period::class,

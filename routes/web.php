@@ -7,6 +7,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
+use App\Http\Controllers\PartnerTransactionController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchaseController;
@@ -45,6 +46,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
     Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
     Route::post('expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])->name('expenses.cancel');
+
+    // Pages 21, 22 and 23: partner money (T4.4).
+    Route::get('partners', [PartnerTransactionController::class, 'index'])->name('partners.index');
+    Route::get('partners/create', [PartnerTransactionController::class, 'create'])->name('partners.create');
+    Route::post('partners', [PartnerTransactionController::class, 'store'])->name('partners.store');
+    Route::get('partners/statement', [PartnerTransactionController::class, 'statement'])->name('partners.statement');
+    Route::get('partners/{partnerTransaction}/edit', [PartnerTransactionController::class, 'edit'])->name('partners.edit');
+    Route::put('partners/{partnerTransaction}', [PartnerTransactionController::class, 'update'])->name('partners.update');
+    Route::post('partners/{partnerTransaction}/cancel', [PartnerTransactionController::class, 'cancel'])->name('partners.cancel');
 
     // Pages 9, 10 and 11: payments and receipts (T3.5, T3.6).
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');

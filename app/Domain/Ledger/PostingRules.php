@@ -9,6 +9,7 @@ use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
@@ -195,9 +196,9 @@ final class PostingRules
      * Debit: M.
      * Credit: 3000 Partner Capital (P).
      */
-    public static function pr14PartnerInvestment(): PostingRequest
+    public static function pr14PartnerInvestment(PartnerTransaction $entry, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-14');
+        return self::partner($entry, $postingDate, PostingLine::debit($entry->moneyAccount->ledger_account_id, $entry->amount), PostingLine::credit('3000', $entry->amount, $entry->party_id));
     }
 
     /**
@@ -205,9 +206,9 @@ final class PostingRules
      * Debit: 3100 Partner Withdrawals (P).
      * Credit: M.
      */
-    public static function pr15PartnerWithdrawal(): PostingRequest
+    public static function pr15PartnerWithdrawal(PartnerTransaction $entry, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-15');
+        return self::partner($entry, $postingDate, PostingLine::debit('3100', $entry->amount, $entry->party_id), PostingLine::credit($entry->moneyAccount->ledger_account_id, $entry->amount));
     }
 
     /**
@@ -409,6 +410,20 @@ final class PostingRules
                 PostingLine::debit($debit, $payment->amount, is_string($debit) ? $payment->party_id : null),
                 PostingLine::credit($credit, $payment->amount, is_string($credit) ? $payment->party_id : null),
             ],
+        );
+    }
+
+    /** A partner entry (BR-PTN-01: the party must be a partner). */
+    private static function partner(PartnerTransaction $entry, ?string $postingDate, PostingLine $debit, PostingLine $credit): PostingRequest
+    {
+        self::assertPartyType($entry->party, [PartyType::Partner], $entry->type->value === 'investment' ? 'PR-14' : 'PR-15');
+
+        return new PostingRequest(
+            postingDate: $postingDate ?? $entry->entry_date,
+            sourceType: 'partner_transaction',
+            sourceId: $entry->id,
+            description: ($entry->type->value === 'investment' ? 'Investment' : 'Withdrawal')." {$entry->voucher_no}",
+            lines: [$debit, $credit],
         );
     }
 

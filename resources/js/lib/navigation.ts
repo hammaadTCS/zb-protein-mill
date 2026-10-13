@@ -10,6 +10,7 @@ import {
     Clock,
     Tags,
     FileSpreadsheet,
+    Handshake,
     Banknote,
     Landmark,
     LayoutGrid,
@@ -24,6 +25,7 @@ import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
+import { index as partners } from '@/routes/partners';
 import { index as expenseCategories } from '@/routes/expense-categories';
 import { create as newExpense, index as expenses } from '@/routes/expenses';
 import { create as newPayment, index as payments } from '@/routes/payments';
@@ -108,6 +110,14 @@ export const navigation: NavEntry[] = [
         permission: 'party.view',
         mobileFirst: false,
         icon: Users,
+    },
+    {
+        group: 'People',
+        label: 'Partners',
+        href: partners(),
+        permission: 'partner.view',
+        mobileFirst: false,
+        icon: Handshake,
     },
     {
         group: 'Checks',

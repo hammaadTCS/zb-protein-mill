@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.3 |
-| Next task | T4.4 Partner money (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.4 |
+| Next task | T4.5 Transfers (T2.10 client review is yours) |
 
 ---
 
@@ -742,3 +742,16 @@ Choices and questions:
 - **Timed check (card's "Done when")**: an automated phone-size run (375 px, touch) opened the page, tapped Tea, typed 150 and a note, and saved in **0.8 seconds** (machine time). A real check by hand on a phone is still needed; please time it when you test locally.
 - Tests: the card's one (defaults today, Paid, first active cash account, never a bank, the next one when the first is inactive) plus the list's category filter and note, detail with link, history and Owner-only journal lines, the link lookup, "Save and add another", page permissions; front-end test for the exact amount-versus-limit check.
 - Checks: build, check, types, front-end tests, Pint, Larastan, guard pass; **401 PHP tests pass**.
+
+### T4.4 Partner money
+
+Built as the card lists: table `partner_transactions` (spec §9.3, transaction columns, type investment or withdrawal, amount > 0, delete trigger), PR-14 (Dr money account / Cr 3000 with the partner), PR-15 (Dr 3100 with the partner / Cr money account), `CreatePartnerTransaction`, `UpdatePartnerTransaction` (reversal + repost), `CancelPartnerTransaction`, party must be an active partner (BR-PTN-01), `partner.manage` to record and `partner.view` to see (BR-PTN-03), `CashGuard` on withdrawals from cash, voucher `PTN-`, idempotency key. Pages 21 `/partners` (filters, totals invested and withdrawn), 22 `/partners/create`, 23 `/partners/statement` (R-09: invested, withdrawn, net invested per partner for a date range, from the journal lines on 3000 and 3100, so opening capital counts as invested and cancelled entries cancel out). "Partners" in the People menu. No profit anywhere (BR-PTN-04).
+
+Choices and questions:
+- **No detail page exists for partner entries** (spec §11.1 lists only pages 21 to 23), so **Edit** and **Cancel entry** are buttons on each row of page 21, and Edit opens page 22 filled in (`/partners/{id}/edit`). Rows do not open a detail page (spec §11.2 says they should; there is none to open). Tell me if you want a detail page.
+- **The statement's default range is the system start date to today**, so the opening capital is included by default.
+- **A deposit always counts as investment** (O-23: no loan type).
+- Khata lines of a partner entry show "Investment – HBL" or "Withdrawal – Cash". Expense khata lines now link to the expense page.
+- Words not in the glossary: "Select an active partner.", "Choose Investment or Withdrawal.", "Investment", "Withdrawal" (glossary has "Partner investment" / "Partner withdrawal"), "New partner entry" (spec page name), "Partner statement" (spec page name), "Investments and withdrawals", "All partners", "Voucher or partner".
+- Tests: the card's five (AT-1 #15 and #16 exact journals; R-09 from `at1.json` expected partners; accountant 403 on create, save, statement and list; same key twice) plus party must be a partner, negative cash warning on a cash withdrawal, edit and cancel, the list totals.
+- Checks: build, check, types, front-end tests, Pint, Larastan, guard pass; **410 PHP tests pass**.

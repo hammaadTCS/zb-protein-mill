@@ -65,7 +65,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T4.1** Expense categories. *Done when:* tests pass.
 - [x] **T4.2** Expenses (backend). *Done when:* tests pass.
 - [x] **T4.3** Expense pages. *Done when:* tests pass; you note in the pull request the timed check showing a Tea expense saved on a phone in under 10 seconds.
-- [ ] **T4.4** Partner money. *Done when:* tests pass.
+- [x] **T4.4** Partner money. *Done when:* tests pass.
 - [ ] **T4.5** Transfers. *Done when:* tests pass.
 - [ ] **T4.6** Agreed adjustments. *Done when:* tests pass.
 - [ ] **T4.7** Rate corrections for closed months. *Done when:* tests pass.

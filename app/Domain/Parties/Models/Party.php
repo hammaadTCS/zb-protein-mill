@@ -9,6 +9,7 @@ use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Parties\Enums\PartyStatus;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\PartyBalance;
+use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
@@ -109,6 +110,7 @@ class Party extends Model
             || Purchase::query()->where('party_id', $this->id)->exists()
             || Sale::query()->where('party_id', $this->id)->exists()
             || Expense::query()->where('party_id', $this->id)->exists()
+            || PartnerTransaction::query()->where('party_id', $this->id)->exists()
             || Payment::query()->where('party_id', $this->id)->exists();
     }
 

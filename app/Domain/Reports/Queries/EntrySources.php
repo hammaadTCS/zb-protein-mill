@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Reports\Queries;
+
+use App\Domain\OpeningBalances\Models\OpeningBalance;
+use App\Domain\Payments\Enums\PaymentDirection;
+use App\Domain\Payments\Models\Payment;
+use App\Domain\Purchases\Enums\RateStatus;
+use App\Domain\Purchases\Models\Purchase;
+use App\Support\NumberFormat;
+
+/**
+ * The voucher number and a short description of the business record behind each
+ * journal (khata, statements). Loads each source type in one query. Each entry
+ * type adds its arm when it is built.
+ */
+final class EntrySources
+{
+    /**
+     * @param  list<array{string, int}>  $refs  [source_type, source_id]
+     * @return array<string, array{voucher: string, description: string, route: string|null}> keyed "type:id"
+     */
+    public static function describe(array $refs): array
+    {
+        $ids = [];
+
+        foreach ($refs as [$type, $id]) {
+            $ids[$type][$id] = $id;
+        }
+
+        $sources = [];
+
+        foreach ($ids as $type => $list) {
+            foreach (self::load($type, array_values($list)) as $id => $source) {
+                $sources["{$type}:{$id}"] = $source;
+            }
+        }
+
+        return $sources;
+    }
+
+    /** "Waste 800 kg @ 50", or "Waste 400 kg – Rate pending". */
+    public static function entryText(string $item, string $kg, ?string $rate): string
+    {
+        $text = $item.' '.NumberFormat::plain($kg).' kg';
+
+        return $rate === null ? $text.' – Rate pending' : $text.' @ '.NumberFormat::plain($rate);
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return array<int, array{voucher: string, description: string, route: string|null}>
+     */
+    private static function load(string $type, array $ids): array
+    {
+        return match ($type) {
+            'purchase' => Purchase::query()->with('item')->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (Purchase $p) => [$p->id => [
+                    'voucher' => $p->voucher_no,
+                    'description' => self::entryText($p->item->name, $p->kg, $p->rate_status === RateStatus::Fixed ? $p->rate : null),
+                    'route' => route('purchases.show', $p->id, false),
+                ]])->all(),
+            'payment' => Payment::query()->with('moneyAccount')->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (Payment $p) => [$p->id => [
+                    'voucher' => $p->voucher_no,
+                    'description' => ($p->direction === PaymentDirection::Paid ? 'Paid' : 'Received').' – '.$p->moneyAccount->name
+                        .($p->reference_no !== null ? ' – '.$p->reference_no : ''),
+                    'route' => null,
+                ]])->all(),
+            'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (OpeningBalance $o) => [$o->id => [
+                    'voucher' => $o->voucher_no,
+                    'description' => 'Opening balance',
+                    'route' => null,
+                ]])->all(),
+            default => [],
+        };
+    }
+}

@@ -35,6 +35,14 @@ final class NumberFormat
         return 'Rs '.self::number($rate, self::decimals('rate_decimals', 2));
     }
 
+    /** A kg or rate without trailing zeros, grouped: "800.000" → "800", "52.5000" → "52.5". */
+    public static function plain(string $value): string
+    {
+        $number = BigDecimal::of($value)->strippedOfTrailingZeros();
+
+        return self::number((string) $number, max(0, $number->getScale()));
+    }
+
     /**
      * @param  int<0, max>  $decimals
      */

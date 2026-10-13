@@ -10,6 +10,9 @@ use App\Domain\Parties\Actions\UpdateParty;
 use App\Domain\Parties\Enums\PartyStatus;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Parties\PartyBalance;
+use App\Domain\Reports\Queries\KhataRow;
+use App\Domain\Reports\Queries\PartyKhata;
 use App\Http\Requests\Parties\StorePartyRequest;
 use App\Http\Requests\Parties\UpdatePartyRequest;
 use App\Support\Flash;
@@ -85,6 +88,48 @@ class PartyController extends Controller
         Flash::saved($party->code);
 
         return to_route('parties.index');
+    }
+
+    /** Page 19: party profile with the khata (R-01). */
+    public function show(Request $request, Party $party): Response
+    {
+        $this->authorize('view', $party);
+
+        $range = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $khata = PartyKhata::for($party, $range['from'] ?? null, $range['to'] ?? null);
+        $balance = $party->balance();
+        $words = fn (PartyBalance $b): array => ['words' => $b->words, 'amount' => $b->amount];
+
+        return Inertia::render('parties/show', [
+            'party' => [
+                'id' => $party->id,
+                'code' => $party->code,
+                'type' => $party->type->value,
+                'status' => $party->status->value,
+                'needs_review' => $party->needs_review || $party->bank_change_needs_review,
+                'balance' => $balance->toArray(),
+                'partner' => $balance->invested === null ? null : ['invested' => $balance->invested, 'withdrawn' => $balance->withdrawn, 'net' => $balance->net],
+                ...array_map(fn ($value) => $value instanceof \BackedEnum ? $value->value : $value, $party->only(Party::FORM_FIELDS)),
+            ],
+            'khata' => [
+                'from' => $khata->from,
+                'to' => $khata->to,
+                'opening' => $words($khata->opening),
+                'closing' => $words($khata->closing),
+                'rows' => array_map(fn (KhataRow $row): array => [
+                    'date' => $row->date,
+                    'voucher' => $row->voucher,
+                    'description' => $row->description,
+                    'increase' => $row->increase,
+                    'decrease' => $row->decrease,
+                    'balance' => $words($row->balance),
+                    'route' => $row->route,
+                ], $khata->rows),
+            ],
+        ]);
     }
 
     public function edit(Party $party): Response

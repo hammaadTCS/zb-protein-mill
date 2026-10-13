@@ -6,6 +6,7 @@ import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     BookOpen,
+    FileSpreadsheet,
     Landmark,
     LayoutGrid,
     Package,
@@ -17,6 +18,7 @@ import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
+import { trialBalance } from '@/routes/reports';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
 
 /** Sidebar groups in the order of spec §15.1. */
@@ -70,6 +72,14 @@ export const navigation: NavEntry[] = [
         permission: 'party.view',
         mobileFirst: false,
         icon: Users,
+    },
+    {
+        group: 'Reports',
+        label: 'Trial balance',
+        href: trialBalance(),
+        permission: 'report.view',
+        mobileFirst: false,
+        icon: FileSpreadsheet,
     },
     {
         group: 'Settings',

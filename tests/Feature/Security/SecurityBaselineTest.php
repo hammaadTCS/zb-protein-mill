@@ -75,7 +75,8 @@ it('BR-SEC-13 changing my password ends my other sessions but keeps this one', f
     $user = User::factory()->create();
     $oldRememberToken = $user->remember_token;
     // The request must run as a known session: send its id in the session cookie.
-    $current = Str::random(40);
+    // Starts with "a" so it always sorts before "someone-else" in the check below.
+    $current = 'a'.Str::random(39);
     $this->actingAs($user)->withCookie(config('session.cookie'), $current);
 
     foreach (['other-phone-session', $current] as $id) {

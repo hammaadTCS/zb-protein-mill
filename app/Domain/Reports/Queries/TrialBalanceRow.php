@@ -19,5 +19,6 @@ final readonly class TrialBalanceRow
         public string $creditTotal,
         public string $balanceDebit,
         public string $balanceCredit,
+        public ?string $partyName = null,
     ) {}
 }

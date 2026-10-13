@@ -50,17 +50,19 @@ type PurchaseForm = {
 /** Page 4, mobile-first (spec §11.4): fields in the order of the spec. */
 export default function CreatePurchase({
     today,
+    party,
     items,
     money_accounts,
     plant_has_scale,
 }: {
     today: string;
+    party: PartyOption | null;
     items: Option[];
     money_accounts: AccountOption[];
     plant_has_scale: boolean;
 }) {
     const formats = useFormats();
-    const [supplier, setSupplier] = useState<PartyOption | null>(null);
+    const [supplier, setSupplier] = useState<PartyOption | null>(party);
     const [handledBy, setHandledBy] = useState<PartyOption | null>(null);
     const [paidNow, setPaidNow] = useState(false);
     const [photoKey, setPhotoKey] = useState(0);
@@ -69,7 +71,7 @@ export default function CreatePurchase({
     const blank = (): PurchaseForm => ({
         idempotency_key: newIdempotencyKey(), // BR-GEN-11: one key per opened form
         date: today,
-        party_id: null,
+        party_id: party?.id ?? null,
         item_id: items.length === 1 ? String(items[0].id) : '',
         kg: '',
         rate: '',

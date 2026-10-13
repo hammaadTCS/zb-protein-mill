@@ -133,15 +133,22 @@ class Party extends Model
             return $this->partnerBalance($nets['3000'] ?? '0.00', $nets['3100'] ?? '0.00');
         }
 
-        $net = $nets[(string) $this->type->controlAccountCode()] ?? '0.00';
+        return $this->balanceOfNet($nets[(string) $this->type->controlAccountCode()] ?? '0.00', $this->pendingKg());
+    }
 
+    /**
+     * Words for a net (debit minus credit) on the party's account(s), for example a
+     * running balance in the khata (glossary §2).
+     */
+    public function balanceOfNet(string $net, string $pendingKg = '0.000'): PartyBalance
+    {
         if (Decimal::isZero($net)) {
-            return new PartyBalance('Settled', '0.00', 'zero', $this->pendingKg());
+            return new PartyBalance('Settled', '0.00', 'zero', $pendingKg);
         }
 
         $side = Decimal::isPositive($net) ? 'debit' : 'credit';
 
-        return new PartyBalance(self::words($this->type, $side), Decimal::money(Decimal::abs($net)), $side, $this->pendingKg());
+        return new PartyBalance(self::words($this->type, $side), Decimal::money(Decimal::abs($net)), $side, $pendingKg);
     }
 
     /** Glossary §2: the words for a ledger side, per party type. */

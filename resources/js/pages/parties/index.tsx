@@ -25,7 +25,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
-import { create, edit, index } from '@/routes/parties';
+import { create, index, show } from '@/routes/parties';
 import { PARTY_TYPE_LABELS, PARTY_TYPES } from './types';
 
 type PartyRow = {
@@ -153,16 +153,12 @@ export default function Parties({
                                     {party.code}
                                 </TableCell>
                                 <TableCell className="font-medium">
-                                    {can('party.update') ? (
-                                        <Link
-                                            href={edit(party.id)}
-                                            className="underline-offset-4 hover:underline"
-                                        >
-                                            {party.name}
-                                        </Link>
-                                    ) : (
-                                        party.name
-                                    )}
+                                    <Link
+                                        href={show(party.id)}
+                                        className="underline-offset-4 hover:underline"
+                                    >
+                                        {party.name}
+                                    </Link>
                                 </TableCell>
                                 <TableCell>{party.area}</TableCell>
                                 <TableCell className="tabular-nums">

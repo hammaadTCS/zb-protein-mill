@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.8 |
-| Next task | T2.9 Party profile with khata, trial balance page |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9 |
+| Next task | T2.10 (yours: client review); then T3.1 |
 
 ---
 
@@ -550,3 +550,21 @@ Choices and questions:
 - Tests: the card's six (6 MB refused; .exe refused; .exe renamed .jpg refused; Exif removed from a GD-made JPEG with an inserted APP1 Exif block; download needs `purchase.view`; totals of active entries only), plus PDF kept as received, slip photo sent with a new purchase, list filters and search, page 4 and 5 props, "Save and add another" redirect, page permissions. Front end: resize size calculation, UUID shape.
 - Checked by me at 375 px (page 4 filled in, live total Rs 42,656.25, paid now, saved with toast "Saved. PUR-000001", detail page) and at 1280 px (list with totals). No console errors.
 - Checks: build, `npm test` (26), check, types, Pint, Larastan, guard pass; **286 PHP tests pass**.
+
+### T2.9 Party profile with khata, trial balance page
+
+Built as the card lists: `PartyKhata::for($party, $from, $to)` returning `KhataResult` (opening balance before `from`, one row per journal line on the party's control account(s) in posting-date and journal order, voucher number and description of the source record, increase / decrease, running balance in words), page 19 `/parties/{id}` (header with code, type, balance in words and pending kg; tabs Details and Khata with a date range; "New purchase" pre-selecting the supplier; Edit), page 36 `/reports/trial-balance` (as-of date, "Show parties", totals and a clear "Balanced" / "Not balanced" label). The trial balance query now fills party code and name when parties are shown. Menu: Reports → Trial balance. The parties list now opens the profile.
+
+Also added:
+- `App\Domain\Reports\Queries\EntrySources`: the voucher number, description and link of the record behind each journal, loaded per source type in one query. Each later entry type adds its arm. Descriptions: purchase "Waste 800 kg @ 50", payment "Paid – Cash" / "Received – HBL" plus the reference, opening "Opening balance", and "Reversal – …" for reversal journals.
+- `KhataTable` component (spec §15.6) and `Party::balanceOfNet()` (words for any net, used for running balances).
+- `NumberFormat::plain()` for kg and rate in descriptions ("800.000" → "800").
+
+Choices and questions:
+- **Increase / decrease** follow each type's usual direction: for suppliers and other parties a credit increases what we owe; for buyers and employees a debit increases what they owe us; for partners a credit increases what they invested.
+- **The khata shows all history by default**; the opening row appears only when a "from" date is chosen.
+- **Tabs are plain buttons**: shadcn Tabs needs `@radix-ui/react-tabs`, a package no card names.
+- Words not in the glossary: "Details", "Increase", "Decrease", "Balance", "Opening balance" (glossary has it), "Closing balance", "Show", "As of", "Show parties", "Balanced", "Not balanced", "Account", "Code".
+- **Fixed another test of mine (T1.12, BR-SEC-13 sessions):** the test made a random session id and expected it to sort before "someone-else"; about one run in three it did not. The id now starts with "a"; **the assertion is unchanged.** Please review it with the T1.7 one.
+- Tests: the card's three (Karim khata after AT-1 entries 1 and 2: two rows and "We owe 18800.00"; opening row before the from date; page totals equal the query totals), plus a partner khata, page 19 props, and `report.view` needed.
+- Checks: build, check, types, Pint, Larastan, guard pass; **292 PHP tests pass**.

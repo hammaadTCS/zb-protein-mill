@@ -6,6 +6,7 @@ use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\Reports\TrialBalanceController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,10 +33,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create');
     Route::get('parties/search', [PartyController::class, 'lookup'])->name('parties.search');
     Route::post('parties', [PartyController::class, 'store'])->name('parties.store');
+    Route::get('parties/{party}', [PartyController::class, 'show'])->name('parties.show');
     Route::get('parties/{party}/edit', [PartyController::class, 'edit'])->name('parties.edit');
     Route::put('parties/{party}', [PartyController::class, 'update'])->name('parties.update');
     Route::post('parties/{party}/deactivate', [PartyController::class, 'deactivate'])->name('parties.deactivate');
     Route::post('parties/{party}/activate', [PartyController::class, 'activate'])->name('parties.activate');
+
+    // Page 36: Trial balance (T2.9).
+    Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance');
 
     // Page 47: Opening balances (T2.6).
     Route::get('settings/opening-balances', [OpeningBalanceController::class, 'index'])->name('opening-balances.index');

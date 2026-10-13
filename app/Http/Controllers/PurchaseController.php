@@ -68,12 +68,16 @@ class PurchaseController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $this->authorize('create', Purchase::class);
 
+        // Opened from a party profile: the supplier is pre-selected (T2.9).
+        $party = $this->partyOption($request->integer('party_id') ?: null);
+
         return Inertia::render('purchases/create', [
             'today' => Today::date(),
+            'party' => $party !== null && $party['type'] === 'supplier' ? $party : null,
             'items' => Item::query()->active()->orderBy('id')->get()
                 ->filter(fn (Item $item): bool => $item->type->isBought())
                 ->map(fn (Item $item): array => ['id' => $item->id, 'name' => $item->name])

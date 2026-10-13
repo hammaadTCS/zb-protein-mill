@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.7 |
-| Next task | T3.8 Negative cash warning and shared dialogs (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.8 |
+| Next task | T3.9 Change history and journal lines (T2.10 client review is yours) |
 
 ---
 
@@ -677,3 +677,14 @@ Choices and questions:
 - Words not in the glossary: "No payments are awaiting approval.", "Balance now", the khata suffix "– Awaiting approval", "Only a payment awaiting approval can be approved." / "rejected.".
 - Tests: the card's six (T-08 accountant 60,000 pending without journal; owner posts at once; first-payment rule with limit 0, second one after approval not pending; rejected never posts; approval in a closed month posts on the approval date; AT-4 read from `controls.json` step by step) plus receipts never wait, a large "paid now" waits, khata row and message, page 27 permission.
 - Checks: build, check, types, Pint, Larastan, guard pass; **368 PHP tests pass**.
+
+### T3.8 Negative cash warning and shared dialogs
+
+Built as the card lists: `App\Domain\Checks\CashGuard::check()` (cash accounts only; balance, minus the record's own journal on that account when editing, minus the outflow; below zero → warning `negative_cash` with the glossary text), called for payments paid from cash (create and edit) and "Paid now" from cash. M4 tasks call it for expenses, partner withdrawals and transfers from cash. Every page already uses the shared `WarningDialog` and `ConfirmWithReason`.
+
+Choices and questions:
+- **`CashGuard::check()` takes the save's `Warnings` object as its first argument** (the card's signature has no place for the user's confirmations or the audit row).
+- **A payment that waits for approval is not checked**: it takes no money out until the Owner approves it.
+- **Two T2.7 tests confirm the new warning in their input**: their test cash account starts empty, so "paid now" from it now warns. Their assertions did not change.
+- Tests: the card's three (5,000 from 3,000 warns, confirmed saves; banks never warn; an edit counts only the difference) plus paying exactly the balance does not warn.
+- Checks: Pint, Larastan, guard pass; **372 PHP tests pass**.

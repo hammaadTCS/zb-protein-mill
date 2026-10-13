@@ -8,10 +8,13 @@ use App\Domain\Attachments\Actions\StoreAttachment;
 use App\Domain\Attachments\Enums\AttachmentKind;
 use App\Domain\Audit\AuditActions;
 use App\Domain\Audit\AuditLogger;
+use App\Domain\Checks\CashGuard;
 use App\Domain\Ledger\PostingRules;
 use App\Domain\Ledger\PostingService;
+use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\Numbering\VoucherNumberService;
 use App\Domain\Payments\Actions\RecordPayment;
+use App\Domain\Payments\Enums\ApprovalStatus;
 use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\PaymentApproval;
 use App\Domain\Periods\Periods;
@@ -81,6 +84,11 @@ final class CreatePurchase
         }
 
         EntryWarnings::duplicate($warnings, Purchase::class, 'purchase', $input->party->id, $input->item->id, $input->kg, $date); // BR-PUR-08
+        $paidNowApproval = $paidNow === null ? null : PaymentApproval::statusFor($by, $input->party, PaymentDirection::Paid, $paidNow['amount']);
+
+        if ($paidNow !== null && $paidNowApproval !== ApprovalStatus::Pending) {
+            CashGuard::check($warnings, MoneyAccount::query()->findOrFail($paidNow['money_account_id']), $paidNow['amount']); // BR-GEN-10
+        }
 
         $purchase = Purchase::query()->create([
             'company_id' => $by->company_id,
@@ -122,7 +130,7 @@ final class CreatePurchase
                 'party_id' => $input->party->id,
                 'purchase_id' => $purchase->id,
                 'idempotency_key' => $key,
-                'approval_status' => PaymentApproval::statusFor($by, $input->party, PaymentDirection::Paid, $paidNow['amount']), // BR-PUR-10, BR-PAY-06/07
+                'approval_status' => $paidNowApproval, // BR-PUR-10, BR-PAY-06/07
             ]);
         }
 

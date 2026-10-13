@@ -191,10 +191,11 @@ it('BR-GEN-02 a future date or a date before the start date is refused', functio
 it('BR-PUR-10 paid now above the total leaves an advance', function () {
     [$owner, $cash, $parties] = purchaseWorld();
 
-    buy($owner, [
-        'date' => '2026-01-05', 'party_id' => $parties['aslam']->id, 'item_id' => Item::query()->where('code', 'WASTE')->value('id'),
+    // The test cash account starts empty, so the negative-cash warning (T3.8) is confirmed.
+    app(CreatePurchase::class)->handle($owner, [
+        'idempotency_key' => (string) Str::uuid(), 'date' => '2026-01-05', 'party_id' => $parties['aslam']->id, 'item_id' => Item::query()->where('code', 'WASTE')->value('id'),
         'kg' => '10', 'rate' => '100', 'paid_now' => ['amount' => '1500', 'money_account_id' => $cash->id],
-    ]);
+    ], ['negative_cash']);
 
     expect(partyBalance($parties['aslam']))->toBe(['words' => 'Advance', 'amount' => '500.00']);
 });
@@ -219,6 +220,7 @@ it('T-18 BR-GEN-11 posting the same idempotency key twice creates one purchase, 
         'date' => '2026-01-05', 'party_id' => $parties['aslam']->id, 'item_id' => Item::query()->where('code', 'WASTE')->value('id'),
         'kg' => '800', 'rate' => '50', 'idempotency_key' => (string) Str::uuid(),
         'paid_now' => ['amount' => '40000', 'money_account_id' => $cash->id],
+        'confirmed_warnings' => ['negative_cash'], // the test cash account starts empty (T3.8)
     ];
 
     $this->actingAs($owner)->post(route('purchases.store'), $form)->assertInertiaFlash('success', 'Saved. PUR-000001');

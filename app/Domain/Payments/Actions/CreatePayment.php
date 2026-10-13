@@ -6,6 +6,9 @@ namespace App\Domain\Payments\Actions;
 
 use App\Domain\Attachments\Actions\StoreAttachment;
 use App\Domain\Attachments\Enums\AttachmentKind;
+use App\Domain\Checks\CashGuard;
+use App\Domain\Payments\Enums\ApprovalStatus;
+use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\PaymentApproval;
 use App\Domain\Payments\PaymentInput;
@@ -48,6 +51,11 @@ final class CreatePayment
                 $input = PaymentInput::from($data);
                 $warnings = new Warnings($confirmedWarnings);
                 $input->checkReference($warnings); // BR-PAY-04
+                $approval = PaymentApproval::statusFor($by, $input->party, $input->direction, $input->amount); // BR-PAY-06, BR-PAY-07
+
+                if ($input->direction === PaymentDirection::Paid && $approval !== ApprovalStatus::Pending) {
+                    CashGuard::check($warnings, $input->account, $input->amount); // BR-GEN-10
+                }
 
                 $payment = app(RecordPayment::class)->handle($by, [
                     'entry_date' => $input->date,
@@ -59,7 +67,7 @@ final class CreatePayment
                     'handled_by_party_id' => $input->handledBy?->id,
                     'note' => $input->note,
                     'idempotency_key' => $key,
-                    'approval_status' => PaymentApproval::statusFor($by, $input->party, $input->direction, $input->amount), // BR-PAY-06, BR-PAY-07
+                    'approval_status' => $approval,
                 ]);
 
                 $warnings->audit($payment, $by);

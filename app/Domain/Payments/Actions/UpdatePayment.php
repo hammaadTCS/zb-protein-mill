@@ -6,9 +6,11 @@ namespace App\Domain\Payments\Actions;
 
 use App\Domain\Audit\AuditActions;
 use App\Domain\Audit\AuditLogger;
+use App\Domain\Checks\CashGuard;
 use App\Domain\Ledger\Journals;
 use App\Domain\Ledger\PostingService;
 use App\Domain\Payments\Enums\ApprovalStatus;
+use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\PaymentApproval;
 use App\Domain\Payments\PaymentInput;
@@ -54,6 +56,13 @@ final class UpdatePayment
             $input = PaymentInput::from($data);
             $warnings = new Warnings($confirmedWarnings);
             $input->checkReference($warnings); // BR-PAY-04
+            $approval = $payment->approval_status === ApprovalStatus::Approved
+                ? ApprovalStatus::Approved
+                : PaymentApproval::statusFor($by, $input->party, $input->direction, $input->amount, $payment->id);
+
+            if ($input->direction === PaymentDirection::Paid && $approval !== ApprovalStatus::Pending) {
+                CashGuard::check($warnings, $input->account, $input->amount, $payment); // BR-GEN-10: only the difference counts
+            }
 
             $old = RecordPayment::audited($payment);
             $payment->fill([
@@ -74,9 +83,7 @@ final class UpdatePayment
 
             // The approval rules are checked again with the new figures (BR-PAY-06, BR-PAY-07);
             // an approved payment stays approved.
-            if ($payment->approval_status !== ApprovalStatus::Approved) {
-                $payment->approval_status = PaymentApproval::statusFor($by, $input->party, $input->direction, $input->amount, $payment->id);
-            }
+            $payment->approval_status = $approval;
 
             $payment->save();
             $payment->unsetRelation('party')->unsetRelation('moneyAccount');

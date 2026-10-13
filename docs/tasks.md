@@ -57,7 +57,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T3.5** Payments and receipts (backend). *Done when:* tests pass.
 - [x] **T3.6** Payment pages. *Done when:* tests pass; screenshots at 375 px.
 - [x] **T3.7** Payment approvals. *Done when:* tests pass.
-- [ ] **T3.8** Negative cash warning and shared dialogs. *Done when:* tests pass.
+- [x] **T3.8** Negative cash warning and shared dialogs. *Done when:* tests pass.
 - [ ] **T3.9** Change history and journal lines on detail pages. *Done when:* tests pass.
 
 ## M4: Remaining entries  ·  card file `docs/cards/M4.md`

@@ -13,6 +13,17 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8 (T7.6 built; tick it after your restore) |
 | Next task | T8.1 (M8). T2.10 client review and the T7.6 restore are yours |
 
+
+## How to test on your laptop
+
+1. Get the branch: `git fetch origin && git checkout claude/lucid-ptolemy-w3fhsy && git pull`.
+2. Install what changed: `composer install` and `npm install` (dompdf was added in T6.10).
+3. Database: `php artisan migrate` keeps your data and adds the new tables. For a clean start with test settings and the local owner: `php artisan migrate:fresh --seed`, then demo data: `php artisan db:seed --class=DemoSeeder`.
+4. `npm run build`, then `composer run dev` and open http://127.0.0.1:8000 (local owner `test@example.com`, password `password` — local test login only).
+5. Run every check: `bash scripts/check-all.sh` (must end with ALL CHECKS PASSED).
+6. Worth trying by hand: a purchase with paid now; a rate-pending purchase and Add rate; a payment above the approval limit as an accountant, then approve as the owner; the party profile → Share PDF; Month-end close for January (bank statement, cash count, cash shortage, Close month) and Months → Reopen month; Parties → Merge parties; Reports → Business insights; Settings → Backups; `php artisan zb:verify`.
+7. Performance test (optional, about an hour): make an empty database: `sudo -u postgres createdb -O zb_test zb_mill_perf`, then `DB_DATABASE=zb_mill_perf php artisan migrate:fresh --seed`, `DB_DATABASE=zb_mill_perf php artisan db:seed --class=PerformanceSeeder`, `DB_DATABASE=zb_mill_perf php artisan zb:time-pages`.
+
 ---
 
 ## T0.1 Laravel app, React starter kit, Pest, PostgreSQL, CI
@@ -1133,3 +1144,14 @@ Choices and questions:
 - **This cloud container's own `.env`** (not in git) has `SESSION_LIFETIME=120` from an older copy; your laptop's `.env` comes from `.env.example` (60). The test now checks the shipped files, not a developer's `.env`.
 - Nothing in protected files needed to change for T8.1.
 - Tests: the eight new checklist tests pass with the existing security tests (26 in `tests/Feature/Security`).
+
+### T8.2 Performance check
+
+Built as the card lists: `database/seeders/PerformanceSeeder` (local only; refuses `APP_ENV=production` and a database that already has parties) saves 100,000 invented entries over the last 12 months — 60% purchases, 20% sales, 15% payments, 5% expenses — one by one through the real Actions (same rules, warnings confirmed, vouchers, journals, audit rows), and `php artisan zb:time-pages` (local only) opens every list and report page as the Owner three times and prints the slowest time. Results, the machine and the bundle sizes are in `docs/release-checks.md`, section "Performance".
+
+Fixed because measurement showed it (no index was needed; every slow page was slow because of code):
+- **Settings were read from the database on every call** — a statement PDF of 300 rows made thousands of identical queries. A GET request now reads each setting once (`RememberSettings` middleware, `Settings::remember()`); saves (POST, PUT) still read fresh values, and `Settings::set` updates the remembered value.
+- **Rate corrections were looked up one query per entry** in the rate report and business insights: now one query for all (`RateCorrections::effectiveMany`).
+- **Business insights summed every entry in PHP**: the sums now run in PostgreSQL (same results; AT-1 and a new AT-5 check prove it).
+- **Dashboard alerts ran the ageing method for every supplier and buyer**: "Aged advances" now ages only parties whose balance is an advance, "Overdue buyers" only buyers who owe us (the same counts; the T-12 tests prove it).
+- **Timings**: being measured on the full 100,000 entries; recorded in a follow-up commit and in `docs/release-checks.md`.

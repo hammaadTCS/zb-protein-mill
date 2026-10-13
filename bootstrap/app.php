@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RememberSettings;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustHosts(subdomains: false);
 
         $middleware->web(append: [
+            RememberSettings::class,         // NFR-02: a GET request reads each setting once
             HandleAppearance::class,
             // T1.12: these three act only when a user is logged in.
             EnsureUserIsActive::class,       // BR-SEC-13

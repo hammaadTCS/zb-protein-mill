@@ -21,7 +21,54 @@ final class Settings
 {
     public const SETUP_INCOMPLETE = 'Setup is not complete. Fill in all required settings before entering transactions.';
 
+    /**
+     * Values read inside remember(), by company and key; null outside it.
+     *
+     * @var array<string, string|int|bool|null>|null
+     */
+    private static ?array $remembered = null;
+
+    /**
+     * Runs the work with each setting read from the database once (a page that formats
+     * thousands of numbers). Only for work that does not change settings: GET requests
+     * (`RememberSettings` middleware). A set() inside it still updates the value.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    public static function remember(callable $work): mixed
+    {
+        if (self::$remembered !== null) {
+            return $work();
+        }
+
+        self::$remembered = [];
+
+        try {
+            return $work();
+        } finally {
+            self::$remembered = null;
+        }
+    }
+
     public static function get(string $key): string|int|bool|null
+    {
+        if (self::$remembered === null) {
+            return self::read($key);
+        }
+
+        $slot = CurrentCompany::id().':'.$key;
+
+        if (! array_key_exists($slot, self::$remembered)) {
+            self::$remembered[$slot] = self::read($key);
+        }
+
+        return self::$remembered[$slot];
+    }
+
+    private static function read(string $key): string|int|bool|null
     {
         $definition = SettingKeys::definition($key);
 
@@ -41,6 +88,10 @@ final class Settings
      */
     public static function set(string $key, mixed $value, User $by): void
     {
+        if (self::$remembered !== null) {
+            unset(self::$remembered[CurrentCompany::id().':'.$key]);
+        }
+
         $stored = self::normalize($key, $value);
 
         $setting = Setting::query()

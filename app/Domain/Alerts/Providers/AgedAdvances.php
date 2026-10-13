@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts\Providers;
 
 use App\Domain\Alerts\AlertProvider;
+use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Reports\Ageing;
@@ -31,7 +32,13 @@ final class AgedAdvances implements AlertProvider
 
         $today = Today::date();
 
-        return Party::query()->whereIn('type', [PartyType::Supplier->value, PartyType::Buyer->value])->where('status', 'active')->get()
+        $parties = Party::query()->whereIn('type', [PartyType::Supplier->value, PartyType::Buyer->value])->where('status', 'active')->get();
+        $nets = LedgerBalance::partyNets(array_values($parties->modelKeys()));
+
+        // Only a party whose balance is an advance has an open advance to age (spec §12.6), so
+        // the ageing runs for those alone.
+        return $parties
+            ->filter(fn (Party $party): bool => $party->balanceFrom($nets[$party->id] ?? [], '0.000')->words === 'Advance')
             ->filter(fn (Party $party): bool => (Ageing::advanceAgeDays($party, $today) ?? 0) > $limit)
             ->count();
     }

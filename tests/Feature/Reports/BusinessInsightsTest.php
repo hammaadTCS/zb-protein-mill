@@ -55,3 +55,11 @@ it('page 40 needs insights.view and shows the default period', function () {
     $this->actingAs(accountant())->get(route('reports.index'))
         ->assertInertia(fn (Assert $page) => $page->where('reports', fn ($reports) => ! collect($reports)->contains('title', 'Business insights')));
 });
+
+it('R-13 BR-LED-09 a corrected rate counts at the corrected amount (AT-5)', function () {
+    AcceptanceRunner::load('controls', 'AT-5')->setUp()->runAll();
+    $insights = BusinessInsights::for('2026-01-01', '2026-02-05');
+
+    expect($insights['suppliers'][0]['average_rate'])->toBe('48.00')
+        ->and($insights['months'][0]['waste_rate'])->toBe('48.00');
+});

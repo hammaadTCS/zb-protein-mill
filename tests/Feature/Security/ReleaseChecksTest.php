@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Hash;
@@ -36,7 +37,7 @@ it('BR-SEC-04 a session ends after 60 minutes idle, also without the variable', 
 });
 
 it('BR-SEC-07 every web route goes through the CSRF check', function () {
-    $web = app(Illuminate\Contracts\Http\Kernel::class)->getMiddlewareGroups()['web'];
+    $web = app(Kernel::class)->getMiddlewareGroups()['web'];
 
     expect(collect($web)->contains(fn (string $m): bool => is_a($m, PreventRequestForgery::class, true)))->toBeTrue();
 });

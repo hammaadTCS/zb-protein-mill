@@ -31,8 +31,11 @@ final class RateWeightReports
     {
         $groups = [];
 
-        foreach (self::entries($filters)->where('rate_status', RateStatus::Fixed->value)->get() as $entry) {
-            $effective = RateCorrections::effective($entry);
+        $entries = self::entries($filters)->where('rate_status', RateStatus::Fixed->value)->get();
+        $corrected = RateCorrections::effectiveMany($entries);
+
+        foreach ($entries as $entry) {
+            $effective = $corrected[$entry->id];
             $key = $entry->item_id.'-'.$entry->party_id;
             $groups[$key] ??= ['item' => $entry->item->name, 'party' => $entry->party->name, 'party_id' => $entry->party_id, 'entries' => [], 'kg' => '0.000', 'amount' => '0.00'];
             $groups[$key]['entries'][] = [

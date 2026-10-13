@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.3 |
-| Next task | T2.4 Parties backend |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.4 |
+| Next task | T2.5 Parties UI |
 
 ---
 
@@ -472,3 +472,19 @@ Choices and questions:
 - Tests: the card's four, plus: a new product gets 4020; rename and type change before entries; deactivate; page 45 for owner and refused for accountant; code and name unique.
 - Note: PHP page tests need `npm run build` first (CI does this; `check-all.sh` runs the PHP tests before the build). Same question as in T0.1.
 - Checks: build, check, types, Pint, Larastan, guard pass; **221 PHP tests pass**.
+
+### T2.4 Parties backend
+
+Built as the card lists: table `parties` exactly per spec §9.2 (plus checks for BR-PTY-10 and the delete trigger), foreign key `journal_lines.party_id → parties.id`, enums `PartyType` and `PartyStatus`, the warning mechanism (`App\Support\Warnings\WarningRequired` rendered as 422 `{warning: {code, message, details}}`, and `Warnings`, which raises unconfirmed warnings and audits `warning_confirmed` after the save), Actions `CreateParty`, `UpdateParty`, `DeactivateParty`, `ActivateParty` (no delete action), `Party::hasEntries()`, `Party::balance()` returning `PartyBalance` (words, absolute amount, side, pending kg; partners also invested, withdrawn, net), PostingService's BR-LED-04 check now also requires the party type to match the account, `StorePartyRequest` / `UpdatePartyRequest`, `PartyPolicy`, and the test helpers `ledgerBalance()` / `partyBalance()` from conventions §11.
+
+Choices and questions:
+- **Duplicate check also runs on edit** when the name or mobile changes (BR-PTY-03 says "another active party", for any save). The card lists it only for `CreateParty`.
+- **When both mobile and name match**, the warning names the mobile match.
+- **Partner balance words:** net above zero is "Net invested", zero is "Settled", below zero (more withdrawn than invested) is "Withdrawn" with the amount. The glossary gives "Invested / Withdrawn / Net invested" but not which one is the headline; please confirm.
+- **`ActivateParty` refuses a merged party** with "This party was merged into another party." (not a glossary message; merge comes in T7.4).
+- **Field lengths the spec leaves open:** address 1,000 characters, notes 2,000.
+- **Validation messages** that are not in the glossary: "Mobile must be 10 to 15 digits.", "This field is only for this party type.", "Enter a number.", "Use at most N decimals.", "Enter a number from A to B." / "greater than A".
+- `App\Rules\DecimalString` checks money and percent strings with `BigDecimal`, never floats (conventions §3).
+- Found while testing: `WarningRequired` cannot have a property called `$code` (PHP's `Exception` already has one), so it is `$warningCode`; the JSON key is still `code`.
+- Tests: the card's nine, plus all five codes, duplicate by name and inactive parties ignored, 422 JSON shape, active again, owner bank change not flagged, type change clears the other type's fields, mobile normalising, buyer/employee/advance words, partner invested/withdrawn/net.
+- Checks: Pint, Larastan, guard pass; **237 PHP tests pass**.

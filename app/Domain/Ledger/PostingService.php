@@ -8,6 +8,7 @@ use App\Domain\Ledger\Models\JournalEntry;
 use App\Domain\Ledger\Models\JournalLine;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Numbering\VoucherNumberService;
+use App\Domain\Parties\Models\Party;
 use App\Domain\Periods\Periods;
 use App\Models\User;
 use App\Support\Decimal;
@@ -176,7 +177,7 @@ final class PostingService
 
     /**
      * BR-LED-04: a line on a party control account (1200, 1300, 2000, 2100, 3000,
-     * 3100) carries a party; a line on any other account never does.
+     * 3100) carries a party of the matching type; a line on any other account never does.
      */
     private static function assertPartyRule(PostingLine $line, LedgerAccount $account): void
     {
@@ -186,6 +187,17 @@ final class PostingService
 
         if ($account->party_type === null && $line->partyId !== null) {
             throw new InvalidArgumentException("Account {$account->code} cannot carry a party (BR-LED-04).");
+        }
+
+        if ($account->party_type !== null) {
+            $party = Party::query()
+                ->withoutGlobalScope('company')
+                ->where('company_id', $account->company_id)
+                ->find($line->partyId);
+
+            if ($party === null || $party->type->value !== $account->party_type) {
+                throw new InvalidArgumentException("Account {$account->code} needs a {$account->party_type} party (BR-LED-04).");
+            }
         }
     }
 

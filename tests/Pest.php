@@ -1,6 +1,8 @@
 <?php
 
+use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Ledger\PostingService;
+use App\Domain\Parties\Models\Party;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Today;
@@ -75,4 +77,22 @@ function closeMonthForTest(string $yyyymm): void
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+}
+
+/** conventions §11: ledger balance of an account code (debit minus credit), optionally one party's. */
+function ledgerBalance(string $code, ?Party $party = null): string
+{
+    return LedgerBalance::byCode($code, null, $party?->id);
+}
+
+/**
+ * conventions §11: a party's balance in words.
+ *
+ * @return array{words: string, amount: string}
+ */
+function partyBalance(Party $party): array
+{
+    $balance = $party->balance();
+
+    return ['words' => $balance->words, 'amount' => $balance->amount];
 }

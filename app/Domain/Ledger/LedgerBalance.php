@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Ledger;
 
 use App\Domain\Ledger\Models\JournalLine;
+use App\Domain\Ledger\Models\LedgerAccount;
 
 /**
  * Balances read from journal lines, the only truth for money (spec §6).
@@ -29,5 +30,24 @@ final class LedgerBalance
             ->value('balance');
 
         return (string) $balance;
+    }
+
+    /**
+     * The balance of an account given by its code (for example a party's control
+     * account), in the current company.
+     *
+     * @param  string|null  $asOf  Y-m-d
+     */
+    public static function byCode(string $code, ?string $asOf = null, ?int $partyId = null): string
+    {
+        $accountId = LedgerAccount::query()->where('code', $code)->value('id');
+
+        return $accountId === null ? '0.00' : self::account((int) $accountId, $asOf, $partyId);
+    }
+
+    /** True when any journal line carries this party (BR-PTY-04, BR-PTY-05). */
+    public static function partyHasLines(int $partyId): bool
+    {
+        return JournalLine::query()->where('party_id', $partyId)->exists();
     }
 }

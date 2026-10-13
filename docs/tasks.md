@@ -40,7 +40,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T2.1** App shell, brand, formatting helpers. *Done when:* `npm test`, `npm run check`, `npm run types:check` and PHP tests pass; login and the empty dashboard checked by you at phone width (375 px) and on desktop before you finish the task.
 - [x] **T2.2** Money accounts. *Done when:* tests pass; page works on desktop.
 - [x] **T2.3** Items. *Done when:* tests pass.
-- [ ] **T2.4** Parties backend. *Done when:* tests pass.
+- [x] **T2.4** Parties backend. *Done when:* tests pass.
 - [ ] **T2.5** Parties UI. *Done when:* tests pass; add-party works on phone width.
 - [ ] **T2.6** Opening balances. *Done when:* tests pass.
 - [ ] **T2.7** Purchases with fixed rate, payments table, "paid now". *Done when:* tests pass.

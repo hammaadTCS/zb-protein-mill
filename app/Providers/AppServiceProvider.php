@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Domain\Audit\AuthenticationAuditor;
 use App\Domain\Items\Models\Item;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
+use App\Domain\Parties\Models\Party;
 use App\Domain\Periods\Models\Period;
 use App\Domain\Settings\Models\Setting;
 use App\Models\User;
@@ -50,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'item' => Item::class,
             'money_account' => MoneyAccount::class,
+            'party' => Party::class,
             'period' => Period::class,
             'setting' => Setting::class,
             'user' => User::class,

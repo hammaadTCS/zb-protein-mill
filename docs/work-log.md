@@ -8,10 +8,10 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Item | Status |
 | --- | --- |
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
-| State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
+| State | **M0 to M6 done (except your tasks T2.10); M7 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.9 |
-| Next task | T6.10 Statement and entry slip PDFs (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10 |
+| Next task | T7.1 Month-end close (backend) (T2.10 client review is yours) |
 
 ---
 
@@ -998,3 +998,20 @@ Choices and questions:
 - Words not in the glossary: "Reports", the one-line description of each report, "Printed on … by …", "From … to …", "As of …".
 - Tests: the card's (reports home lists only permitted reports: the accountant does not see Partner statement; 403 without `report.view`) plus the shared company name.
 - Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.10 Statement and entry slip PDFs
+
+Built as the card lists: `barryvdh/laravel-dompdf` (^3.1), `App\Support\Format` (PHP, the same grouping, rounding and date formats as `format.ts`; it hands the work to the existing `NumberFormat` and `Dates`, which already work on strings, so screens, messages and PDFs cannot drift apart), Blade views `pdf/statement.blade.php` (§13.1) and `pdf/slip.blade.php` (§13.2) with one shared style file, the logo copied to `resources/images/zb-logo-96.png` and shown 40 px tall on white, routes `GET /parties/{id}/statement.pdf?from=&to=` (`party.view`), `GET /purchases/{id}/slip.pdf` (`purchase.view`), `GET /sales/{id}/slip.pdf` (`sale.view`), and a "Share PDF" button (Web Share API with the file where the browser allows it, otherwise a download) on the party profile's khata tab and on active purchase and sale pages.
+
+Choices and questions:
+- **Font: DejaVu Sans** (dompdf's built-in). The repository has IBM Plex Sans only as `.woff`/`.woff2` (from `@fontsource`), no TTF, and I may not download fonts. If you want IBM Plex Sans in PDFs, add the TTF files and their OFL licence to `resources/fonts/` and I will switch.
+- **dompdf options set in one place** (`PdfDocument`): remote files off, PHP in templates off, JavaScript off, font subsetting on (a statement is ~40 KB instead of ~900 KB). The logo is embedded as a data URI, so no file access is needed.
+- **Statement rows**: the khata of the period without payments awaiting approval; **a journal and its reversal that are both in the period are left out together** (a cancelled entry, or the old version of an edited one), and the running balance is recomputed from the opening so it still adds up. If the original is before the period and only the reversal is inside it, the reversal row stays (otherwise the balance would be wrong). Notes are never shown.
+- **Rate-pending rows** show "Waste 400 kg – Rate pending" in the details and no amount, as on the screen.
+- **Statement period by default**: system start date to today.
+- **Slip "Balance"**: the party balance right after this entry and its paid-now / received-now payment (every posting before the entry date, and on that date up to the entry's own journals). "Paid now" counts only active, posted payments linked to the entry. Our weight is never sent to the view.
+- **kg follows `kg_decimals`**: with the test value 3 the slip shows "800.000 kg", with 0 it shows "800 kg". The card's T-14 says "800 kg"; my test checks both settings. Tell me if PDFs should drop trailing zeros instead (that would differ from the screens).
+- **Footer page number**: "Page 1" (dompdf cannot print "of N" without PHP in templates, which stays off).
+- Words not in the glossary: "Statement of Account", "Purchase Slip", "Sale Slip" (spec §13 words), "Period", "Details", "Increase", "Decrease", "Balance", "Voucher number", "Kg", "Page", "Generated on … by …".
+- Tests (T-14): Karim after AT-1 (statement contains "Statement of Account", S-0002, all four of his vouchers read from the database, closing "Settled", no "Rate pending"); the statement route returns `application/pdf` starting `%PDF-`; slip for AT-1 #1 (PUR-000001, 800.000 kg / 800 kg, Rs 50.00, Rs 40,000.00, Paid now, "Balance: Settled") and its PDF route; a slip with our weight 793.5 never shows it; a sale slip says "Sale Slip" and "Received now"; Urdu name never in the statement; a cancelled purchase and an awaiting payment are left out and Aslam still closes at "We owe Rs 52,000.00"; guest is sent to login. T-09 route table has the three new routes.
+- Checked by eye: I rendered a statement and a slip from the dev data to images (header with logo and company name, period, rows, opening and closing, footer with "Generated on … by …" and the page number).

@@ -46,7 +46,7 @@ final class PartyKhata
             ->orderBy('journal_entries.id')
             ->orderBy('journal_lines.line_no')
             ->get([
-                'journal_entries.posting_date', 'journal_entries.source_type', 'journal_entries.source_id',
+                'journal_entries.id AS journal_id', 'journal_entries.posting_date', 'journal_entries.source_type', 'journal_entries.source_id',
                 'journal_entries.reversal_of_id', 'journal_lines.debit', 'journal_lines.credit',
             ]);
 
@@ -71,6 +71,8 @@ final class PartyKhata
                 decrease: $isIncrease ? null : $moved,
                 balance: $party->balanceOfNet($net),
                 route: $source['route'] ?? null,
+                journalId: (int) $line->journal_id,
+                reversalOfId: $line->reversal_of_id === null ? null : (int) $line->reversal_of_id,
             );
         }
 

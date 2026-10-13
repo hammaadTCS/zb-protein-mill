@@ -8,6 +8,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CashCountController;
 use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store')->can('purchase.create');
     Route::get('purchases/last-rate', [PurchaseController::class, 'lastRate'])->name('purchases.last-rate')->can('purchase.view');
     Route::get('purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show')->can('purchase.view');
+    Route::get('purchases/{purchase}/slip.pdf', [DocumentController::class, 'purchaseSlip'])->name('purchases.slip')->can('purchase.view');
     Route::get('purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->name('purchases.edit')->can('purchase.update');
     Route::put('purchases/{purchase}', [PurchaseController::class, 'update'])->name('purchases.update')->can('purchase.update');
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel')->can('purchase.cancel');
@@ -97,6 +99,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('sales', [SaleController::class, 'store'])->name('sales.store')->can('sale.create');
     Route::get('sales/last-rate', [SaleController::class, 'lastRate'])->name('sales.last-rate')->can('sale.view');
     Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->can('sale.view');
+    Route::get('sales/{sale}/slip.pdf', [DocumentController::class, 'saleSlip'])->name('sales.slip')->can('sale.view');
     Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.edit')->can('sale.update');
     Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update')->can('sale.update');
     Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel')->can('sale.cancel');
@@ -122,6 +125,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('parties/search', [PartyController::class, 'lookup'])->name('parties.search')->can('party.view');
     Route::post('parties', [PartyController::class, 'store'])->name('parties.store')->can('party.create');
     Route::get('parties/{party}', [PartyController::class, 'show'])->name('parties.show')->can('party.view');
+    Route::get('parties/{party}/statement.pdf', [DocumentController::class, 'statement'])->name('parties.statement')->can('party.view');
     Route::get('parties/{party}/edit', [PartyController::class, 'edit'])->name('parties.edit')->can('party.update');
     Route::put('parties/{party}', [PartyController::class, 'update'])->name('parties.update')->can('party.update');
     Route::post('parties/{party}/deactivate', [PartyController::class, 'deactivate'])->name('parties.deactivate')->can('party.update');

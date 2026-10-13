@@ -91,7 +91,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T6.7** Income vs Spending. *Done when:* tests pass.
 - [x] **T6.8** Rate, weight difference and adjustments reports. *Done when:* T-13 passes.
 - [x] **T6.9** Reports home and printing. *Done when:* tests pass; printed samples of the trial balance and pending balances checked by you before you finish the task.
-- [ ] **T6.10** Statement and entry slip PDFs. *Done when:* T-14 passes.
+- [x] **T6.10** Statement and entry slip PDFs. *Done when:* T-14 passes.
 
 ## M7: Month-end and remaining controls  ·  card file `docs/cards/M7.md`
 

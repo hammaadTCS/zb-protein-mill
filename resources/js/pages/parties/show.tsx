@@ -13,13 +13,20 @@ import type { WeightGroup } from '@/components/app/WeightDifferences';
 import { WeightDifferences } from '@/components/app/WeightDifferences';
 import type { PartyType } from '@/components/app/PartyPicker';
 import { PageHeader } from '@/components/app/PageHeader';
+import { SharePdfButton } from '@/components/app/SharePdfButton';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCan } from '@/hooks/use-can';
 import { cn } from '@/lib/utils';
-import { edit, index, review as markReviewed, show } from '@/routes/parties';
+import {
+    edit,
+    index,
+    review as markReviewed,
+    show,
+    statement,
+} from '@/routes/parties';
 import { create as newPurchase } from '@/routes/purchases';
 import { create as newSale } from '@/routes/sales';
 import { create as newPayment } from '@/routes/payments';
@@ -396,6 +403,17 @@ export default function PartyProfile({
                             <Button type="submit" variant="outline">
                                 Show
                             </Button>
+                            <SharePdfButton
+                                href={statement.url(party.id, {
+                                    query: Object.fromEntries(
+                                        Object.entries({
+                                            from: khata.from ?? '',
+                                            to: khata.to ?? '',
+                                        }).filter(([, v]) => v !== ''),
+                                    ),
+                                })}
+                                filename={`statement-${party.code}.pdf`}
+                            />
                         </form>
                         <KhataTable
                             opening={khata.opening}

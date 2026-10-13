@@ -325,3 +325,10 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - Fits the protected production grants (`infra/files/postgres/30-app-grants.sql`): both tables are on its append-only list.
 - Tests: T-02 unbalanced refused, one-line refused, balanced accepted; T-03 update/delete refused on both tables (4 cases); BR-LED-02 both sides / neither / negative refused; models refuse creation outside PostingService.
 - Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.
+
+### T1.6 Voucher numbering
+
+- Migration `create_voucher_sequences_table`: primary key (`company_id`, `doc_type`), `prefix`, `width`, `next_number` (default 1).
+- `VoucherNumberService::next()`: refuses outside a transaction; creates the sequence on first use with `INSERT … ON CONFLICT DO NOTHING` (so two first saves at the same moment cannot collide); reads it `FOR UPDATE`; returns `PREFIX-` + zero-padded number; increments. All 17 doc types of conventions §8.
+- Tests: T-04 sequential per doc type; rolled-back save gives the number back; refused outside a transaction (proved on a second connection without an open transaction, because every test already runs inside RefreshDatabase's transaction); party codes width 4; every doc type's first number (17 cases); unknown doc type refused.
+- Checks: Pint, Larastan pass; tests pass except the known T0.3 Actions rule.

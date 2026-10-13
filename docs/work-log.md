@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 to M6 done (except your tasks T2.10); M7 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.4 |
-| Next task | T7.5 Business insights (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8 (T7.6 built; tick it after your restore) |
+| Next task | T8.1 (M8). T2.10 client review and the T7.6 restore are yours |
 
 ---
 
@@ -1106,3 +1106,16 @@ Choices and questions:
 - **`closeMonthForTest()`**: no acceptance test uses it. Seven older feature tests (T1.9 to T4.x) still do; I left them as they are (the rule is not to change existing tests, and the T7.1 card only forbids it in new tests).
 - **AT-3 and AT-6 also have their own tests** in `tests/Feature/Periods` and `tests/Feature/Parties` from T7.1 and T7.4; I kept them (they add the event, audit and khata checks).
 - Tests: AT-1 to AT-6 all pass.
+
+### T7.8 Integrity check command
+
+Built as the card lists: `App\Domain\Ledger\IntegrityCheck` (SELECTs only) with the five checks — every journal balances; trial balance totals agree (the T1.10 query); voucher numbers 1 to `next_number − 1` exist once each for every document type (CSH numbers read from the month-end journal descriptions, party codes from parties); control-account lines carry a party and no other line does; an active posted entry points to a journal of its own and a cancelled posted entry has a reversal. Each check prints OK or FAILED with journal ids, voucher numbers or `type:id` (never names or amounts). `php artisan zb:verify {--db-name=}` (`App\Console\Commands\VerifyLedger`) only calls it; exit code 0 or 1; on the live database it writes `storage/app/zb-verify.json` as `{"result":"ok"|"failed","finished_at":"…Z","failed_checks":[…]}` with `json_encode` (no pretty printing); `--db-name` points the `pgsql` connection at that database for the run (`config` + `DB::purge`) and writes no file. Scheduled daily at 20:30 UTC (01:30 Pakistan time) with `withoutOverlapping()`; `php artisan schedule:list` shows `30 20 * * * php artisan zb:verify`.
+
+Choices and questions:
+- **`--db-name` accepts only letters, digits and underscores** (it becomes a connection setting).
+- **When the checks cannot run** (for example the database does not exist), it prints "FAILED could not run the checks ({error kind})" without the error message (it could contain server details) and exits 1; on the live database the file then says `failed` with `run` as the failed check.
+- **Trial balance check** uses the current company (version 1 has one); with no company at all (an empty restored copy) it has nothing to check and says OK.
+- **Test-only trigger switching**: as the card says, two tests disable a journal trigger inside their own transaction (rolled back after the test) to plant a fault. App code never does this.
+- **The tests save and restore `storage/app/zb-verify.json`**, so a local run's file is not lost; the file is git-ignored.
+- **Checked on the dev data**: all five checks OK.
+- Tests (T-20): after AT-1 every check OK and the file says ok; each planted fault fails exactly its check — two unbalanced journals (totals still agree), a voucher gap (PUR-number missing), a control-account line without a party, an active purchase pointing to another purchase's journal, a cancelled purchase without a reversal; `--db-name` checks the named database in a separate process (OK on the test database, exit 1 on a missing one, exit 1 on a bad name) and writes no file; the schedule entry (20:30 UTC, without overlapping).

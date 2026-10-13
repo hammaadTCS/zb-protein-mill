@@ -48,6 +48,7 @@ const ROUTE_PERMISSIONS = [
     'parties.search' => 'party.view',
     'parties.show' => 'party.view',
     'parties.statement' => 'party.view',
+    'insights.show' => 'insights.view',
     'parties.merge' => 'party.merge',
     'parties.merge.store' => 'party.merge',
     'month-end.show' => 'period.close',

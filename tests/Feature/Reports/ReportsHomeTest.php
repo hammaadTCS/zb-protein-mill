@@ -12,7 +12,9 @@ it('reports home lists only permitted reports', function () {
     expect($owner)->toContain('Partner statement', 'Trial balance', 'Income vs Spending', 'Pending balances', 'Accounts')
         ->and($accountant)->not->toContain('Partner statement')
         ->and($accountant)->toContain('Trial balance', 'Pending balances', 'Accounts')
-        ->and(count($owner))->toBe(count($accountant) + 1);
+        // Owner-only: Partner statement (partner.view) and, from T7.5, Business insights (insights.view).
+        ->and(array_values(array_diff($owner, $accountant)))->toBe(['Partner statement', 'Business insights'])
+        ->and(array_values(array_diff($accountant, $owner)))->toBe([]);
 
     $this->actingAs(User::factory()->create())->get(route('reports.index'))->assertForbidden();
 });

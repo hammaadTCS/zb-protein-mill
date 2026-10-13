@@ -23,6 +23,7 @@ class ReportsHomeController extends Controller
         ['reports.rates', 'Rate report', 'report.view', 'Each rate over time and the weighted average (R-10).'],
         ['reports.weight-difference', 'Weight difference', 'report.view', 'Their kg against our kg (R-11).'],
         ['reports.adjustments', 'Adjustments report', 'report.view', 'Agreed deductions per party and reason (R-12).'],
+        ['insights.show', 'Business insights', 'insights.view', 'Rough indicators: kg ratios, wood use, rates, suppliers and buyers (R-13).'],
     ];
 
     public function index(Request $request): Response

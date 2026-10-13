@@ -9,6 +9,7 @@ use App\Domain\Expenses\Actions\CreateExpense;
 use App\Domain\Expenses\Actions\UpdateExpense;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\Expenses\Models\ExpenseCategory;
+use App\Domain\Insights\BusinessInsights;
 use App\Domain\Items\Models\Item;
 use App\Domain\Ledger\Models\JournalEntry;
 use App\Domain\MoneyAccounts\Actions\CreateMoneyAccount;
@@ -64,9 +65,7 @@ final class AcceptanceRunner
      * Checks that a later task switches on (README: "skipped only by the task that
      * builds the runner"). Each names the task that removes it from this list.
      */
-    private const SKIPPED = [
-        'insights' => 'enabled in T7.5',
-    ];
+    private const SKIPPED = [];
 
     public User $owner;
 
@@ -306,7 +305,11 @@ final class AcceptanceRunner
             }
         }
 
-        // `insights` is checked from T7.5 (self::SKIPPED).
+        // R-13 over the default period (`insights_period_months` back from today), from T7.5.
+        if (isset($expected['insights'])) {
+            $period = BusinessInsights::defaultPeriod();
+            expect(array_intersect_key(BusinessInsights::for($period['from'], $period['to']), $expected['insights']))->toBe($expected['insights'], 'insights');
+        }
 
         return $this;
     }

@@ -11,7 +11,7 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
 | Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9 |
-| Next task | T2.10 (yours: client review); then T3.1 |
+| Next task | T3.1 Rate pending (T2.10 client review is yours) |
 
 ---
 
@@ -568,3 +568,12 @@ Choices and questions:
 - **Fixed another test of mine (T1.12, BR-SEC-13 sessions):** the test made a random session id and expected it to sort before "someone-else"; about one run in three it did not. The id now starts with "a"; **the assertion is unchanged.** Please review it with the T1.7 one.
 - Tests: the card's three (Karim khata after AT-1 entries 1 and 2: two rows and "We owe 18800.00"; opening row before the from date; page totals equal the query totals), plus a partner khata, page 19 props, and `report.view` needed.
 - Checks: build, check, types, Pint, Larastan, guard pass; **292 PHP tests pass**.
+
+### T2.10 Slice review with the client (your task) – what I prepared
+
+- `database/seeders/DemoSeeder.php`: loads the AT-1 test data (money accounts, parties, opening balances and the first day's purchases) through the real Actions. Refuses production; refuses a second run. **Not ticked in `docs/tasks.md`**: the review, `docs/feedback/T2.10.md` and the decisions are yours.
+- On your laptop: `php artisan migrate:fresh --seed`, then `php artisan db:seed --class=DemoSeeder`, then log in as `test@example.com` / `password`.
+- The rate-pending purchase of day 1 is skipped until T3.1 builds rate pending (removed again in T3.1).
+- Tests: loads the data (7 parties, PUR-000001 and PUR-000002), refuses production and a second run.
+
+**M2 built (except your review).** Next: M3.

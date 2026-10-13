@@ -5,6 +5,7 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CompanySettingsController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
@@ -30,7 +31,7 @@ Route::get('/', RedirectController::class)
     ->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     // Pages 3, 4 and 5: purchases (T2.7, T2.8).
     Route::get('purchases', [PurchaseController::class, 'index'])->name('purchases.index')->can('purchase.view');

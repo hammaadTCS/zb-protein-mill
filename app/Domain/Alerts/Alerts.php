@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 use App\Domain\Alerts\Providers\BankChangesToReview;
+use App\Domain\Alerts\Providers\BuyersOverCreditLimit;
+use App\Domain\Alerts\Providers\NegativeCashBalance;
 use App\Domain\Alerts\Providers\NewPartiesToReview;
+use App\Domain\Alerts\Providers\PaymentsAwaitingApproval;
+use App\Domain\Alerts\Providers\RatePendingAged;
+use App\Domain\Alerts\Providers\TrialBalanceError;
 use App\Models\User;
 
 /** The registry of dashboard alerts. Each task adds its providers here. */
@@ -13,8 +18,14 @@ final class Alerts
 {
     /** @var list<class-string<AlertProvider>> */
     public const PROVIDERS = [
+        // In the order of spec §11.3.
+        RatePendingAged::class,
+        PaymentsAwaitingApproval::class,
         NewPartiesToReview::class,
         BankChangesToReview::class,
+        BuyersOverCreditLimit::class,
+        NegativeCashBalance::class,
+        TrialBalanceError::class,
     ];
 
     /**

@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.5 |
-| Next task | T5.6 Dashboard (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6 |
+| Next task | T6.1 (M6 reports) (T2.10 client review is yours) |
 
 ---
 
@@ -871,3 +871,20 @@ Choices and questions:
 - Words not in the glossary: "Audit log" (spec page name), "Time", "User", "Action", "Record", "Changes", "Reason", "IP", "All users", "All actions", "All records", "Voucher or party", and the action names ("Setting changed", "Login", …).
 - Tests: the card's two (accountant 403; filter by action returns only that action) plus record type filter with link, search by voucher and by party.
 - Checks: build, check, types, Pint, Larastan, guard pass; **467 PHP tests pass** (one test of this task fixed for a hard-coded id before commit).
+
+### T5.6 Dashboard
+
+Built as the card lists: page 2 `/dashboard` (now a controller): **Today** (kg bought per bought item and kg sold per product from active entries dated today; money received and paid from payments whose journal is posted today; expenses today), **Balances** (each active money account, cash first), **Alerts** (every registered provider with a count above 0, linked, coloured by severity), **Quick buttons** (New purchase, New sale, New payment, Quick expense by permission). New providers: `RatePendingAged` (red), `PaymentsAwaitingApproval` (owner), `BuyersOverCreditLimit`, `NegativeCashBalance`, `TrialBalanceError` (owner). On a phone the order is Today, Alerts, Balances.
+
+Choices and questions:
+- **"Received" and "Paid" use the journal's posting date**, so a payment approved today counts today (BR-PAY-08), and one waiting for approval does not count.
+- **Every bought item and every product is listed, with 0.000 when nothing moved today**, so the owner sees Wood and Oil/Fat even on a day without them. Inactive items appear only when they have entries today.
+- **Owner-only alerts**: approvals (`payment.approve`), reviews (`party.review`), trial balance error (Owner role). Rate pending follows `purchase.view` / `sale.view`; buyers over limit `party.view`; negative cash `account.view` (both roles).
+- **The negative cash alert opens the Balances section of the dashboard** (`/dashboard#balances`): the account statement page (25) comes in M6.
+- **The quick buttons repeat the phone bottom bar** on a phone (spec §11.3 lists them on the dashboard).
+- Screenshot at 375 px checked in the browser (Today, Alerts, Balances in that order; no console errors). Screenshots are not committed.
+- Words not in the glossary: "Today", "Kg bought", "Kg sold", "Money", "Received", "Paid", "Expenses", "Total", "Alerts", "Nothing needs attention.", "Balances", "Rate pending too long", "Payments awaiting approval", "Buyers over credit limit", "Cash accounts below zero", "Trial balance error".
+- Tests: the card's two (AT-1 day 1 figures with today 2026-01-05: Waste 1800.000, Protein 500.000, received 41000.00, paid 70000.00, expenses 11100.00; the accountant sees no owner-only alerts) plus aged rate pending and buyer over limit for both roles.
+- Checks: build, check, types, Pint, Larastan, guard pass; **471 PHP tests pass**.
+
+**M5 built.**

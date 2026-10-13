@@ -46,6 +46,7 @@ const ROUTE_PERMISSIONS = [
     'parties.update' => 'party.update',
     'parties.activate' => 'party.update',
     'parties.deactivate' => 'party.update',
+    'parties.review' => 'party.review',
     'partners.index' => 'partner.view',
     'partners.statement' => 'partner.view',
     'partners.create' => 'partner.manage',

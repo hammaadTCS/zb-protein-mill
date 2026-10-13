@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.3 |
-| Next task | T5.4 Party review and bank-change alerts (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.4 |
+| Next task | T5.5 Audit log page (T2.10 client review is yours) |
 
 ---
 
@@ -846,3 +846,15 @@ Choices and questions:
 - **Finding for T8.1**: the route list shows Inertia's development tools routes (`_inertia/devtools/...`) registered in this environment. I will check in the security task that they are off in production.
 - Tests: T-09 (every route classified; accountant 403 on owner-only routes and owner never 403, 215 assertions) plus the dataset agrees with the role matrix.
 - Checks: types, Pint, Larastan, guard pass; **461 PHP tests pass**.
+
+### T5.4 Party review and bank-change alerts
+
+Built as the card lists: `ReviewParty(User owner, Party, what)` with `new_party` / `bank_change` (clears the flag, sets `reviewed_by` / `reviewed_at`, audits `reviewed`), route `POST /parties/{party}/review` (`party.review`, owner only); `App\Domain\Alerts\AlertProvider` (key, count, route, label, severity) and the `Alerts` registry with `NewPartiesToReview` and `BankChangesToReview` (owner only); on the party profile a yellow box "Needs review" and "Bank details changed" with each field old → new and "Mark reviewed" for the Owner. The party list takes `review=new` / `review=bank` so each alert opens the matching parties.
+
+Choices and questions:
+- **An alert the user may not see counts 0, and the registry lists only alerts with a count above 0.** This keeps the card's interface (no extra "visible to" method); the dashboard (T5.6) shows only alerts that need action.
+- **The bank change shown is the latest `bank_details_changed` audit row** for the party.
+- `parties.review` is added to the T-09 route list.
+- Words not in the glossary: "New parties to review", "Bank detail changes to review" (spec §11.3 wording), "Bank details changed", "Mark reviewed", "Marked reviewed.", "Bank name", "Account title", "Account number", "Choose what was reviewed.".
+- Tests: the card's two (owner marks reviewed, accountant 403; alert counts drop after review) plus the accountant sees no review alerts, and the profile box with old and new bank details.
+- Checks: build, check, types, Pint, Larastan, guard pass; **465 PHP tests pass**.

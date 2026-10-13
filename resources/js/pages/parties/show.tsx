@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCan } from '@/hooks/use-can';
 import { cn } from '@/lib/utils';
-import { edit, index, show } from '@/routes/parties';
+import { edit, index, review as markReviewed, show } from '@/routes/parties';
 import { create as newPurchase } from '@/routes/purchases';
 import { create as newSale } from '@/routes/sales';
 import { create as newPayment } from '@/routes/payments';
@@ -48,6 +48,24 @@ type Profile = {
     notes: string | null;
 };
 
+type BankFields = {
+    bank_name?: string | null;
+    bank_account_title?: string | null;
+    bank_account_number?: string | null;
+};
+
+type Review = {
+    new_party: boolean;
+    bank_change: { old: BankFields; new: BankFields } | null;
+    can_review: boolean;
+};
+
+const BANK_LABELS: Record<keyof BankFields, string> = {
+    bank_name: 'Bank name',
+    bank_account_title: 'Account title',
+    bank_account_number: 'Account number',
+};
+
 type Khata = {
     from: string | null;
     to: string | null;
@@ -63,10 +81,12 @@ export default function PartyProfile({
     party,
     khata,
     history,
+    review,
 }: {
     party: Profile;
     khata: Khata;
     history: HistoryRow[];
+    review: Review;
 }) {
     const can = useCan();
     const [tab, setTab] = useState<(typeof TABS)[number]>(
@@ -157,6 +177,85 @@ export default function PartyProfile({
                         </span>
                     )}
                 </div>
+
+                {(review.new_party || review.bank_change) && (
+                    <div className="grid gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+                        {review.new_party && (
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-medium">
+                                    Needs review
+                                </span>
+                                {review.can_review && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.post(
+                                                markReviewed.url(party.id),
+                                                { what: 'new_party' },
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                    >
+                                        Mark reviewed
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                        {review.bank_change && (
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                    <span className="font-medium">
+                                        Bank details changed
+                                    </span>
+                                    <ul className="mt-1">
+                                        {(
+                                            Object.keys(
+                                                BANK_LABELS,
+                                            ) as (keyof BankFields)[]
+                                        )
+                                            .filter(
+                                                (key) =>
+                                                    key in
+                                                        review.bank_change!
+                                                            .new ||
+                                                    key in
+                                                        review.bank_change!.old,
+                                            )
+                                            .map((key) => (
+                                                <li key={key}>
+                                                    {BANK_LABELS[key]}:{' '}
+                                                    <span className="line-through">
+                                                        {review.bank_change!
+                                                            .old[key] ?? '–'}
+                                                    </span>{' '}
+                                                    →{' '}
+                                                    {review.bank_change!.new[
+                                                        key
+                                                    ] ?? '–'}
+                                                </li>
+                                            ))}
+                                    </ul>
+                                </div>
+                                {review.can_review && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.post(
+                                                markReviewed.url(party.id),
+                                                { what: 'bank_change' },
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                    >
+                                        Mark reviewed
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div role="tablist" className="flex gap-1 border-b">
                     {TABS.map((name) => (

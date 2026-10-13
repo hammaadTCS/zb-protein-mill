@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditActions;
+use App\Domain\Audit\Models\AuditLog;
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Parties\Actions\ActivateParty;
 use App\Domain\Parties\Actions\CreateParty;
 use App\Domain\Parties\Actions\DeactivateParty;
+use App\Domain\Parties\Actions\ReviewParty;
 use App\Domain\Parties\Actions\UpdateParty;
 use App\Domain\Parties\Enums\PartyStatus;
 use App\Domain\Parties\Enums\PartyType;
@@ -36,11 +39,14 @@ class PartyController extends Controller
             'q' => ['nullable', 'string', 'max:150'],
             'type' => ['nullable', Rule::enum(PartyType::class)],
             'status' => ['nullable', Rule::enum(PartyStatus::class)],
+            'review' => ['nullable', Rule::in(['new', 'bank'])], // dashboard alerts (BR-PTY-06, BR-PTY-07)
         ]);
 
         $parties = self::search(Party::query(), (string) ($filters['q'] ?? ''))
             ->when($filters['type'] ?? null, fn (Builder $query, string $type) => $query->where('type', $type))
             ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when(($filters['review'] ?? null) === 'new', fn (Builder $query) => $query->where('needs_review', true))
+            ->when(($filters['review'] ?? null) === 'bank', fn (Builder $query) => $query->where('bank_change_needs_review', true))
             ->orderBy('name')
             ->orderBy('id')
             ->paginate(50) // spec §11.2
@@ -53,7 +59,7 @@ class PartyController extends Controller
         $pendingKg = Party::pendingKgFor($ids);
 
         return Inertia::render('parties/index', [
-            'filters' => ['q' => $filters['q'] ?? '', 'type' => $filters['type'] ?? '', 'status' => $filters['status'] ?? ''],
+            'filters' => ['q' => $filters['q'] ?? '', 'type' => $filters['type'] ?? '', 'status' => $filters['status'] ?? '', 'review' => $filters['review'] ?? ''],
             'parties' => [
                 'data' => array_map(fn (Party $party): array => [
                     'id' => $party->id,
@@ -118,6 +124,12 @@ class PartyController extends Controller
                 ...array_map(fn ($value) => $value instanceof \BackedEnum ? $value->value : $value, $party->only(Party::FORM_FIELDS)),
             ],
             'history' => ChangeHistory::for($party),
+            // BR-PTY-06, BR-PTY-07: what the Owner still has to review on this party.
+            'review' => [
+                'new_party' => $party->needs_review,
+                'bank_change' => $party->bank_change_needs_review ? self::lastBankChange($party) : null,
+                'can_review' => $request->user()?->can('party.review') ?? false,
+            ],
             'khata' => [
                 'from' => $khata->from,
                 'to' => $khata->to,
@@ -135,6 +147,35 @@ class PartyController extends Controller
                 ], $khata->rows),
             ],
         ]);
+    }
+
+    /** BR-PTY-06, BR-PTY-07: "Mark reviewed" (Owner only). */
+    public function review(Request $request, Party $party, ReviewParty $action): RedirectResponse
+    {
+        $this->authorize('review', $party);
+
+        $what = (string) $request->validate(['what' => ['required', Rule::in([ReviewParty::NEW_PARTY, ReviewParty::BANK_CHANGE])]])['what'];
+        $action->handle($this->actor($request), $party, $what);
+        Flash::success(__('Marked reviewed.'));
+
+        return back();
+    }
+
+    /**
+     * The bank details before and after the latest change waiting for review.
+     *
+     * @return array{old: array<string, mixed>, new: array<string, mixed>}|null
+     */
+    private static function lastBankChange(Party $party): ?array
+    {
+        $log = AuditLog::query()
+            ->where('auditable_type', $party->getMorphClass())
+            ->where('auditable_id', $party->id)
+            ->where('action', AuditActions::BANK_DETAILS_CHANGED)
+            ->latest('id')
+            ->first();
+
+        return $log === null ? null : ['old' => $log->old_values ?? [], 'new' => $log->new_values ?? []];
     }
 
     public function edit(Party $party): Response

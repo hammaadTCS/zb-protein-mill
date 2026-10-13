@@ -115,6 +115,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('parties/{party}/edit', [PartyController::class, 'edit'])->name('parties.edit')->can('party.update');
     Route::put('parties/{party}', [PartyController::class, 'update'])->name('parties.update')->can('party.update');
     Route::post('parties/{party}/deactivate', [PartyController::class, 'deactivate'])->name('parties.deactivate')->can('party.update');
+    Route::post('parties/{party}/review', [PartyController::class, 'review'])->name('parties.review')->can('party.review');
     Route::post('parties/{party}/activate', [PartyController::class, 'activate'])->name('parties.activate')->can('party.update');
 
     // Page 36: Trial balance (T2.9).

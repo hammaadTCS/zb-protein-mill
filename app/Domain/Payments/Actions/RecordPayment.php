@@ -54,6 +54,7 @@ final class RecordPayment
 
         return match (true) {
             $payment->direction === PaymentDirection::Paid && $type === PartyType::Supplier => PostingRules::pr02PaymentToSupplier($payment, $postingDate),
+            $payment->direction === PaymentDirection::Received && $type === PartyType::Buyer => PostingRules::pr05ReceiptFromBuyer($payment, $postingDate),
             default => throw new LogicException("Not built yet: {$payment->direction->value} payment to a {$type->value}."),
         };
     }

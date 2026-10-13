@@ -8,6 +8,7 @@ use App\Http\Controllers\PartyController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\TrialBalanceController;
+use App\Http\Controllers\SaleController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('purchases/{purchase}', [PurchaseController::class, 'update'])->name('purchases.update');
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
     Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
+
+    // Pages 6, 7 and 8: sales (T3.4).
+    Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
+    Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');
+    Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
+    Route::get('sales/last-rate', [SaleController::class, 'lastRate'])->name('sales.last-rate');
+    Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
+    Route::get('sales/{sale}/edit', [SaleController::class, 'edit'])->name('sales.edit');
+    Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
+    Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
+    Route::post('sales/{sale}/rate', [SaleController::class, 'addRate'])->name('sales.rate');
 
     // Page 26: rate pending (T3.1).
     Route::get('rate-pending', [RatePendingController::class, 'index'])->name('rate-pending.index');

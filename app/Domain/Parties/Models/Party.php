@@ -10,6 +10,7 @@ use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\PartyBalance;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Sales\Models\Sale;
 use App\Support\Decimal;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
@@ -99,12 +100,13 @@ class Party extends Model
 
     /**
      * True once the party has any entry (BR-PTY-04, BR-PTY-05): a journal line, a
-     * purchase or a payment (also one awaiting approval). Sales are added in T3.4.
+     * purchase, a sale or a payment (also one awaiting approval).
      */
     public function hasEntries(): bool
     {
         return LedgerBalance::partyHasLines($this->id)
             || Purchase::query()->where('party_id', $this->id)->exists()
+            || Sale::query()->where('party_id', $this->id)->exists()
             || Payment::query()->where('party_id', $this->id)->exists();
     }
 
@@ -163,7 +165,7 @@ class Party extends Model
         };
     }
 
-    /** Kg of this party's active rate-pending purchases (sales are added in T3.4). */
+    /** Kg of this party's active rate-pending purchases or sales. */
     public function pendingKg(): string
     {
         return self::pendingKgFor([$this->id])[$this->id] ?? '0.000';
@@ -181,15 +183,24 @@ class Party extends Model
             return [];
         }
 
-        return Purchase::query()
-            ->whereIn('party_id', $partyIds)
-            ->where('status', 'active')
-            ->where('rate_status', 'pending')
-            ->groupBy('party_id')
-            ->selectRaw('party_id, SUM(kg)::numeric(20, 3)::text AS kg')
-            ->pluck('kg', 'party_id')
-            ->map(fn (mixed $kg): string => Decimal::kg((string) $kg))
-            ->all();
+        $kg = [];
+
+        // A party is a supplier or a buyer, so only one of the two tables has rows for it.
+        foreach ([Purchase::class, Sale::class] as $model) {
+            $rows = $model::query()
+                ->whereIn('party_id', $partyIds)
+                ->where('status', 'active')
+                ->where('rate_status', 'pending')
+                ->groupBy('party_id')
+                ->selectRaw('party_id, SUM(kg)::numeric(20, 3)::text AS kg')
+                ->pluck('kg', 'party_id');
+
+            foreach ($rows as $partyId => $sum) {
+                $kg[(int) $partyId] = Decimal::kg((string) $sum);
+            }
+        }
+
+        return $kg;
     }
 
     /**

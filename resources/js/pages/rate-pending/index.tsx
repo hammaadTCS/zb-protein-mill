@@ -1,9 +1,16 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { AddRateDialog } from '@/components/app/AddRateDialog';
 import { KgText } from '@/components/app/KgText';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -12,12 +19,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useCan } from '@/hooks/use-can';
 import { useFormats } from '@/hooks/use-formats';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { rate as purchaseRate, show as showPurchase } from '@/routes/purchases';
 import { index } from '@/routes/rate-pending';
+import { rate as saleRate, show as showSale } from '@/routes/sales';
 
 type Row = {
     type: 'purchase' | 'sale';
@@ -35,13 +42,14 @@ type Row = {
 /** Page 26: entries waiting for a rate; red when older than the limit (BR-CHK-05). */
 export default function RatePending({
     today,
+    type,
     rows,
 }: {
     today: string;
     age_limit: number | null;
+    type: string;
     rows: Row[];
 }) {
-    const can = useCan();
     const formats = useFormats();
     const [adding, setAdding] = useState<Row | null>(null);
 
@@ -49,7 +57,30 @@ export default function RatePending({
         <>
             <Head title="Rate pending" />
             <div className="flex flex-col gap-4 p-4">
-                <PageHeader title="Rate pending" />
+                <PageHeader title="Rate pending">
+                    <Select
+                        value={type || 'all'}
+                        onValueChange={(value) =>
+                            router.get(
+                                index.url({
+                                    query:
+                                        value === 'all' ? {} : { type: value },
+                                }),
+                                {},
+                                { preserveState: true, replace: true },
+                            )
+                        }
+                    >
+                        <SelectTrigger className="w-40" aria-label="Type">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="purchase">Purchases</SelectItem>
+                            <SelectItem value="sale">Sales</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </PageHeader>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -73,7 +104,11 @@ export default function RatePending({
                             >
                                 <TableCell className="tabular-nums">
                                     <Link
-                                        href={showPurchase(row.id)}
+                                        href={
+                                            row.type === 'sale'
+                                                ? showSale(row.id)
+                                                : showPurchase(row.id)
+                                        }
                                         className="underline-offset-4 hover:underline"
                                     >
                                         {row.voucher_no}
@@ -99,16 +134,15 @@ export default function RatePending({
                                     {row.age_days}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {row.can_add_rate &&
-                                        can('purchase.update') && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setAdding(row)}
-                                            >
-                                                Add rate
-                                            </Button>
-                                        )}
+                                    {row.can_add_rate && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setAdding(row)}
+                                        >
+                                            Add rate
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -130,7 +164,11 @@ export default function RatePending({
                     open
                     title={adding.voucher_no}
                     kg={adding.kg}
-                    url={purchaseRate.url(adding.id)}
+                    url={
+                        adding.type === 'sale'
+                            ? saleRate.url(adding.id)
+                            : purchaseRate.url(adding.id)
+                    }
                     today={today}
                     onClose={() => setAdding(null)}
                 />

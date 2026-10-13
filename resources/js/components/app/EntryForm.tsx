@@ -25,12 +25,13 @@ import { useFormats } from '@/hooks/use-formats';
 import { prepareImage } from '@/lib/image';
 import { previewAmount } from '@/lib/money';
 import { newIdempotencyKey } from '@/lib/uuid';
-import { lastRate, store, update } from '@/routes/purchases';
+import * as purchaseRoutes from '@/routes/purchases';
+import * as saleRoutes from '@/routes/sales';
 
 type Option = { id: number; name: string };
 type AccountOption = Option & { type: 'cash' | 'bank' };
 
-type PurchaseForm = {
+type EntryFormData = {
     idempotency_key: string;
     date: string;
     party_id: number | null;
@@ -41,7 +42,7 @@ type PurchaseForm = {
     slip_photo: File | null;
     our_weight_kg: string;
     note: string;
-    paid_now: {
+    money_now: {
         amount: string;
         money_account_id: string;
         reference_no: string;
@@ -49,8 +50,8 @@ type PurchaseForm = {
     };
 };
 
-/** The saved values of a purchase being edited (BR-PUR-11). */
-export type EditedPurchase = {
+/** The saved values of a purchase or sale being edited (BR-PUR-11). */
+export type EditedEntry = {
     id: number;
     voucher_no: string;
     version: string;
@@ -64,38 +65,66 @@ export type EditedPurchase = {
     note: string | null;
 };
 
-export type PurchaseFormProps = {
+export type EntryFormProps = {
     today: string;
     party: PartyOption | null;
     items: Option[];
     money_accounts: AccountOption[];
     plant_has_scale: boolean;
-    purchase?: EditedPurchase;
+    entry?: EditedEntry;
 };
 
+export type EntryKind = 'purchase' | 'sale';
+
+/** What differs between the purchase form (spec §11.4) and the sale form (§11.5). */
+const KINDS = {
+    purchase: {
+        newTitle: 'New purchase',
+        partyLabel: 'Supplier',
+        partyType: 'supplier',
+        selectParty: 'Select supplier',
+        moneyLabel: 'Paid now',
+        moneyKey: 'paid_now',
+        ourWeightLabel: 'Our weight (kg)',
+    },
+    sale: {
+        newTitle: 'New sale',
+        partyLabel: 'Buyer',
+        partyType: 'buyer',
+        selectParty: 'Select buyer',
+        moneyLabel: 'Received now',
+        moneyKey: 'received_now',
+        ourWeightLabel: 'Weight that left the plant (kg)',
+    },
+} as const;
+
 /**
- * Pages 4 and its edit page (spec §11.4), mobile-first: fields in the order of the
- * spec. Editing has no "Paid now", no photo and no "Save and add another"; it sends
- * `version` so a second editor is refused (BR-GEN-09).
+ * Pages 4 and 7 and their edit pages (spec §11.4, §11.5), mobile-first: fields in the
+ * order of the spec. Editing has no "Paid now" / "Received now", no photo and no
+ * "Save and add another"; it sends `version` so a second editor is refused (BR-GEN-09).
  */
-export function PurchaseForm({
+export function EntryForm({
+    kind,
     today,
     party,
     items,
     money_accounts,
     plant_has_scale,
-    purchase,
-}: PurchaseFormProps) {
+    entry,
+}: EntryFormProps & { kind: EntryKind }) {
+    const config = KINDS[kind];
+    const routes = kind === 'purchase' ? purchaseRoutes : saleRoutes;
+    const purchase = entry;
     const formats = useFormats();
-    const [supplier, setSupplier] = useState<PartyOption | null>(party);
+    const [partyPicked, setPartyPicked] = useState<PartyOption | null>(party);
     const [handledBy, setHandledBy] = useState<PartyOption | null>(null);
-    const [paidNow, setPaidNow] = useState(false);
+    const [moneyNow, setMoneyNow] = useState(false);
     const [photoKey, setPhotoKey] = useState(0);
     const addAnother = useRef(false);
     const [conflict, setConflict] = useState<string | null>(null);
     const editing = purchase !== undefined;
 
-    const blank = (): PurchaseForm => ({
+    const blank = (): EntryFormData => ({
         idempotency_key: newIdempotencyKey(), // BR-GEN-11: one key per opened form
         date: purchase?.date ?? today,
         party_id: purchase?.party_id ?? party?.id ?? null,
@@ -110,7 +139,7 @@ export function PurchaseForm({
         slip_photo: null,
         our_weight_kg: purchase?.our_weight_kg ?? '',
         note: purchase?.note ?? '',
-        paid_now: {
+        money_now: {
             amount: '',
             money_account_id:
                 money_accounts.length === 1 ? String(money_accounts[0].id) : '',
@@ -119,7 +148,7 @@ export function PurchaseForm({
         },
     });
 
-    const form = useForm<PurchaseForm>(blank());
+    const form = useForm<EntryFormData>(blank());
     const { data, setData } = form;
     const errors = form.errors as Record<string, string | undefined>;
     const total = previewAmount(data.kg, data.rate, formats.amountRounding);
@@ -128,7 +157,7 @@ export function PurchaseForm({
         if (purchase) {
             form.transform((fields) => {
                 const {
-                    paid_now: _paid,
+                    money_now: _money,
                     slip_photo: _photo,
                     idempotency_key: _key,
                     ...rest
@@ -140,7 +169,7 @@ export function PurchaseForm({
                     confirmed_warnings: confirmed,
                 };
             });
-            form.put(update.url(purchase.id), {
+            form.put(routes.update.url(purchase.id), {
                 onHttpException: (response) => {
                     if (response.status === 409) {
                         // BR-GEN-09: someone else saved this entry first.
@@ -161,26 +190,26 @@ export function PurchaseForm({
         }
 
         form.transform((fields) => {
-            const { paid_now, slip_photo, ...rest } = fields;
+            const { money_now, slip_photo, ...rest } = fields;
 
             return {
                 ...rest,
-                ...(paidNow ? { paid_now } : {}),
+                ...(moneyNow ? { [config.moneyKey]: money_now } : {}),
                 ...(slip_photo ? { slip_photo } : {}),
                 add_another: addAnother.current,
                 confirmed_warnings: confirmed,
             };
         });
-        form.post(store.url(), {
+        form.post(routes.store.url(), {
             onHttpException,
             onSuccess: () => {
                 if (addAnother.current) {
                     // "Save and add another": a fresh form with a new key.
                     form.setDefaults(blank());
                     form.reset();
-                    setSupplier(null);
+                    setPartyPicked(null);
                     setHandledBy(null);
-                    setPaidNow(false);
+                    setMoneyNow(false);
                     setPhotoKey((key) => key + 1);
                     warnings.reset();
                 }
@@ -196,7 +225,9 @@ export function PurchaseForm({
     return (
         <>
             <Head
-                title={editing ? `Edit ${purchase.voucher_no}` : 'New purchase'}
+                title={
+                    editing ? `Edit ${purchase.voucher_no}` : config.newTitle
+                }
             />
             <form
                 className="mx-auto flex w-full max-w-xl flex-col gap-5 p-4"
@@ -207,7 +238,9 @@ export function PurchaseForm({
             >
                 <PageHeader
                     title={
-                        editing ? `Edit ${purchase.voucher_no}` : 'New purchase'
+                        editing
+                            ? `Edit ${purchase.voucher_no}`
+                            : config.newTitle
                     }
                 />
 
@@ -233,17 +266,17 @@ export function PurchaseForm({
 
                 <FormField
                     id="party_id"
-                    label="Supplier"
+                    label={config.partyLabel}
                     error={errors.party_id}
                 >
                     <PartyPicker
                         id="party_id"
-                        types={['supplier']}
-                        value={supplier}
-                        placeholder="Select supplier"
+                        types={[config.partyType]}
+                        value={partyPicked}
+                        placeholder={config.selectParty}
                         invalid={!!errors.party_id}
                         onChange={(party) => {
-                            setSupplier(party);
+                            setPartyPicked(party);
                             setData('party_id', party?.id ?? null);
                         }}
                     />
@@ -291,7 +324,7 @@ export function PurchaseForm({
                 <LastRateHint
                     url={
                         data.party_id && data.item_id
-                            ? lastRate.url({
+                            ? routes.lastRate.url({
                                   query: {
                                       party_id: data.party_id,
                                       item_id: data.item_id,
@@ -358,7 +391,7 @@ export function PurchaseForm({
                 {plant_has_scale && (
                     <FormField
                         id="our_weight_kg"
-                        label="Our weight (kg)"
+                        label={config.ourWeightLabel}
                         error={errors.our_weight_kg}
                     >
                         <DecimalInput
@@ -386,31 +419,31 @@ export function PurchaseForm({
                     <div className="flex items-center gap-3 rounded-md border px-4 py-3">
                         <Checkbox
                             id="paid_now_on"
-                            checked={paidNow}
+                            checked={moneyNow}
                             onCheckedChange={(checked) =>
-                                setPaidNow(checked === true)
+                                setMoneyNow(checked === true)
                             }
                             className="size-5"
                         />
                         <Label htmlFor="paid_now_on" className="text-base">
-                            Paid now
+                            {config.moneyLabel}
                         </Label>
                     </div>
                 )}
 
-                {!editing && paidNow && (
+                {!editing && moneyNow && (
                     <div className="grid gap-4 rounded-md border p-4">
                         <FormField
                             id="paid_amount"
                             label="Amount"
-                            error={errors['paid_now.amount']}
+                            error={errors[`${config.moneyKey}.amount`]}
                         >
                             <DecimalInput
                                 id="paid_amount"
-                                value={data.paid_now.amount}
+                                value={data.money_now.amount}
                                 onChange={(value) =>
-                                    setData('paid_now', {
-                                        ...data.paid_now,
+                                    setData('money_now', {
+                                        ...data.money_now,
                                         amount: value,
                                     })
                                 }
@@ -419,13 +452,15 @@ export function PurchaseForm({
                         <FormField
                             id="paid_account"
                             label="Account"
-                            error={errors['paid_now.money_account_id']}
+                            error={
+                                errors[`${config.moneyKey}.money_account_id`]
+                            }
                         >
                             <Select
-                                value={data.paid_now.money_account_id}
+                                value={data.money_now.money_account_id}
                                 onValueChange={(value) =>
-                                    setData('paid_now', {
-                                        ...data.paid_now,
+                                    setData('money_now', {
+                                        ...data.money_now,
                                         money_account_id: value,
                                     })
                                 }
@@ -451,16 +486,16 @@ export function PurchaseForm({
                         <FormField
                             id="paid_reference"
                             label="Reference number"
-                            error={errors['paid_now.reference_no']}
+                            error={errors[`${config.moneyKey}.reference_no`]}
                         >
                             <Input
                                 id="paid_reference"
                                 className="h-11"
                                 maxLength={100}
-                                value={data.paid_now.reference_no}
+                                value={data.money_now.reference_no}
                                 onChange={(event) =>
-                                    setData('paid_now', {
-                                        ...data.paid_now,
+                                    setData('money_now', {
+                                        ...data.money_now,
                                         reference_no: event.target.value,
                                     })
                                 }
@@ -469,7 +504,9 @@ export function PurchaseForm({
                         <FormField
                             id="paid_handled_by"
                             label="Handled by"
-                            error={errors['paid_now.handled_by_party_id']}
+                            error={
+                                errors[`${config.moneyKey}.handled_by_party_id`]
+                            }
                         >
                             <PartyPicker
                                 id="paid_handled_by"
@@ -478,8 +515,8 @@ export function PurchaseForm({
                                 placeholder="Select employee"
                                 onChange={(party) => {
                                     setHandledBy(party);
-                                    setData('paid_now', {
-                                        ...data.paid_now,
+                                    setData('money_now', {
+                                        ...data.money_now,
                                         handled_by_party_id: party?.id ?? null,
                                     });
                                 }}

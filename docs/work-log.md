@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.3 |
-| Next task | T3.4 Sales (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.4 |
+| Next task | T3.5 Payments and receipts backend (T2.10 client review is yours) |
 
 ---
 
@@ -623,3 +623,19 @@ Choices and questions:
 - Messages not in the glossary: "Weight slip number is required.", "Slip photo is required.", "Our weight is not used: the plant has no scale."; hint "Last rate: …" is from spec §11.4.
 - Tests: the card's seven (last rate 52.00 after AT-1 #10; 70 vs 50 warns, confirmed saves and logs; 60 vs 50 silent; last 5 only; duplicate; slip number required; our weight refused) plus "lower", add-rate warning, slip photo required, `null` when there is no last rate.
 - Checks: build, `npm test`, check, types, Pint, Larastan, guard pass; **324 PHP tests pass**.
+
+### T3.4 Sales
+
+Built as the card lists: table `sales` (same shape as purchases; `payments.sale_id` now has its foreign key), model `Sale`, PR-04 and PR-05, `CreateSale`, `AddSaleRate`, `UpdateSale`, `CancelSale` mirroring the purchase Actions with a buyer and a product item (BR-SAL-01), kg as the buyer's weight (BR-SAL-05), "Received now" as a received payment with voucher RCV that never needs approval (BR-SAL-07), the credit-limit warning (BR-SAL-06), and the purchase rules for sales (last rate, unusual rate over all buyers, duplicate, slip rules, rate pending, edit, cancel, closed months, idempotency key). Pages 6, 7 (mobile-first) and 8, "New sale" in the phone bottom bar and on buyer profiles, sales on the rate-pending page with a type filter, sales in `Item::hasEntries()`, `Party::hasEntries()`, pending kg and the khata.
+
+How it is built (to keep the two sides in step):
+- The purchase form is now `components/app/EntryForm.tsx` with a `kind` of purchase or sale; only labels, party type, item list, routes and "Paid now" / "Received now" differ.
+- The Sale Actions, `SaleInput`, `SaleController` and its requests were made from the purchase ones and then changed where sales differ; the shared rules sit in `EntryChecks`, `EntryWarnings` and `RecordPayment`.
+- `PostingRules` has one private helper for payment and receipt journals; PR-02 and PR-05 use it, and T3.5 adds the rest.
+
+Choices and questions:
+- **The credit-limit check counts money received with the sale.** "Balance after this sale" = what the buyer owes now + sale amount − "received now". Without that, a sale paid in full on the spot would still warn. On an edit it uses the change in amount; on "Add rate" the new amount.
+- **Rate history and corrections share one `rate_changes` table** (spec §9.5); the model stays in the Purchases module and is used for both.
+- Messages not in the glossary: "Select an active buyer.", "Select an active product.". The credit-limit text is glossary §4.
+- Tests: the card's seven (AT-1 #5 exact journal; AT-1 #6 with RCV-000001 and "Settled"; supplier refused; Waste refused; credit limit 50,000 vs 63,000 warns, confirmed saves; received now never needs approval for the accountant; T-05/T-06 for sales; T-18 double submit) plus a cancelled sale's receipt left as an advance and pages 6, 7, 8 and the rate-pending filter.
+- Checks: build, check, types, Pint, Larastan, guard pass; **335 PHP tests pass**.

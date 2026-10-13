@@ -9,6 +9,7 @@ use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Sales\Models\Sale;
 use App\Support\NumberFormat;
 
 /**
@@ -61,6 +62,12 @@ final class EntrySources
                     'voucher' => $p->voucher_no,
                     'description' => self::entryText($p->item->name, $p->kg, $p->rate_status === RateStatus::Fixed ? $p->rate : null),
                     'route' => route('purchases.show', $p->id, false),
+                ]])->all(),
+            'sale' => Sale::query()->with('item')->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (Sale $s) => [$s->id => [
+                    'voucher' => $s->voucher_no,
+                    'description' => self::entryText($s->item->name, $s->kg, $s->rate_status === RateStatus::Fixed ? $s->rate : null),
+                    'route' => route('sales.show', $s->id, false),
                 ]])->all(),
             'payment' => Payment::query()->with('moneyAccount')->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (Payment $p) => [$p->id => [

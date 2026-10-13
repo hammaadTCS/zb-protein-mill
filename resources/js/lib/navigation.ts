@@ -11,6 +11,7 @@ import {
     Landmark,
     LayoutGrid,
     Package,
+    Receipt,
     ShoppingCart,
     Users,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
 import { index as ratePending } from '@/routes/rate-pending';
+import { create as newSale, index as sales } from '@/routes/sales';
 import { trialBalance } from '@/routes/reports';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
 
@@ -66,6 +68,14 @@ export const navigation: NavEntry[] = [
         permission: 'purchase.view',
         mobileFirst: false,
         icon: ShoppingCart,
+    },
+    {
+        group: 'Daily entries',
+        label: 'Sales',
+        href: sales(),
+        permission: 'sale.view',
+        mobileFirst: false,
+        icon: Receipt,
     },
     {
         group: 'People',
@@ -129,6 +139,14 @@ export const bottomBar: NavEntry[] = [
         permission: 'purchase.create',
         mobileFirst: true,
         icon: ShoppingCart,
+    },
+    {
+        group: 'Daily entries',
+        label: 'New sale',
+        href: newSale(),
+        permission: 'sale.create',
+        mobileFirst: true,
+        icon: Receipt,
     },
 ];
 

@@ -9,6 +9,7 @@ use App\Domain\Parties\Models\Party;
 use App\Domain\Payments\Enums\ApprovalStatus;
 use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Sales\Models\Sale;
 use App\Models\User;
 use App\Support\EntryStatus;
 use App\Support\NeverDeleted;
@@ -54,6 +55,7 @@ use Illuminate\Support\Carbon;
  * @property-read MoneyAccount $moneyAccount
  * @property-read Party|null $handledBy
  * @property-read Purchase|null $purchase
+ * @property-read Sale|null $sale
  */
 #[Fillable([
     'company_id', 'voucher_no', 'entry_date', 'direction', 'party_id', 'amount', 'money_account_id',
@@ -101,6 +103,14 @@ class Payment extends Model
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
+    }
+
+    /**
+     * @return BelongsTo<Sale, $this>
+     */
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     /**

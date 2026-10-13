@@ -10,6 +10,7 @@ use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Sales\Models\Sale;
 use InvalidArgumentException;
 use LogicException;
 
@@ -52,16 +53,7 @@ final class PostingRules
      */
     public static function pr02PaymentToSupplier(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        return new PostingRequest(
-            postingDate: $postingDate ?? $payment->entry_date,
-            sourceType: 'payment',
-            sourceId: $payment->id,
-            description: "Payment {$payment->voucher_no}",
-            lines: [
-                PostingLine::debit('2000', $payment->amount, $payment->party_id),
-                PostingLine::credit($payment->moneyAccount->ledger_account_id, $payment->amount),
-            ],
-        );
+        return self::payment($payment, $postingDate, debit: '2000', credit: $payment->moneyAccount->ledger_account_id);
     }
 
     /**
@@ -79,9 +71,20 @@ final class PostingRules
      * Debit: 1200 Buyers (P).
      * Credit: Item sales account (I).
      */
-    public static function pr04SaleFixedRate(): PostingRequest
+    public static function pr04SaleFixedRate(Sale $sale, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-04');
+        $amount = $sale->amount ?? throw new InvalidArgumentException('PR-04 needs a fixed rate.');
+
+        return new PostingRequest(
+            postingDate: $postingDate ?? $sale->entry_date, // BR-LED-07, BR-LED-08
+            sourceType: 'sale',
+            sourceId: $sale->id,
+            description: "Sale {$sale->voucher_no}",
+            lines: [
+                PostingLine::debit('1200', $amount, $sale->party_id),
+                PostingLine::credit($sale->item->ledgerAccountId(), $amount, itemId: $sale->item_id),
+            ],
+        );
     }
 
     /**
@@ -89,9 +92,9 @@ final class PostingRules
      * Debit: M.
      * Credit: 1200 Buyers (P).
      */
-    public static function pr05ReceiptFromBuyer(): PostingRequest
+    public static function pr05ReceiptFromBuyer(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-05');
+        return self::payment($payment, $postingDate, debit: $payment->moneyAccount->ledger_account_id, credit: '1200');
     }
 
     /**
@@ -373,6 +376,26 @@ final class PostingRules
             sourceId: $opening->id,
             description: "Opening balance {$opening->voucher_no}",
             lines: $lines,
+        );
+    }
+
+    /**
+     * A payment or receipt between a money account (given by ledger account id) and a
+     * party control account (given by code); the party goes on the control line.
+     */
+    private static function payment(Payment $payment, ?string $postingDate, string|int $debit, string|int $credit): PostingRequest
+    {
+        $label = $payment->direction->value === 'paid' ? 'Payment' : 'Receipt';
+
+        return new PostingRequest(
+            postingDate: $postingDate ?? $payment->entry_date,
+            sourceType: 'payment',
+            sourceId: $payment->id,
+            description: "{$label} {$payment->voucher_no}",
+            lines: [
+                PostingLine::debit($debit, $payment->amount, is_string($debit) ? $payment->party_id : null),
+                PostingLine::credit($credit, $payment->amount, is_string($credit) ? $payment->party_id : null),
+            ],
         );
     }
 }

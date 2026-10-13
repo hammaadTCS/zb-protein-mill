@@ -10,6 +10,7 @@ use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Parties\PartyBalance;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Sales\Models\Sale;
 use App\Support\Decimal;
 use Illuminate\Database\Query\Builder;
 
@@ -86,7 +87,8 @@ final class PartyKhata
      */
     private static function withPendingRows(Party $party, array $rows, ?string $from, ?string $to, PartyBalance $opening): array
     {
-        $pending = Purchase::query()
+        $model = $party->type === PartyType::Buyer ? Sale::class : Purchase::class;
+        $pending = $model::query()
             ->with('item')
             ->where('party_id', $party->id)
             ->where('status', 'active')
@@ -117,7 +119,7 @@ final class PartyKhata
                 increase: null,
                 decrease: null,
                 balance: $before ?? $opening,
-                route: route('purchases.show', $purchase->id, false),
+                route: route($model === Sale::class ? 'sales.show' : 'purchases.show', $purchase->id, false),
                 pendingKg: $purchase->kg,
             )]);
         }

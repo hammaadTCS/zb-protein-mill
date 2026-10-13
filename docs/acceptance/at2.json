@@ -1,0 +1,64 @@
+{
+  "id": "AT-2",
+  "title": "One day with oil, agreed adjustment and unpaid transport",
+  "spec": "§17.3",
+  "today": "2026-01-31",
+  "money_accounts": [
+    { "key": "cash", "name": "Cash", "type": "cash" },
+    { "key": "hbl", "name": "HBL", "type": "bank", "bank_name": "HBL" }
+  ],
+  "parties": [
+    { "key": "aslam", "type": "supplier", "name": "Aslam", "mobile": "03000000001", "area": "Sadar" },
+    { "key": "karim", "type": "supplier", "name": "Karim", "mobile": "03000000002", "area": "Mandian" },
+    { "key": "bashir", "type": "supplier", "name": "Bashir", "mobile": "03000000003", "area": "Havelian" },
+    { "key": "abc", "type": "buyer", "name": "ABC Feeds", "mobile": "03000000004", "area": "Hattar" },
+    { "key": "rehman_traders", "type": "buyer", "name": "Rehman Traders", "mobile": "03000000008", "area": "Haripur" },
+    { "key": "transporter", "type": "other", "name": "Test Transporter", "mobile": "03000000009", "area": "Abbottabad" }
+  ],
+  "opening_balances": [
+    { "money_account": "cash", "amount": "80000.00" },
+    { "money_account": "hbl", "amount": "300000.00" }
+  ],
+  "entries": [
+    { "no": 1, "type": "purchase", "date": "2026-01-05", "party": "aslam", "item": "Waste", "kg": "800", "rate": "50", "paid_now": { "amount": "40000", "money_account": "cash" } },
+    { "no": 2, "type": "purchase", "date": "2026-01-05", "party": "karim", "item": "Waste", "kg": "600", "rate": "48", "paid_now": { "amount": "10000", "money_account": "cash" } },
+    { "no": 3, "type": "payment", "direction": "paid", "date": "2026-01-05", "party": "bashir", "amount": "20000", "money_account": "hbl", "reference_no": "AT2-REF-03" },
+    { "no": 4, "type": "purchase", "date": "2026-01-05", "party": "karim", "item": "Waste", "kg": "400", "rate": null },
+    { "no": 5, "ref": "s5", "type": "sale", "date": "2026-01-05", "party": "abc", "item": "Protein product", "kg": "300", "rate": "210" },
+    { "no": 6, "type": "sale", "date": "2026-01-05", "party": "rehman_traders", "item": "Oil/Fat", "kg": "100", "rate": "300", "received_now": { "amount": "30000", "money_account": "hbl", "reference_no": "AT2-REF-06" } },
+    { "no": 7, "type": "adjustment", "date": "2026-01-05", "target": "s5", "amount": "2000", "reason": "quality", "note": "Moisture, agreed with buyer" },
+    { "no": 8, "type": "expense", "date": "2026-01-05", "category": "Transport/Freight", "amount": "4000", "payment_mode": "unpaid", "party": "transporter", "linked_sale": "s5", "note": "Transport to ABC Feeds" },
+    { "no": 9, "type": "expense", "date": "2026-01-05", "category": "Wages", "amount": "8000", "payment_mode": "paid", "money_account": "cash", "note": "Daily wages" }
+  ],
+  "expected": {
+    "money_accounts": { "cash": "22000.00", "hbl": "310000.00" },
+    "parties": {
+      "aslam": { "words": "Settled", "amount": "0.00", "pending_kg": "0.000" },
+      "karim": { "words": "We owe", "amount": "18800.00", "pending_kg": "400.000" },
+      "bashir": { "words": "Advance", "amount": "20000.00", "pending_kg": "0.000" },
+      "abc": { "words": "Owes us", "amount": "61000.00", "pending_kg": "0.000" },
+      "rehman_traders": { "words": "Settled", "amount": "0.00", "pending_kg": "0.000" },
+      "transporter": { "words": "We owe", "amount": "4000.00", "pending_kg": "0.000" }
+    },
+    "ledger_accounts": {
+      "money:cash": { "side": "debit", "amount": "22000.00" },
+      "money:hbl": { "side": "debit", "amount": "310000.00" },
+      "1200": { "side": "debit", "amount": "61000.00" },
+      "2000": { "side": "debit", "amount": "1200.00" },
+      "2100": { "side": "credit", "amount": "4000.00" },
+      "3900": { "side": "credit", "amount": "380000.00" },
+      "4000": { "side": "credit", "amount": "63000.00" },
+      "4010": { "side": "credit", "amount": "30000.00" },
+      "4900": { "side": "debit", "amount": "2000.00" },
+      "5000": { "side": "debit", "amount": "68800.00" },
+      "category:Transport/Freight": { "side": "debit", "amount": "4000.00" },
+      "category:Wages": { "side": "debit", "amount": "8000.00" }
+    },
+    "trial_balance": {
+      "account_level": { "debit": "477000.00", "credit": "477000.00" },
+      "with_parties": { "debit": "495800.00", "credit": "495800.00" }
+    },
+    "income_vs_spending": { "from": "2026-01-01", "to": "2026-01-31", "income": "91000.00", "spending": "80800.00", "result": "10200.00", "pending_kg": "400.000" },
+    "kg": { "Waste_bought": "1800.000", "Wood_bought": "0.000", "Protein product_sold": "300.000", "Oil/Fat_sold": "100.000" }
+  }
+}

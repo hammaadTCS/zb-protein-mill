@@ -1,0 +1,32 @@
+# ZB Mill server provisioning settings. Copy to the server as /root/zb-server.conf, fill in, then:
+#   sudo bash infra/provision/setup.sh /root/zb-server.conf
+# This file holds no secrets. Delete it after provisioning if you like; /etc/zb-mill/zb-mill.conf
+# keeps everything the server needs.
+
+# production or staging
+ENV_NAME=production
+
+# The address people will open (O-30). Its DNS A record (and AAAA if the server has IPv6) must
+# already point to this server, or the certificate step fails.
+DOMAIN=accounts.example.com
+
+# E-mail for Let's Encrypt expiry notices (O-33 recipient).
+LETSENCRYPT_EMAIL=you@example.com
+
+# Your login on the server. The only account that can log in over SSH.
+ADMIN_USER=zbadmin
+# Your PUBLIC key (one line, from ~/.ssh/id_ed25519.pub on YOUR computer). Never a private key.
+ADMIN_SSH_PUBLIC_KEY="ssh-ed25519 AAAA...replace-me... you@laptop"
+
+# Fixed by docs/stack-baseline.md (Ubuntu 26.04). Change only together with that file.
+PHP_VERSION=8.5
+PG_VERSION=18
+
+# 2 GB swap protects PostgreSQL from being killed if memory runs out. 0 = no swap file.
+SWAP_SIZE_GB=2
+
+# Off-site backup destination as rclone sees it (O-32): <remote name>:<bucket name>
+RCLONE_REMOTE=offsite:replace-with-bucket-name
+
+# Hour (UTC) of the daily backup copy. 21 = 02:00 Pakistan time.
+BACKUP_DAILY_HOUR_UTC=21

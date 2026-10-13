@@ -1,0 +1,19 @@
+# Hourly encrypted database backup (BR-OPS-01). Also started by zb-deploy-release before migrating.
+[Unit]
+Description=ZB Mill – encrypted database backup to off-site storage
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=zbbackup
+Group=zbbackup
+SupplementaryGroups=zbmill
+ExecStart=/usr/local/sbin/zb-backup-db
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=full
+TimeoutStartSec=30min

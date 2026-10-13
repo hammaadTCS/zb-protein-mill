@@ -1,0 +1,6 @@
+// ZB Mill: automatic security updates (BR-SEC-10). Installed to /etc/apt/apt.conf.d/.
+// Reboot when an update needs it, at 22:30 UTC = 03:30 Pakistan time (outside working hours).
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "22:30";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";

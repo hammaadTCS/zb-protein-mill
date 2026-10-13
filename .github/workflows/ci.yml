@@ -1,0 +1,186 @@
+name: CI
+
+# Claude Code builds each task in a cloud session and opens a pull request; you merge it on GitHub.
+# GitHub Free, private repository: there is no server-side branch protection, so
+#  - "main guard" (push to main only) fails when a commit reached main without a merged pull
+#    request, or a pull request changed protected files without [spec-change];
+#  - the release workflow refuses to build from a commit whose CI run on main is not green.
+# Actions minutes are limited (2,000 a month on GitHub Free), so pull requests test both PHP
+# versions and a push to main tests PHP 8.5 only. Server-script tests live in infra.yml and run
+# only when server files change.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Pull requests: a new push cancels the older run. Pushes to main: every run completes, so the
+# main guard sees every commit (a cancelled run would leave commits unchecked).
+concurrency:
+  group: ci-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Application checks. Runs on PHP 8.3 (cloud sessions and your laptop) and PHP 8.5 (the servers),
+  # against PostgreSQL 18 (the servers). TEST values only below: never real credentials.
+  checks:
+    name: checks (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJSON(github.event_name == 'push' && '["8.5"]' || '["8.3", "8.5"]') }}
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: zb_test
+          POSTGRES_PASSWORD: local_test_only
+          POSTGRES_DB: zb_mill_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: zb_mill_test
+      DB_USERNAME: zb_test
+      DB_PASSWORD: local_test_only
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Only the human may change protected files (title must contain [spec-change]).
+      - name: Protected files check
+        if: github.event_name == 'pull_request' && matrix.php == '8.5'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: bash scripts/check-protected.sh
+
+      - name: Secret scan
+        if: matrix.php == '8.5'
+        run: bash scripts/secret-scan.sh
+
+      # Before task T0.1 there is no Laravel app yet; skip the app steps until it exists.
+      - name: Check for Laravel app
+        id: app
+        run: |
+          if [ -f artisan ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; echo "No Laravel app yet - skipping app checks"; fi
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.app.outputs.exists == 'true'
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, pgsql, bcmath, gmp, intl, mbstring, gd, zip
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v7
+        if: steps.app.outputs.exists == 'true'
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        if: steps.app.outputs.exists == 'true'
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Known-vulnerable PHP packages
+        if: steps.app.outputs.exists == 'true'
+        run: composer audit --locked
+
+      - name: Install JS dependencies
+        if: steps.app.outputs.exists == 'true'
+        run: npm ci
+
+      - name: Known-vulnerable JS packages (shipped code only)
+        if: steps.app.outputs.exists == 'true'
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Build frontend
+        if: steps.app.outputs.exists == 'true'
+        run: npm run build
+
+      - name: Prepare app
+        if: steps.app.outputs.exists == 'true'
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: PHP code style (Pint)
+        if: steps.app.outputs.exists == 'true'
+        run: vendor/bin/pint --test
+
+      - name: Project guard (from T0.3)
+        if: steps.app.outputs.exists == 'true' && hashFiles('tests/Arch/ArchitectureTest.php') != ''
+        run: bash scripts/guard.sh
+
+      - name: Static analysis (Larastan)
+        if: steps.app.outputs.exists == 'true'
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: Frontend lint and format (vite-plus)
+        if: steps.app.outputs.exists == 'true'
+        run: npm run check
+
+      - name: TypeScript
+        if: steps.app.outputs.exists == 'true'
+        run: npm run types:check
+
+      - name: Frontend unit tests (from task T2.1)
+        if: steps.app.outputs.exists == 'true'
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then npm test; else echo "No test script yet (added in T2.1)"; fi
+
+      - name: Tests (PostgreSQL)
+        if: steps.app.outputs.exists == 'true'
+        run: php artisan test
+
+      # From task T1.11: real migrations run as the owner role, then the production grants are
+      # applied and the web role is proven unable to change structure or delete business rows.
+      - name: Database privilege check (from T1.11)
+        if: steps.app.outputs.exists == 'true' && matrix.php == '8.5' && hashFiles('config/database.php') != ''
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: zb_test
+          PGPASSWORD: local_test_only
+        run: |
+          if grep -q "pgsql_migrator" config/database.php; then
+            bash infra/tests/ci-db-privileges.sh
+          else
+            echo "pgsql_migrator connection not added yet (task T1.11)"
+          fi
+
+  # Every push to main: each new commit must come from a merged pull request, and protected
+  # files may change only through a [spec-change] pull request (scripts/check-main-push.sh).
+  main-guard:
+    name: main guard
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Every new commit on main came through a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: bash scripts/check-main-push.sh

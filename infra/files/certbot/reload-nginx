@@ -1,0 +1,4 @@
+#!/bin/sh
+# Certbot deploy hook: reload nginx after a certificate renewal.
+# Installed to /etc/letsencrypt/renewal-hooks/deploy/reload-nginx (mode 0755).
+systemctl reload nginx

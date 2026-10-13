@@ -1,0 +1,75 @@
+{
+  "permissions": {
+    "defaultMode": "plan",
+    "allow": [
+      "Bash(php artisan test *)",
+      "Bash(php artisan migrate *)",
+      "Bash(php artisan wayfinder:generate *)",
+      "Bash(php artisan route:list *)",
+      "Bash(vendor/bin/pint *)",
+      "Bash(vendor/bin/phpstan *)",
+      "Bash(vendor/bin/pest *)",
+      "Bash(composer install *)",
+      "Bash(composer dump-autoload *)",
+      "Bash(npm ci)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(bash scripts/check-all.sh)",
+      "Bash(bash scripts/guard.sh)",
+      "Bash(bash scripts/secret-scan.sh)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout -b *)",
+      "Bash(git switch -c *)"
+    ],
+    "ask": [
+      "Bash(composer require *)",
+      "Bash(composer update *)",
+      "Bash(npm install *)",
+      "Bash(git reset *)",
+      "Bash(git rebase *)"
+    ],
+    "deny": [
+      "Bash(git push origin main *)",
+      "Bash(git push origin master *)",
+      "Bash(git push --tags *)",
+      "Bash(git tag *)",
+      "Bash(sudo *)",
+      "Bash(gh release *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh workflow *)",
+      "Read(./.env.production)",
+      "Read(./**/.env.production)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/cloud-session-start.sh",
+            "timeout": 900
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect_files.py"
+          }
+        ]
+      }
+    ]
+  }
+}

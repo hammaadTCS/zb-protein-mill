@@ -1,0 +1,101 @@
+{
+  "id": "AT-1",
+  "title": "Two days of trading",
+  "spec": "§17.2",
+  "today": "2026-01-31",
+  "money_accounts": [
+    { "key": "cash", "name": "Cash", "type": "cash" },
+    { "key": "hbl", "name": "HBL", "type": "bank", "bank_name": "HBL" }
+  ],
+  "parties": [
+    { "key": "aslam", "type": "supplier", "name": "Aslam", "mobile": "03000000001", "area": "Sadar" },
+    { "key": "karim", "type": "supplier", "name": "Karim", "mobile": "03000000002", "area": "Mandian" },
+    { "key": "bashir", "type": "supplier", "name": "Bashir", "mobile": "03000000003", "area": "Havelian" },
+    { "key": "abc", "type": "buyer", "name": "ABC Feeds", "mobile": "03000000004", "area": "Hattar" },
+    { "key": "rehman", "type": "buyer", "name": "Rehman Feeds", "mobile": "03000000005", "area": "Haripur" },
+    { "key": "ali", "type": "partner", "name": "Ali", "mobile": "03000000006" },
+    { "key": "usman", "type": "partner", "name": "Usman", "mobile": "03000000007" }
+  ],
+  "opening_balances": [
+    { "money_account": "cash", "amount": "80000.00" },
+    { "money_account": "hbl", "amount": "300000.00" },
+    { "party": "ali", "side": "capital", "amount": "200000.00" },
+    { "party": "usman", "side": "capital", "amount": "180000.00" }
+  ],
+  "entries": [
+    { "no": 1, "type": "purchase", "date": "2026-01-05", "party": "aslam", "item": "Waste", "kg": "800", "rate": "50", "paid_now": { "amount": "40000", "money_account": "cash" } },
+    { "no": 2, "type": "purchase", "date": "2026-01-05", "party": "karim", "item": "Waste", "kg": "600", "rate": "48", "paid_now": { "amount": "10000", "money_account": "cash" } },
+    { "no": 3, "type": "payment", "direction": "paid", "date": "2026-01-05", "party": "bashir", "amount": "20000", "money_account": "hbl", "reference_no": "AT1-REF-03" },
+    { "no": 4, "ref": "e4", "type": "purchase", "date": "2026-01-05", "party": "karim", "item": "Waste", "kg": "400", "rate": null },
+    { "no": 5, "type": "sale", "date": "2026-01-05", "party": "abc", "item": "Protein product", "kg": "300", "rate": "210" },
+    { "no": 6, "type": "sale", "date": "2026-01-05", "party": "rehman", "item": "Protein product", "kg": "200", "rate": "205", "received_now": { "amount": "41000", "money_account": "hbl", "reference_no": "AT1-REF-06" } },
+    { "no": 7, "type": "expense", "date": "2026-01-05", "category": "Wages", "amount": "8000", "payment_mode": "paid", "money_account": "cash", "note": "Daily wages, 8 labourers" },
+    { "no": 8, "type": "expense", "date": "2026-01-05", "category": "Food", "amount": "2500", "payment_mode": "paid", "money_account": "cash", "note": "Lunch for staff and labourers" },
+    { "no": 9, "type": "expense", "date": "2026-01-05", "category": "Tea", "amount": "600", "payment_mode": "paid", "money_account": "cash", "note": "Tea" },
+    { "no": 10, "type": "purchase", "date": "2026-01-06", "party": "aslam", "item": "Waste", "kg": "1000", "rate": "52" },
+    { "no": 11, "type": "purchase", "date": "2026-01-06", "party": "bashir", "item": "Wood", "kg": "3000", "rate": "9" },
+    { "no": 12, "type": "add_rate", "date": "2026-01-06", "target": "e4", "rate": "49" },
+    { "no": 13, "type": "payment", "direction": "received", "date": "2026-01-06", "party": "abc", "amount": "40000", "money_account": "hbl", "reference_no": "AT1-REF-13" },
+    { "no": 14, "type": "payment", "direction": "received", "date": "2026-01-06", "party": "rehman", "amount": "30000", "money_account": "hbl", "reference_no": "AT1-REF-14" },
+    { "no": 15, "type": "partner", "partner_type": "investment", "date": "2026-01-06", "party": "ali", "amount": "100000", "money_account": "hbl" },
+    { "no": 16, "type": "partner", "partner_type": "withdrawal", "date": "2026-01-06", "party": "usman", "amount": "10000", "money_account": "cash" },
+    { "no": 17, "type": "transfer", "date": "2026-01-06", "from": "hbl", "to": "cash", "amount": "20000", "reference_no": "AT1-REF-17" },
+    { "no": 18, "type": "payment", "direction": "paid", "date": "2026-01-06", "party": "karim", "amount": "38400", "money_account": "hbl", "reference_no": "AT1-REF-18" },
+    { "no": 19, "type": "expense", "date": "2026-01-06", "category": "Electricity", "amount": "15000", "payment_mode": "paid", "money_account": "hbl", "note": "Plant electricity bill" },
+    { "no": 20, "ref": "e20", "type": "expense", "date": "2026-01-06", "category": "Food", "amount": "20000", "payment_mode": "paid", "money_account": "cash", "note": "Lunch" },
+    { "no": "20b", "type": "edit_expense", "target": "e20", "changes": { "amount": "2000" } },
+    { "no": 21, "type": "expense", "date": "2026-01-06", "category": "Vehicle Fuel", "amount": "5000", "payment_mode": "paid", "money_account": "cash", "note": "Vehicle fuel" }
+  ],
+  "expected": {
+    "money_accounts": { "cash": "21900.00", "hbl": "417600.00" },
+    "parties": {
+      "aslam": { "words": "We owe", "amount": "52000.00", "pending_kg": "0.000" },
+      "karim": { "words": "Settled", "amount": "0.00", "pending_kg": "0.000" },
+      "bashir": { "words": "We owe", "amount": "7000.00", "pending_kg": "0.000" },
+      "abc": { "words": "Owes us", "amount": "23000.00", "pending_kg": "0.000" },
+      "rehman": { "words": "Advance", "amount": "30000.00", "pending_kg": "0.000" }
+    },
+    "partners": {
+      "ali": { "invested": "300000.00", "withdrawn": "0.00", "net": "300000.00" },
+      "usman": { "invested": "180000.00", "withdrawn": "10000.00", "net": "170000.00" }
+    },
+    "ledger_accounts": {
+      "money:cash": { "side": "debit", "amount": "21900.00" },
+      "money:hbl": { "side": "debit", "amount": "417600.00" },
+      "1200": { "side": "credit", "amount": "7000.00" },
+      "2000": { "side": "credit", "amount": "59000.00" },
+      "3000": { "side": "credit", "amount": "480000.00" },
+      "3100": { "side": "debit", "amount": "10000.00" },
+      "3900": { "side": "zero", "amount": "0.00" },
+      "4000": { "side": "credit", "amount": "104000.00" },
+      "4010": { "side": "zero", "amount": "0.00" },
+      "5000": { "side": "debit", "amount": "140400.00" },
+      "5010": { "side": "debit", "amount": "27000.00" },
+      "category:Wages": { "side": "debit", "amount": "8000.00" },
+      "category:Electricity": { "side": "debit", "amount": "15000.00" },
+      "category:Food": { "side": "debit", "amount": "4500.00" },
+      "category:Tea": { "side": "debit", "amount": "600.00" },
+      "category:Vehicle Fuel": { "side": "debit", "amount": "5000.00" }
+    },
+    "trial_balance": {
+      "account_level": { "debit": "650000.00", "credit": "650000.00" },
+      "with_parties": { "debit": "673000.00", "credit": "673000.00" }
+    },
+    "income_vs_spending": { "from": "2026-01-01", "to": "2026-01-31", "income": "104000.00", "spending": "200500.00", "result": "-96500.00", "pending_kg": "0.000" },
+    "kg": { "Waste_bought": "2800.000", "Wood_bought": "3000.000", "Protein product_sold": "500.000", "Oil/Fat_sold": "0.000" },
+    "vouchers": {
+      "1": "PUR-000001", "2": "PUR-000002", "4": "PUR-000003", "10": "PUR-000004", "11": "PUR-000005",
+      "1.paid_now": "PAY-000001", "2.paid_now": "PAY-000002", "3": "PAY-000003", "18": "PAY-000004",
+      "6.received_now": "RCV-000001", "13": "RCV-000002", "14": "RCV-000003",
+      "5": "SAL-000001", "6": "SAL-000002"
+    },
+    "audit": [
+      { "entry": "e20", "action": "updated", "old": { "amount": "20000.00" }, "new": { "amount": "2000.00" } }
+    ],
+    "reversal_journals": { "e20": 1 },
+    "rate_changes": [
+      { "entry": "e4", "old_rate": null, "new_rate": "49.0000", "old_amount": null, "new_amount": "19600.00" }
+    ],
+    "insights": { "kg_ratio_protein": "0.1786", "kg_ratio_oil_fat": "0.0000", "kg_ratio_combined": "0.1786", "wood_per_kg_waste": "1.0714", "rough_cost_per_kg_sold": "401.00" }
+  }
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=ZB Mill – daily uploads backup at 21:30 UTC (02:30 Pakistan time)
+
+[Timer]
+OnCalendar=*-*-* 21:30:00 UTC
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

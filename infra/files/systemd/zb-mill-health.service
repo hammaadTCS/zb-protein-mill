@@ -1,0 +1,9 @@
+# Server health checks (BR-OPS-06 to BR-OPS-09).
+[Unit]
+Description=ZB Mill – health check (disk, services, clock, certificate, backups, app)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zb-health-check
+NoNewPrivileges=yes
+PrivateTmp=yes

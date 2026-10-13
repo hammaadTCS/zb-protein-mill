@@ -1,0 +1,19 @@
+# Daily encrypted uploads backup (BR-OPS-01).
+[Unit]
+Description=ZB Mill – encrypted uploads backup to off-site storage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=zbbackup
+Group=zbbackup
+SupplementaryGroups=zbmill
+ExecStart=/usr/local/sbin/zb-backup-files
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=full
+TimeoutStartSec=2h

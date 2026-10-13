@@ -1,0 +1,132 @@
+name: Release
+
+# Builds the deployable archive when YOU push a version tag (for example v1.0.0).
+# Nothing here can reach a server: deploying is a separate, human step (docs/operations/runbook.md).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: zb_test
+          POSTGRES_PASSWORD: local_test_only
+          POSTGRES_DB: zb_mill_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: zb_mill_test
+      DB_USERNAME: zb_test
+      DB_PASSWORD: local_test_only
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tag must be on main
+        run: |
+          git fetch --quiet origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "Tag $GITHUB_REF_NAME is not on main"; exit 1; }
+
+      # GitHub Free has no branch protection for private repositories, so nothing stops a red pull
+      # request from being merged. This gate makes sure a release is only built from a commit whose
+      # CI run on main (the PHP checks for that push, plus the main guard) finished green.
+      - name: CI on main passed for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gate() { # gate <workflow file> <required: yes|no>
+            local result
+            result="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$1/runs?head_sha=$GITHUB_SHA&event=push&branch=main&per_page=1" \
+              --jq '.workflow_runs[0] | if . == null then "none" else "\(.status) \(.conclusion)" end')"
+            case "$result" in
+              "completed success") echo "$1: green for $GITHUB_SHA" ;;
+              none)
+                if [ "$2" = yes ]; then
+                  echo "::error::No $1 run on main for this commit. Tag only the newest commit on main, after its CI run is green."
+                  exit 1
+                fi
+                echo "$1: did not run for this commit (no server files changed)" ;;
+              completed*)
+                echo "::error::$1 on main did not pass for this commit ($result). Do not release it; fix main with a pull request, then tag the new commit."
+                exit 1 ;;
+              *)
+                echo "::error::$1 on main is still running for this commit. Wait until it is green, then re-run this workflow (Actions -> Release -> Re-run all jobs)."
+                exit 1 ;;
+            esac
+          }
+          gate ci.yml yes
+          gate infra.yml no
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, pgsql, bcmath, gmp, intl, mbstring, gd, zip
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Full test suite on the release commit
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+          npm run build
+          cp .env.example .env && php artisan key:generate
+          bash scripts/guard.sh
+          php artisan test
+
+      - name: Build the production archive
+        run: |
+          set -euo pipefail
+          rm -rf vendor public/build node_modules/.vite
+          composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader --classmap-authoritative
+          npm run build
+          rm -f bootstrap/cache/*.php .env
+          printf '%s\n%s\n%s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > RELEASE
+          ITEMS="app artisan bootstrap config database public resources/views routes vendor composer.json composer.lock RELEASE"
+          [ -d lang ] && ITEMS="$ITEMS lang"
+          # shellcheck disable=SC2086
+          tar --create --gzip --file "zb-mill-$GITHUB_REF_NAME.tar.gz" \
+              --exclude='public/hot' --exclude='public/storage' --exclude='*.log' $ITEMS
+          tar --create --gzip --file "zb-mill-infra-$GITHUB_REF_NAME.tar.gz" infra .env.production.example docs/operations
+          sha256sum zb-mill-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Check the archive has no secrets or dev files
+        run: |
+          set -euo pipefail
+          LIST="$(tar -tzf "zb-mill-$GITHUB_REF_NAME.tar.gz")"
+          if grep -qE '(^|/)\.env$|^tests/|^node_modules/|^\.git/|(^|/)\.claude/' <<<"$LIST"; then echo "archive contains files that must not ship"; exit 1; fi
+          grep -q '^public/build/manifest.json$' <<<"$LIST"
+          grep -q '^vendor/autoload.php$' <<<"$LIST"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "zb-mill-$GITHUB_REF_NAME.tar.gz" "zb-mill-infra-$GITHUB_REF_NAME.tar.gz" SHA256SUMS \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Deploy with: sudo zb-deploy-release zb-mill-$GITHUB_REF_NAME.tar.gz --sha256 <hash from SHA256SUMS>. Staging first (spec 18.3)."

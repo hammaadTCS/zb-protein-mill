@@ -1,0 +1,19 @@
+# Laravel scheduler, once a minute (spec 18.1). Runs as the web user.
+[Unit]
+Description=ZB Mill – Laravel scheduler
+After=postgresql.service
+# Nothing to run before the first deploy.
+ConditionPathExists=/srv/zb-mill/current/artisan
+
+[Service]
+Type=oneshot
+User=zbmill
+Group=zbmill
+UMask=0007
+WorkingDirectory=/srv/zb-mill/current
+ExecStart=/usr/bin/php /srv/zb-mill/current/artisan schedule:run --no-interaction
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=full
+TimeoutStartSec=15min

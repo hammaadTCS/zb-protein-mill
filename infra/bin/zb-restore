@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# zb-restore – restore an encrypted backup (BR-OPS-04, BR-OPS-05).
+#
+# Two uses:
+#   1. Monthly restore test on STAGING: restore into a temporary database, check it, drop it.
+#        sudo zb-restore --identity /dev/shm/zb-backup-key.txt --db production-db-20261101T210000Z.dump.age \
+#             --files-dir ./files-2026-11 --verify
+#   2. Disaster recovery on a NEW, empty server:
+#        sudo zb-restore --identity /dev/shm/zb-backup-key.txt --db <latest>.dump.age \
+#             --files-dir ./files-<month> --into-empty-production
+#
+# The private key is never kept on a server. Copy it into /dev/shm (memory, not disk) just for
+# the restore; this script deletes it from there when it finishes (unless --keep-key).
+# Backup files are downloaded beforehand by a person with read access to the storage (runbook).
+set -Eeuo pipefail
+umask 077
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+[ -r "$LIB" ] || LIB=/usr/local/lib/zb-mill/zb-lib.sh
+# shellcheck source=zb-lib.sh
+source "$LIB"
+
+usage() {
+    sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+    cat <<'EOF'
+Options:
+  --identity FILE           age private key file (required)
+  --db FILE                 encrypted database backup (*.dump.age) (required)
+  --files-dir DIR           folder with one month's uploads archives (*-full.tar.age + *-incr.tar.age)
+  --target NAME             database to restore into (default zb_mill_restorecheck)
+  --into-empty-production   restore into the configured production database; it must be empty
+  --verify                  also run "php artisan zb:verify" against the restored database
+  --keep                    keep the restored database and files (default: drop them at the end)
+  --keep-key                do not delete the identity file at the end
+EOF
+}
+
+IDENTITY="" DB_FILE="" FILES_DIR="" TARGET="" INTO_PROD=0 VERIFY=0 KEEP=0 KEEP_KEY=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --identity) IDENTITY="$2"; shift 2 ;;
+        --db) DB_FILE="$2"; shift 2 ;;
+        --files-dir) FILES_DIR="$2"; shift 2 ;;
+        --target) TARGET="$2"; shift 2 ;;
+        --into-empty-production) INTO_PROD=1; shift ;;
+        --verify) VERIFY=1; shift ;;
+        --keep) KEEP=1; shift ;;
+        --keep-key) KEEP_KEY=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage; zb_die "unknown option $1" ;;
+    esac
+done
+
+zb_require_root
+zb_load_config DB_NAME APP_BASE DEPLOY_USER APP_USER
+SQL_DIR="${ZB_SQL_DIR:-/usr/local/lib/zb-mill/postgres}"
+if [ -z "$IDENTITY" ] || [ ! -r "$IDENTITY" ]; then zb_die "--identity file missing"; fi
+if [ -z "$DB_FILE" ] || [ ! -r "$DB_FILE" ]; then zb_die "--db file missing"; fi
+zb_check_age_file "$DB_FILE"
+
+case "$(readlink -f "$IDENTITY")" in
+    /dev/shm/*|/run/*) ;;
+    *) zb_log "WARNING: the key file is on disk. Put it in /dev/shm next time (memory only)." ;;
+esac
+
+if [ "$INTO_PROD" -eq 1 ]; then
+    TARGET="$DB_NAME"
+    KEEP=1
+else
+    TARGET="${TARGET:-zb_mill_restorecheck}"
+    [ "$TARGET" != "$DB_NAME" ] || zb_die "to restore into $DB_NAME use --into-empty-production"
+    case "$TARGET" in zb_mill_restore*) ;; *) zb_die "a test restore target must start with zb_mill_restore" ;; esac
+fi
+
+WORK="$(mktemp -d /var/tmp/zb-restore.XXXXXX)"
+chmod 0711 "$WORK"
+cleanup() {
+    rm -rf "$WORK"
+    if [ "$KEEP_KEY" -eq 0 ]; then
+        shred -u "$IDENTITY" 2>/dev/null || rm -f "$IDENTITY"
+        zb_log "identity file removed"
+    fi
+}
+trap cleanup EXIT
+
+su_psql() { runuser -u postgres -- psql -X -q -v ON_ERROR_STOP=1 "$@"; }
+as_migrator() { runuser -u "$DEPLOY_USER" -- "$@"; }
+
+# 1. Decrypt
+zb_log "decrypting $(basename "$DB_FILE")"
+age --decrypt --identity "$IDENTITY" --output "$WORK/db.dump" "$DB_FILE"
+chmod 0644 "$WORK/db.dump"
+pg_restore --list "$WORK/db.dump" > /dev/null || zb_die "not a valid pg_dump file"
+
+# 2. Target database
+EXISTS="$(su_psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname = '$TARGET'")"
+if [ "$INTO_PROD" -eq 1 ]; then
+    [ "$EXISTS" = 1 ] || zb_die "$TARGET does not exist: run the PostgreSQL provisioning step first"
+    TABLES="$(su_psql -d "$TARGET" -tA -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")"
+    [ "$TABLES" = 0 ] || zb_die "$TARGET is not empty ($TABLES tables). Refusing to overwrite."
+else
+    if [ "$EXISTS" = 1 ]; then
+        zb_log "dropping old test database $TARGET"
+        su_psql -d postgres -c "DROP DATABASE \"$TARGET\" WITH (FORCE)"
+    fi
+    su_psql -d postgres -c "CREATE DATABASE \"$TARGET\" OWNER zb_migrator TEMPLATE template0 ENCODING 'UTF8'"
+    su_psql -d postgres -c "REVOKE ALL ON DATABASE \"$TARGET\" FROM PUBLIC"
+    su_psql -d postgres -c "GRANT CONNECT ON DATABASE \"$TARGET\" TO zb_migrator, zb_app, zb_backup"
+    su_psql -d "$TARGET" -f "$SQL_DIR/20-schema.sql"
+fi
+
+# 3. Restore as the owner role, then the app grants
+zb_log "restoring into $TARGET"
+as_migrator pg_restore --no-owner --no-privileges --exit-on-error --single-transaction \
+    --username=zb_migrator --dbname="$TARGET" "$WORK/db.dump"
+cp "$SQL_DIR/30-app-grants.sql" "$WORK/grants.sql"; chmod 0644 "$WORK/grants.sql"
+as_migrator psql -X -q -v ON_ERROR_STOP=1 --username=zb_migrator --dbname="$TARGET" -f "$WORK/grants.sql"
+
+# 4. Checks that need no application code
+q() { su_psql -d "$TARGET" -tA -c "$1"; }
+TABLE_COUNT="$(q "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")"
+TRIGGER_COUNT="$(q "SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND NOT t.tgisinternal")"
+zb_log "restored: $TABLE_COUNT tables, $TRIGGER_COUNT triggers"
+[ "$TABLE_COUNT" -gt 0 ] || zb_die "no tables restored"
+if [ "$(q "SELECT to_regclass('public.journal_lines') IS NOT NULL")" = t ]; then
+    UNBALANCED="$(q "SELECT count(*) FROM (SELECT journal_entry_id FROM journal_lines GROUP BY 1 HAVING sum(debit) <> sum(credit)) x")"
+    [ "$UNBALANCED" = 0 ] || zb_die "$UNBALANCED unbalanced journal entries in the backup"
+    TOTALS="$(q "SELECT coalesce(sum(debit),0) || ' = ' || coalesce(sum(credit),0) FROM journal_lines")"
+    zb_log "journal totals: debit $TOTALS credit; every journal balances"
+    [ "$TRIGGER_COUNT" -gt 0 ] || zb_die "journal tables restored WITHOUT protection triggers"
+fi
+
+# 5. Application-level verification (task T7.8)
+if [ "$VERIFY" -eq 1 ]; then
+    [ -f "$APP_BASE/current/artisan" ] || zb_die "--verify needs the application in $APP_BASE/current"
+    runuser -u "$APP_USER" -- "${PHP_BIN:-php}" "$APP_BASE/current/artisan" zb:verify --db-name="$TARGET" --no-interaction
+fi
+
+# 6. Uploads
+if [ -n "$FILES_DIR" ]; then
+    if [ "$INTO_PROD" -eq 1 ]; then
+        DEST="$(dirname "${UPLOADS_DIR:?UPLOADS_DIR is not set in $ZB_CONF}")"
+    else
+        DEST="$WORK/files"
+    fi
+    mkdir -p "$DEST"
+    mapfile -t ARCHIVES < <(find "$FILES_DIR" -maxdepth 1 -name '*-files-*.tar.age' | sort)
+    [ "${#ARCHIVES[@]}" -gt 0 ] || zb_die "no *-files-*.tar.age archives in $FILES_DIR"
+    case "${ARCHIVES[0]}" in *-full.tar.age) ;; *) zb_die "the first archive must be the month's -full archive" ;; esac
+    for a in "${ARCHIVES[@]}"; do
+        zb_check_age_file "$a"
+        zb_log "extracting $(basename "$a")"
+        age --decrypt --identity "$IDENTITY" "$a" | tar --extract --listed-incremental=/dev/null --file=- --directory="$DEST"
+    done
+    FILE_COUNT="$(find "$DEST" -type f | wc -l)"
+    zb_log "uploads restored: $FILE_COUNT files into $DEST"
+    if [ "$INTO_PROD" -eq 1 ]; then
+        chown -R "$APP_USER:$APP_USER" "$UPLOADS_DIR"
+    fi
+fi
+
+# 7. Clean up the test restore
+if [ "$KEEP" -eq 0 ]; then
+    su_psql -d postgres -c "DROP DATABASE \"$TARGET\" WITH (FORCE)"
+    zb_log "test database $TARGET dropped"
+fi
+
+zb_log "RESTORE OK. Record the date and these figures in docs/release-checks.md (BR-OPS-04)."

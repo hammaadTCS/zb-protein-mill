@@ -1,0 +1,97 @@
+{
+  "id": "AT-3..AT-6",
+  "spec": "§17.4",
+  "cases": [
+    {
+      "id": "AT-3",
+      "title": "Month-end blocks, then closes after fixes",
+      "base": "at1.json",
+      "steps": [
+        { "type": "set_today", "date": "2026-02-02" },
+        { "type": "bank_statement", "period": "2026-01", "money_account": "hbl", "statement_balance": "417100.00" },
+        { "type": "cash_count", "date": "2026-01-31", "money_account": "cash", "counted_amount": "20900.00" },
+        { "type": "close_month", "period": "2026-01", "expect": { "closed": false, "failing_checks": [
+          { "check": "bank_match", "money_account": "hbl", "difference": "-500.00" },
+          { "check": "cash_match", "money_account": "cash", "difference": "-1000.00" }
+        ] } },
+        { "type": "expense", "date": "2026-01-31", "category": "Bank Charges", "amount": "500", "payment_mode": "paid", "money_account": "hbl", "note": "Bank charges January" },
+        { "type": "cash_shortage", "period": "2026-01", "money_account": "cash", "amount": "1000.00", "note": "Unexplained shortage" },
+        { "type": "close_month", "period": "2026-01", "expect": { "closed": true } },
+        { "type": "attempt", "action": { "type": "purchase", "date": "2026-01-20", "party": "aslam", "item": "Waste", "kg": "100", "rate": "50" }, "expect_error_contains": "January 2026 is closed" }
+      ],
+      "expected": {
+        "ledger_accounts": { "6900": { "side": "debit", "amount": "1000.00" }, "category:Bank Charges": { "side": "debit", "amount": "500.00" }, "money:cash": { "side": "debit", "amount": "20900.00" }, "money:hbl": { "side": "debit", "amount": "417100.00" } },
+        "cash_shortage_journal": { "posting_date": "2026-01-31", "voucher": "CSH-000001" },
+        "period_2026_01": "closed"
+      }
+    },
+    {
+      "id": "AT-4",
+      "title": "Accountant payment above the limit waits for owner approval",
+      "today": "2026-01-31",
+      "money_accounts": [ { "key": "hbl", "name": "HBL", "type": "bank", "bank_name": "HBL" } ],
+      "parties": [ { "key": "aslam", "type": "supplier", "name": "Aslam", "mobile": "03000000001", "area": "Sadar" } ],
+      "opening_balances": [ { "money_account": "hbl", "amount": "100000.00" } ],
+      "steps": [
+        { "type": "purchase", "as": "owner", "date": "2026-01-10", "party": "aslam", "item": "Waste", "kg": "1200", "rate": "50" },
+        { "type": "payment", "as": "accountant", "ref": "p1", "direction": "paid", "date": "2026-01-15", "party": "aslam", "amount": "60000", "money_account": "hbl", "reference_no": "AT4-REF-01",
+          "expect": { "approval_status": "pending", "journal": false, "parties": { "aslam": { "words": "We owe", "amount": "60000.00" } }, "money_accounts": { "hbl": "100000.00" } } },
+        { "type": "approve", "as": "owner", "target": "p1",
+          "expect": { "approval_status": "approved", "journal_posting_date": "2026-01-15", "parties": { "aslam": { "words": "Settled", "amount": "0.00" } }, "money_accounts": { "hbl": "40000.00" } } }
+      ]
+    },
+    {
+      "id": "AT-5",
+      "title": "Rate correction for an entry in a closed month",
+      "today": "2026-01-31",
+      "money_accounts": [ { "key": "cash", "name": "Cash", "type": "cash" } ],
+      "parties": [ { "key": "aslam", "type": "supplier", "name": "Aslam", "mobile": "03000000001", "area": "Sadar" } ],
+      "opening_balances": [ { "money_account": "cash", "amount": "10000.00" } ],
+      "steps": [
+        { "type": "purchase", "ref": "p1", "date": "2026-01-10", "party": "aslam", "item": "Waste", "kg": "1000", "rate": "50" },
+        { "type": "set_today", "date": "2026-02-01" },
+        { "type": "cash_count", "date": "2026-01-31", "money_account": "cash", "counted_amount": "10000.00" },
+        { "type": "close_month", "period": "2026-01", "expect": { "closed": true } },
+        { "type": "set_today", "date": "2026-02-05" },
+        { "type": "attempt", "action": { "type": "edit_purchase", "target": "p1", "changes": { "rate": "48" } }, "expect_error_contains": "January 2026 is closed" },
+        { "type": "rate_correction", "target": "p1", "date": "2026-02-05", "new_rate": "48", "reason": "Quality lower than agreed" }
+      ],
+      "expected": {
+        "parties": { "aslam": { "words": "We owe", "amount": "48000.00" } },
+        "purchase_p1_unchanged": { "rate": "50.0000", "amount": "50000.00" },
+        "rate_correction": { "voucher": "RCO-000001", "correction_date": "2026-02-05", "old_rate": "50.0000", "new_rate": "48.0000", "old_amount": "50000.00", "new_amount": "48000.00", "difference": "-2000.00" },
+        "rate_correction_journal": { "posting_date": "2026-02-05", "lines": [
+          { "account": "2000", "party": "aslam", "debit": "2000.00", "credit": "0.00" },
+          { "account": "5000", "party": null, "debit": "0.00", "credit": "2000.00" }
+        ] }
+      }
+    },
+    {
+      "id": "AT-6",
+      "title": "Merge a duplicate supplier",
+      "today": "2026-01-31",
+      "money_accounts": [ { "key": "cash", "name": "Cash", "type": "cash" } ],
+      "parties": [
+        { "key": "aslam", "type": "supplier", "name": "Aslam", "mobile": "03000000001", "area": "Sadar" },
+        { "key": "aslam_dup", "type": "supplier", "name": "Aslam Bhai", "mobile": "03000000011", "area": "Sadar" }
+      ],
+      "opening_balances": [ { "money_account": "cash", "amount": "10000.00" } ],
+      "steps": [
+        { "type": "purchase", "ref": "pa", "date": "2026-01-10", "party": "aslam", "item": "Waste", "kg": "100", "rate": "50" },
+        { "type": "purchase", "ref": "pb", "date": "2026-01-10", "party": "aslam_dup", "item": "Waste", "kg": "200", "rate": "50" },
+        { "type": "merge", "as": "owner", "source": "aslam_dup", "target": "aslam" }
+      ],
+      "expected": {
+        "parties": {
+          "aslam": { "words": "We owe", "amount": "15000.00" },
+          "aslam_dup": { "words": "Settled", "amount": "0.00", "status": "inactive", "merged_into": "aslam" }
+        },
+        "purchase_pb_party": "aslam_dup",
+        "merge_journal": { "posting_date": "2026-01-31", "source_type": "party_merge", "lines": [
+          { "account": "2000", "party": "aslam_dup", "debit": "10000.00", "credit": "0.00" },
+          { "account": "2000", "party": "aslam", "debit": "0.00", "credit": "10000.00" }
+        ] }
+      }
+    }
+  ]
+}

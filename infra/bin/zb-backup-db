@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# zb-backup-db – encrypted database backup to off-site storage (BR-OPS-01, BR-OPS-03).
+#
+# Runs every hour as user zbbackup (zb-mill-backup-db.timer), and before every deploy.
+#  1. pg_dump (custom format) as the read-only role zb_backup. Session and cache rows are left out.
+#  2. Encrypts with the PUBLIC key(s) in $BACKUP_RECIPIENTS_FILE. This server cannot decrypt.
+#  3. Uploads to db/hourly/. Once a day also to db/daily/, once a month also to db/monthly/.
+#  4. Writes status files for the app's backup page and pings the monitor.
+# Nothing is kept on this server.
+set -Eeuo pipefail
+umask 077
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+[ -r "$LIB" ] || LIB=/usr/local/lib/zb-mill/zb-lib.sh
+# shellcheck source=zb-lib.sh
+source "$LIB"
+zb_load_config ENV_NAME DB_NAME BACKUP_WORK_DIR BACKUP_RECIPIENTS_FILE RCLONE_CONFIG_FILE RCLONE_REMOTE STATUS_DIR
+
+DAILY_HOUR="${BACKUP_DAILY_HOUR_UTC:-21}"   # 21:00 UTC = 02:00 Pakistan time
+TS="$(date -u +%Y%m%dT%H%M%SZ)"
+HOUR="${TS:9:2}"; DAY="${TS:0:8}"; MONTH="${TS:0:6}"
+NAME="$ENV_NAME-db-$TS.dump.age"
+TMP="$BACKUP_WORK_DIR/$NAME.partial"
+
+SUCCESS=0
+on_exit() {
+    local rc=$?
+    [ "$SUCCESS" -eq 1 ] && return 0
+    local msg="database backup failed (exit code $rc, see: journalctl -u zb-mill-backup-db)"
+    rm -f "$TMP"
+    zb_write_status backup-db "{\"kind\":\"db\",\"result\":\"failure\",\"finished_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"error\":\"$(zb_json_escape "$msg")\"}"
+    zb_hc_ping backup-db fail "$msg"
+    zb_log "$msg"
+}
+trap on_exit EXIT
+
+[ -s "$BACKUP_RECIPIENTS_FILE" ] || zb_die "no backup public key in $BACKUP_RECIPIENTS_FILE"
+mkdir -p "$BACKUP_WORK_DIR"
+zb_hc_ping backup-db start
+
+zb_log "dumping $DB_NAME"
+pg_dump --format=custom --no-password \
+    --username="${DB_BACKUP_ROLE:-zb_backup}" --dbname="$DB_NAME" \
+    --exclude-table-data=sessions --exclude-table-data=cache --exclude-table-data=cache_locks \
+    | age --encrypt --recipients-file "$BACKUP_RECIPIENTS_FILE" --output "$TMP"
+
+zb_check_age_file "$TMP"
+BYTES="$(stat -c %s "$TMP")"
+[ "$BYTES" -gt 200 ] || zb_die "backup file is suspiciously small ($BYTES bytes)"
+SHA="$(sha256sum "$TMP" | cut -d' ' -f1)"
+
+COPIES="hourly"
+zb_upload "$TMP" "$RCLONE_REMOTE/db/hourly/$NAME"
+
+# Daily copy: the first successful run at or after the daily hour.
+if [ "$HOUR" -ge "$DAILY_HOUR" ] && [ "$(cat "$BACKUP_WORK_DIR/last-daily" 2>/dev/null)" != "$DAY" ]; then
+    zb_upload "$TMP" "$RCLONE_REMOTE/db/daily/$NAME"
+    echo "$DAY" > "$BACKUP_WORK_DIR/last-daily"
+    COPIES="$COPIES,daily"
+fi
+# Monthly copy: the first successful run of each month (kept for years, O-35).
+if [ "$(cat "$BACKUP_WORK_DIR/last-monthly" 2>/dev/null)" != "$MONTH" ]; then
+    zb_upload "$TMP" "$RCLONE_REMOTE/db/monthly/$NAME"
+    echo "$MONTH" > "$BACKUP_WORK_DIR/last-monthly"
+    COPIES="$COPIES,monthly"
+fi
+
+rm -f "$TMP"
+SUCCESS=1
+DONE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+BODY="{\"kind\":\"db\",\"result\":\"success\",\"finished_at\":\"$DONE\",\"file\":\"$NAME\",\"bytes\":$BYTES,\"sha256\":\"$SHA\",\"copies\":\"$COPIES\"}"
+zb_write_status backup-db "$BODY"
+zb_write_status backup-db-last-success "$BODY"
+zb_hc_ping backup-db "" "$NAME $BYTES bytes ($COPIES)"
+zb_log "done: $NAME ($BYTES bytes) -> $COPIES"

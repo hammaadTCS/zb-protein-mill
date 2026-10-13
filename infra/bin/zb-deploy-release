@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+# zb-deploy-release – install a release built by CI, with backup first and one-command rollback
+# (BR-OPS-10, spec 18.2). Run by the human administrator. Claude never deploys.
+#
+#   sudo zb-deploy-release /tmp/zb-mill-v1.4.0.tar.gz --sha256 <hash from the GitHub release>
+#   sudo zb-deploy-release --rollback          # back to the previous release (code only)
+#   sudo zb-deploy-release --refresh-config    # after editing shared/.env
+#   sudo zb-deploy-release --list
+#
+# Layout (APP_BASE=/srv/zb-mill):
+#   releases/<id>/        one folder per release, owned by zbdeploy, read-only for the web user
+#   shared/.env           secrets, zbdeploy:zbmill 0640
+#   shared/storage/       uploads, logs, framework files, zbmill:zbmill 2770
+#   current -> releases/<id>
+#
+# Steps: verify checksum -> unpack -> link shared files -> backup database -> maintenance mode ->
+# migrate as zb_migrator -> system data as zb_migrator (BR-OPS-11) -> grants -> caches ->
+# switch symlink -> reload PHP -> live -> smoke test.
+# If the smoke test fails, the previous release is switched back automatically.
+# Migrations are never rolled back: every migration must work with the previous release (BR-OPS-10).
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+[ -r "$LIB" ] || LIB=/usr/local/lib/zb-mill/zb-lib.sh
+# shellcheck source=zb-lib.sh
+source "$LIB"
+
+zb_require_root
+zb_load_config APP_BASE APP_USER DEPLOY_USER DB_NAME PHP_VERSION DOMAIN
+SYSTEMCTL="${SYSTEMCTL:-systemctl}"
+PHP="${PHP_BIN:-php}"
+KEEP="${KEEP_RELEASES:-5}"
+MIGRATOR_CONNECTION="${MIGRATOR_CONNECTION:-pgsql_migrator}"
+GRANTS_SQL="${GRANTS_SQL:-/usr/local/lib/zb-mill/postgres/30-app-grants.sql}"
+SMOKE_CMD="${SMOKE_CMD:-curl -fsS -o /dev/null --max-time 15 --resolve $DOMAIN:443:127.0.0.1 https://$DOMAIN/up}"
+RELEASES="$APP_BASE/releases"
+SHARED="$APP_BASE/shared"
+CURRENT="$APP_BASE/current"
+LOG="$APP_BASE/deploy.log"
+
+as_deploy() { (cd "$1" && shift && umask 0007 && runuser -u "$DEPLOY_USER" -- "$@"); }
+artisan()   { local dir="$1"; shift; as_deploy "$dir" "$PHP" artisan "$@" --no-interaction; }
+
+current_release() { if [ -L "$CURRENT" ]; then basename "$(readlink -f "$CURRENT")"; fi; }
+previous_release() {
+    local cur; cur="$(current_release)"
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d ! -name '*.failed' -printf '%f\n' | sort | awk -v c="$cur" '$0 < c' | tail -1
+}
+
+switch_to() {
+    local target="$RELEASES/$1"
+    ln -sfn "$target" "$APP_BASE/current.next"
+    chown -h "$DEPLOY_USER:$DEPLOY_USER" "$APP_BASE/current.next"
+    mv -Tf "$APP_BASE/current.next" "$CURRENT"
+    $SYSTEMCTL reload "php$PHP_VERSION-fpm"
+    zb_log "live release is now $1"
+}
+
+record() { printf '%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SUDO_USER:-root}" "$1" "$2" >> "$LOG"; }
+
+cache_config() {
+    local dir="$1"
+    install -d -o "$DEPLOY_USER" -g "$APP_USER" -m 2750 "$dir/bootstrap/cache"
+    (cd "$dir" && umask 0027 && runuser -u "$DEPLOY_USER" -- "$PHP" artisan config:cache --no-interaction)
+    (cd "$dir" && umask 0027 && runuser -u "$DEPLOY_USER" -- "$PHP" artisan route:cache --no-interaction)
+    (cd "$dir" && umask 0027 && runuser -u "$DEPLOY_USER" -- "$PHP" artisan event:cache --no-interaction)
+    # The config cache contains APP_KEY: readable by the web user's group only.
+    find "$dir/bootstrap/cache" -type f -exec chgrp "$APP_USER" {} + -exec chmod 0640 {} +
+}
+
+cmd_list() {
+    local cur; cur="$(current_release)"
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | while read -r r; do
+        if [ "$r" = "$cur" ]; then echo "* $r (live)"; else echo "  $r"; fi
+    done
+}
+
+cmd_rollback() {
+    local prev cur; cur="$(current_release)"; prev="$(previous_release)"
+    [ -n "$prev" ] || zb_die "no earlier release to roll back to"
+    zb_log "rolling back $cur -> $prev (database stays as it is)"
+    switch_to "$prev"
+    artisan "$CURRENT" up || true
+    record rollback "$cur -> $prev"
+}
+
+cmd_refresh_config() {
+    local cur; cur="$(current_release)"; [ -n "$cur" ] || zb_die "nothing deployed yet"
+    cache_config "$RELEASES/$cur"
+    $SYSTEMCTL reload "php$PHP_VERSION-fpm"
+    record refresh-config "$cur"
+    zb_log "configuration cache rebuilt for $cur"
+}
+
+# State used by on_exit to undo a half-finished deploy.
+DEPLOY_STATE=idle NEW_DIR="" NEW_ID="" PREV_LIVE="" PUT_DOWN=0
+on_exit() {
+    local rc=$?
+    [ "$DEPLOY_STATE" = preparing ] || return 0
+    zb_log "DEPLOY FAILED (exit $rc). The live site stays on: ${PREV_LIVE:-nothing}"
+    if [ "$PUT_DOWN" -eq 1 ] && [ -n "$PREV_LIVE" ]; then artisan "$CURRENT" up || true; fi
+    if [ -n "$NEW_DIR" ] && [ -d "$NEW_DIR" ]; then mv "$NEW_DIR" "$NEW_DIR.failed"; fi
+    record failed "$NEW_ID"
+}
+trap on_exit EXIT
+
+cmd_deploy() {
+    local artifact="$1" sha="$2" version grants
+    [ -r "$artifact" ] || zb_die "artifact $artifact not found"
+    [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || zb_die "--sha256 must be the 64-character hash from the GitHub release"
+    echo "$sha  $artifact" | sha256sum --check --quiet - || zb_die "checksum does not match: do not deploy this file"
+    if tar -tzf "$artifact" | grep -qE '(^/|(^|/)\.\.(/|$))'; then zb_die "archive contains unsafe paths"; fi
+
+    NEW_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+    NEW_DIR="$RELEASES/$NEW_ID"
+    PREV_LIVE="$(current_release)"
+    DEPLOY_STATE=preparing
+    install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 0755 "$NEW_DIR"
+
+    zb_log "unpacking release $NEW_ID"
+    tar -xzf "$artifact" -C "$NEW_DIR" --no-same-owner
+    chown -R "$DEPLOY_USER:$DEPLOY_USER" "$NEW_DIR"
+    find "$NEW_DIR" -type d -exec chmod 0755 {} +
+    find "$NEW_DIR" -type f -exec chmod 0644 {} +
+    for f in artisan public/index.php vendor/autoload.php public/build/manifest.json RELEASE; do
+        [ -e "$NEW_DIR/$f" ] || zb_die "release is missing $f"
+    done
+    version="$(head -1 "$NEW_DIR/RELEASE")"
+
+    rm -rf "$NEW_DIR/storage" "$NEW_DIR/.env" "$NEW_DIR/bootstrap/cache"
+    ln -s "$SHARED/storage" "$NEW_DIR/storage"
+    ln -s "$SHARED/.env" "$NEW_DIR/.env"
+    install -d -o "$DEPLOY_USER" -g "$APP_USER" -m 2750 "$NEW_DIR/bootstrap/cache"
+
+    zb_log "checking that release $version starts"
+    (cd "$NEW_DIR" && umask 0027 && runuser -u "$DEPLOY_USER" -- "$PHP" artisan --version --no-interaction) >/dev/null
+
+    if [ "${SKIP_BACKUP:-0}" = 1 ]; then
+        zb_log "SKIP_BACKUP=1: no backup before this deploy (allowed only for the very first deploy)"
+    else
+        zb_log "backing up the database first"
+        $SYSTEMCTL start zb-mill-backup-db.service
+    fi
+
+    if [ -n "$PREV_LIVE" ]; then
+        artisan "$CURRENT" down --retry=15
+        PUT_DOWN=1
+    fi
+
+    zb_log "migrating as zb_migrator"
+    artisan "$NEW_DIR" migrate --force --database="$MIGRATOR_CONNECTION"
+    # BR-OPS-11: add missing system data (company, settings keys, roles and permissions, system
+    # accounts, items). The seeder only adds what is missing and never creates users or test data.
+    zb_log "adding missing system data as zb_migrator"
+    artisan "$NEW_DIR" db:seed --class=SystemDataSeeder --force --database="$MIGRATOR_CONNECTION"
+    grants="$(mktemp /tmp/zb-grants.XXXXXX)"
+    cp "$GRANTS_SQL" "$grants"; chmod 0644 "$grants"
+    runuser -u "$DEPLOY_USER" -- psql -X -q -v ON_ERROR_STOP=1 --username=zb_migrator --dbname="$DB_NAME" -f "$grants"
+    rm -f "$grants"
+
+    cache_config "$NEW_DIR"
+
+    DEPLOY_STATE=switching
+    switch_to "$NEW_ID"
+    artisan "$CURRENT" up || true
+
+    zb_log "smoke test"
+    if ! bash -c "$SMOKE_CMD"; then
+        zb_log "SMOKE TEST FAILED for $NEW_ID"
+        if [ -n "$PREV_LIVE" ]; then
+            switch_to "$PREV_LIVE"
+            artisan "$CURRENT" up || true
+            mv "$NEW_DIR" "$NEW_DIR.failed"
+            record smoke-failed-rolled-back "$NEW_ID ($version) -> $PREV_LIVE"
+            zb_die "rolled back to $PREV_LIVE. Check storage/logs and the web server error log."
+        fi
+        record smoke-failed "$NEW_ID ($version)"
+        zb_die "first release failed its smoke test; nothing to roll back to"
+    fi
+
+    DEPLOY_STATE=finished
+    record deployed "$NEW_ID ($version) sha256=$sha"
+    zb_log "deployed $version as $NEW_ID"
+
+    # Keep the newest $KEEP releases; never remove the live one or the one before it.
+    local keep_prev; keep_prev="$(previous_release)"
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r | tail -n +"$((KEEP + 1))" | while read -r r; do
+        [ "$r" = "$NEW_ID" ] || [ "$r" = "$keep_prev" ] || rm -rf "${RELEASES:?}/$r"
+    done
+}
+
+exec 9> /run/lock/zb-deploy.lock
+flock -n 9 || zb_die "another deploy is running"
+
+case "${1:-}" in
+    --list) cmd_list ;;
+    --rollback) cmd_rollback ;;
+    --refresh-config) cmd_refresh_config ;;
+    ""|-h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *)
+        ART="$1"; shift
+        if [ "${1:-}" != "--sha256" ] || [ -z "${2:-}" ]; then
+            zb_die "usage: zb-deploy-release <artifact.tar.gz> --sha256 <hash>"
+        fi
+        cmd_deploy "$ART" "$2"
+        ;;
+esac

@@ -1,0 +1,9 @@
+[Unit]
+Description=ZB Mill – run the Laravel scheduler every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

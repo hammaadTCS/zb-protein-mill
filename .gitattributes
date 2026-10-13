@@ -1,0 +1,19 @@
+# Line endings: LF everywhere, so shell scripts and server files work even when the
+# repository is checked out on Windows (same first line as the starter kit's file).
+* text=auto eol=lf
+*.sh text eol=lf
+infra/** text eol=lf
+*.png binary
+*.docx binary
+*.pdf binary
+
+# From the starter kit's .gitattributes (kept so T0.1 does not need to merge them)
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php
+
+CHANGELOG.md export-ignore
+README.md export-ignore
+.github/workflows/browser-tests.yml export-ignore

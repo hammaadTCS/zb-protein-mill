@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# zb-backup-verify-offsite – prove the server's storage key can ADD backups but cannot DELETE them
+# (BR-OPS-01). Run once after setting up the storage, after any key change, and in the yearly drill.
+#
+#   sudo zb-backup-verify-offsite
+#
+# PASS needs all of:
+#   1. uploading a small test file works;
+#   2. deleting that file with the same key FAILS;
+#   3. at least one database backup newer than 2 hours is listed.
+# What this cannot prove from the server: that the bucket keeps old versions / has Object Lock.
+# Check that in the provider's console and keep a screenshot with docs/release-checks.md.
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+[ -r "$LIB" ] || LIB=/usr/local/lib/zb-mill/zb-lib.sh
+# shellcheck source=zb-lib.sh
+source "$LIB"
+zb_require_root
+zb_load_config RCLONE_CONFIG_FILE RCLONE_REMOTE BACKUP_USER
+
+RESULT=0
+# Same user and same key as the hourly backup job.
+as_backup_rclone() {
+    # shellcheck disable=SC2086
+    runuser -u "$BACKUP_USER" -- "${RCLONE_BIN:-rclone}" --config "$RCLONE_CONFIG_FILE" ${RCLONE_EXTRA_ARGS:-} "$@"
+}
+
+CANARY="zb-canary-$(date -u +%Y%m%dT%H%M%SZ).txt"
+TMP="$(mktemp)"; chmod 0644 "$TMP"
+echo "zb-mill offsite delete test $(date -u)" > "$TMP"
+trap 'rm -f "$TMP"' EXIT
+
+if as_backup_rclone copyto --no-check-dest "$TMP" "$RCLONE_REMOTE/canary/$CANARY" >/dev/null 2>&1; then
+    echo "PASS  upload works"
+else
+    echo "FAIL  upload does not work: backups cannot reach the storage"; RESULT=1
+fi
+
+if as_backup_rclone deletefile "$RCLONE_REMOTE/canary/$CANARY" >/dev/null 2>&1; then
+    echo "FAIL  the server key CAN DELETE backups. Create a key without the delete capability (operations/server-setup.md, step 7)."
+    RESULT=1
+else
+    echo "PASS  the server key cannot delete backups"
+fi
+
+RECENT="$(as_backup_rclone lsf --max-age 2h "$RCLONE_REMOTE/db/hourly" 2>/dev/null | grep -c '\.dump\.age$' || true)"
+if [ "${RECENT:-0}" -ge 1 ]; then
+    echo "PASS  $RECENT database backup(s) from the last 2 hours found"
+else
+    echo "FAIL  no database backup from the last 2 hours in $RCLONE_REMOTE/db/hourly"; RESULT=1
+fi
+
+echo "MANUAL  In the storage console confirm: versioning or Object Lock is ON, lifecycle rules match docs/operations/server-setup.md."
+exit "$RESULT"

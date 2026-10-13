@@ -1,0 +1,11 @@
+# PHP-FPM error log of the ZB Mill pool. Application logs rotate themselves (LOG_CHANNEL daily, 14 days).
+/var/log/zb-mill/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0660 zbmill zbmill
+    su zbmill zbmill
+}

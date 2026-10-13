@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# zb-health-check – server checks every 15 minutes (BR-OPS-06 to BR-OPS-09).
+# Runs as root from zb-mill-health.timer. Pings the "health" monitor on success, "/fail" with the
+# list of problems otherwise. Prints the same list, so `sudo zb-health-check` is a quick status view.
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+[ -r "$LIB" ] || LIB=/usr/local/lib/zb-mill/zb-lib.sh
+# shellcheck source=zb-lib.sh
+source "$LIB"
+zb_load_config DOMAIN PHP_VERSION STATUS_DIR
+
+SYSTEMCTL="${SYSTEMCTL:-systemctl}"
+TIMEDATECTL="${TIMEDATECTL:-timedatectl}"
+DISK_LIMIT="${DISK_ALERT_PERCENT:-80}"
+CERT_FILE="${CERT_FILE:-/etc/letsencrypt/live/$DOMAIN/cert.pem}"
+APP_CHECK_CMD="${APP_CHECK_CMD:-curl -fsS -o /dev/null --max-time 15 --resolve $DOMAIN:443:127.0.0.1 https://$DOMAIN/up}"
+DB_MAX_AGE_MIN="${DB_BACKUP_MAX_AGE_MIN:-130}"
+FILES_MAX_AGE_MIN="${FILES_BACKUP_MAX_AGE_MIN:-1560}"
+
+PROBLEMS=()
+NOTES=()
+
+# Disk space on every mounted file system that holds data.
+while read -r use mount; do
+    use="${use%\%}"
+    [ "$use" -lt "$DISK_LIMIT" ] || PROBLEMS+=("disk $mount is ${use}% full")
+done < <(df -P -x tmpfs -x devtmpfs -x squashfs -x overlay 2>/dev/null | awk 'NR > 1 {print $5, $6}')
+
+# Services
+for svc in nginx "php$PHP_VERSION-fpm" postgresql; do
+    $SYSTEMCTL is-active --quiet "$svc" || PROBLEMS+=("service $svc is not running")
+done
+for t in zb-mill-scheduler.timer zb-mill-backup-db.timer zb-mill-backup-files.timer; do
+    $SYSTEMCTL is-active --quiet "$t" || PROBLEMS+=("timer $t is not active")
+done
+
+# Clock (audit times and backups depend on it)
+[ "$($TIMEDATECTL show -p NTPSynchronized --value 2>/dev/null)" = yes ] || PROBLEMS+=("clock is not synchronised")
+
+# Certificate
+if [ -r "$CERT_FILE" ]; then
+    openssl x509 -checkend $((14 * 86400)) -noout -in "$CERT_FILE" >/dev/null || PROBLEMS+=("TLS certificate expires within 14 days")
+else
+    PROBLEMS+=("TLS certificate file $CERT_FILE not found")
+fi
+
+# Backups: age of the last success
+age_minutes() {
+    local f="$STATUS_DIR/$1.json"
+    [ -r "$f" ] || { echo 999999; return; }
+    echo $(( ( $(date +%s) - $(stat -c %Y "$f") ) / 60 ))
+}
+DB_AGE="$(age_minutes backup-db-last-success)"
+FILES_AGE="$(age_minutes backup-files-last-success)"
+[ "$DB_AGE" -le "$DB_MAX_AGE_MIN" ] || PROBLEMS+=("last good database backup was $DB_AGE minutes ago")
+[ "$FILES_AGE" -le "$FILES_MAX_AGE_MIN" ] || PROBLEMS+=("last good uploads backup was $FILES_AGE minutes ago")
+
+# Daily ledger integrity check written by "php artisan zb:verify" (task T7.8, BR-OPS-08)
+VERIFY_FILE="${VERIFY_STATUS_FILE:-${APP_BASE:-/srv/zb-mill}/shared/storage/app/zb-verify.json}"
+if [ -r "$VERIFY_FILE" ]; then
+    grep -q '"result":"ok"' "$VERIFY_FILE" || PROBLEMS+=("ledger integrity check FAILED (php artisan zb:verify)")
+    VERIFY_AGE=$(( ( $(date +%s) - $(stat -c %Y "$VERIFY_FILE") ) / 60 ))
+    [ "$VERIFY_AGE" -le 1560 ] || PROBLEMS+=("ledger integrity check last ran $VERIFY_AGE minutes ago")
+else
+    NOTES+=("ledger integrity check has not run yet")
+fi
+
+# The application answers /up (which also checks the database)
+bash -c "$APP_CHECK_CMD" >/dev/null 2>&1 || PROBLEMS+=("https://$DOMAIN/up does not answer 200")
+
+# Information only
+if [ -e /var/run/reboot-required ]; then NOTES+=("reboot pending for security updates (automatic at the set time)"); fi
+
+if [ "${#PROBLEMS[@]}" -eq 0 ]; then
+    MSG="OK: disk, services, clock, certificate, backups (db ${DB_AGE}m, files ${FILES_AGE}m), app"
+    [ "${#NOTES[@]}" -gt 0 ] && MSG="$MSG; note: ${NOTES[*]}"
+    echo "$MSG"
+    zb_hc_ping health "" "$MSG"
+    exit 0
+fi
+
+MSG="$(printf 'PROBLEM: %s\n' "${PROBLEMS[@]}")"
+echo "$MSG"
+zb_hc_ping health fail "$MSG"
+exit 1

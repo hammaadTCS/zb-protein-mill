@@ -35,5 +35,10 @@ class DatabaseSeeder extends Seeder
         if (app()->environment(['local', 'testing'])) {
             $user->syncRoles([RolesAndPermissionsSeeder::OWNER]);
         }
+
+        // T4.1: the proposed expense categories (O-11) on local computers; never on a server.
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(TestExpenseCategoriesSeeder::class);
+        }
     }
 }

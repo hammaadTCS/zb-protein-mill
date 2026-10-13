@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
@@ -90,6 +91,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/accounts', [MoneyAccountController::class, 'store'])->name('money-accounts.store');
     Route::put('settings/accounts/{moneyAccount}', [MoneyAccountController::class, 'update'])->name('money-accounts.update');
     Route::post('settings/accounts/{moneyAccount}/deactivate', [MoneyAccountController::class, 'deactivate'])->name('money-accounts.deactivate');
+
+    // Page 44: Expense categories (T4.1).
+    Route::get('settings/expense-categories', [ExpenseCategoryController::class, 'index'])->name('expense-categories.index');
+    Route::post('settings/expense-categories', [ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+    Route::put('settings/expense-categories/{category}', [ExpenseCategoryController::class, 'update'])->name('expense-categories.update');
+    Route::post('settings/expense-categories/{category}/deactivate', [ExpenseCategoryController::class, 'deactivate'])->name('expense-categories.deactivate');
 
     // Page 45: Items (T2.3).
     Route::get('settings/items', [ItemController::class, 'index'])->name('items.index');

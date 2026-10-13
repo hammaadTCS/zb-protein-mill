@@ -8,6 +8,7 @@ import {
     BookOpen,
     CheckCheck,
     Clock,
+    Tags,
     FileSpreadsheet,
     Banknote,
     Landmark,
@@ -22,6 +23,7 @@ import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
+import { index as expenseCategories } from '@/routes/expense-categories';
 import { create as newPayment, index as payments } from '@/routes/payments';
 import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
@@ -128,6 +130,14 @@ export const navigation: NavEntry[] = [
         permission: 'settings.manage',
         mobileFirst: false,
         icon: Landmark,
+    },
+    {
+        group: 'Settings',
+        label: 'Expense categories',
+        href: expenseCategories(),
+        permission: 'settings.manage',
+        mobileFirst: false,
+        icon: Tags,
     },
     {
         group: 'Settings',

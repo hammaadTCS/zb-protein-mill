@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9 |
-| Next task | T4.1 (M4) (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 |
+| Next task | T4.2 Expenses backend (T2.10 client review is yours) |
 
 ---
 
@@ -701,3 +701,14 @@ Choices and questions:
 - Checks: build, check, types, Pint, Larastan, guard pass; **375 PHP tests pass**.
 
 **M3 built.**
+
+### T4.1 Expense categories
+
+Built as the card lists: table `expense_categories` (spec §9.2; name unique per company), model, `CreateExpenseCategory` (ledger account from 6000, expense, debit, same name), `UpdateExpenseCategory` (name, quick button, order; renames the ledger account), `DeactivateExpenseCategory`, `TestExpenseCategoriesSeeder` (the proposed O-11 list in order, quick buttons on Wages, Food, Tea, Vehicle Fuel, Transport/Freight; tests and local only, refuses production; called by the local `DatabaseSeeder`), **no production seeder**, page 44 `/settings/expense-categories` and its menu entry.
+
+Choices and questions:
+- **Category name length 100** (not given in the spec).
+- **The test seeder is not run before every test** (only `SystemDataSeeder` and the test settings are, conventions §11), so "first category = 6000" holds; tests that need the list seed it.
+- Words not in the glossary: "New category", "Quick", "Order", "Quick button on Quick expense".
+- Tests: the card's two here (6000 then 6001; rename renames the account) plus inactive, the seeder list and quick buttons (twice, no duplicates), page 44 permission and unique names. "Inactive category cannot be used" is tested with expenses in T4.2.
+- Checks: build, check, types, Pint, Larastan, guard pass; **380 PHP tests pass**.

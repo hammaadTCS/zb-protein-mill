@@ -343,3 +343,13 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - `PostingRules`: 27 stubs with the spec §8.3 debit/credit in doc comments, each throwing `Not built yet: PR-xx`. **PR-25 differs:** it says "PR-25 is posted by PostingService::reverse()", because reversal is built here and nothing else is needed for it.
 - Tests: Decimal half-up (6 cases incl. the card's three), add/sub/sum, compare/sign, money/abs/negate, unknown rounding; JV-000001 balanced posting; BR-LED-03 refused before the database (no journal, no voucher used); BR-LED-05 reverse swaps every line and nets to zero; no double reversal; BR-LED-04 both directions; malformed requests (6 cases); inactive account; outside a transaction.
 - Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule; the arch rule "only Ledger, Reports and Insights touch journal models" passes.
+
+### T1.8 Audit log
+
+- Migration `create_audit_logs_table` (spec §9.5; `user_id` nullable; `auditable_*` nullable for login events of unknown e-mails) with the `prevent_change()` trigger (BR-AUD-02).
+- `AuditLog` model (read-only; created only while `AuditLogger` writes; update/delete throw). `AuditLogger::log()` reads IP and device from the request. `AuditActions` lists the card's action names; **added two** that spec BR-AUD-01 and conventions §12 require: `server_command` and `sessions_ended`. Any other name is refused, so a typo cannot create a new kind of row.
+- `AuthenticationAuditor` on `Login`, `Failed`, `Logout` (registered in `AppServiceProvider`). Fortify sends the failed-login event without the user when the app has its own login check (T1.1), so the auditor finds the account from the e-mail tried; it stores only the user id, never the e-mail or password.
+- `Settings::set()` writes `setting_changed` with `{key, value}` old and new. **Choice:** saving the same value again writes nothing.
+- conventions §7 morph map started in `AppServiceProvider` (`Relation::enforceMorphMap`) with `setting` and `user`; each later module adds its model.
+- Tests: BR-AUD-02 database refuses update/delete; model refuses change and direct creation; BR-USR-05 login, failed login and logout rows; unknown e-mail logged without a user; IP and device recorded; setting change old/new; unchanged setting writes nothing; unknown action refused.
+- Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Settings;
 
+use App\Domain\Audit\AuditActions;
+use App\Domain\Audit\AuditLogger;
 use App\Domain\Settings\Models\Setting;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
@@ -45,9 +47,23 @@ final class Settings
             ->withoutGlobalScope('company')
             ->firstOrNew(['company_id' => $by->company_id, 'key' => $key]);
 
+        $old = $setting->value;
+
+        if ($setting->exists && $old === $stored) {
+            return;
+        }
+
         $setting->value_type = SettingKeys::definition($key)['type'];
         $setting->value = $stored;
         $setting->save();
+
+        AuditLogger::log(
+            AuditActions::SETTING_CHANGED,
+            $setting,
+            ['key' => $key, 'value' => $old],
+            ['key' => $key, 'value' => $stored],
+            by: $by,
+        );
     }
 
     /**

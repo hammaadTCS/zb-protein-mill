@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 |
-| Next task | T6.2 Daily summary (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1, T6.2 |
+| Next task | T6.3 Ageing service (T2.10 client review is yours) |
 
 ---
 
@@ -903,3 +903,15 @@ Choices and questions:
 - Words not in the glossary: "Daily cash check", "Cash check", "Cash account", "System amount", "Counted amount", "Difference", "History", "Counted", "System", "Business closed", "Mark business closed", "Marked business closed.", "Cash count saved. Difference …", "Select a cash account.", "Enter the counted amount: 0 or more, at most 2 decimals.". "No cash count for (date)" is spec BR-CHK-04 text.
 - Tests: the card's three (system amount 18900.00 after AT-1 day 1; difference stored, no journal; dismissal clears the alert) plus a count also clears it and only the Owner may dismiss, the system-amount endpoint, history, bank refused; front-end test for the exact signed difference.
 - Checks: build, check, types, front-end tests, Pint, Larastan, guard pass; **476 PHP tests pass**.
+
+### T6.2 Daily summary
+
+Built as the card lists: `DailySummary::for(date)` and page 29 `/daily-summary` (`report.view`): kg bought per item and sold per product (active entries of the day, rate pending included), money received and paid (payments posted that day), expenses by category with total, closing balance of each money account at the end of the day, count of rate-pending entries dated that day. "Daily summary" added to Checks in the menu (spec §15.1).
+
+Choices and questions:
+- **Kg and money reuse the dashboard's "Today" query**, so both pages always agree.
+- **Rate-pending count is the entries of that day still pending now.** After the rate is added later, the day shows 0. The spec does not say "as it was on that day"; tell me if it should.
+- **Closing balances list active accounts, and inactive ones only when they still hold money.**
+- Words not in the glossary: "Daily summary" (spec page name), "Closing balances", "Entries of this day".
+- Tests: the card's R-04 (AT-1 day 1: Waste 1800.000, Protein 500.000, received 41000.00, paid 70000.00, Wages 8000.00, Food 2500.00, Tea 600.00, cash 18900.00, HBL 321000.00, pending 1) plus the page for the accountant.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.

@@ -18,6 +18,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RateCorrectionController;
 use App\Http\Controllers\RatePendingController;
+use App\Http\Controllers\Reports\DailySummaryController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TransferController;
@@ -122,6 +123,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('parties/{party}/activate', [PartyController::class, 'activate'])->name('parties.activate')->can('party.update');
 
     // Page 36: Trial balance (T2.9).
+    Route::get('daily-summary', [DailySummaryController::class, 'show'])->name('reports.daily-summary')->can('report.view');
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance')->can('report.view');
 
     // Page 47: Opening balances (T2.6).

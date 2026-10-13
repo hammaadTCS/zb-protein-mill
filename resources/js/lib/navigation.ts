@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
     ArrowLeftRight,
     BookOpen,
+    CalendarDays,
     CheckCheck,
     Coins,
     Clock,
@@ -40,7 +41,7 @@ import { create as newPayment, index as payments } from '@/routes/payments';
 import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
-import { trialBalance } from '@/routes/reports';
+import { dailySummary, trialBalance } from '@/routes/reports';
 import { index as transfers } from '@/routes/transfers';
 import { index as users } from '@/routes/users';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
@@ -160,6 +161,14 @@ export const navigation: NavEntry[] = [
         permission: 'cashcount.create',
         mobileFirst: true,
         icon: Coins,
+    },
+    {
+        group: 'Checks',
+        label: 'Daily summary',
+        href: dailySummary(),
+        permission: 'report.view',
+        mobileFirst: false,
+        icon: CalendarDays,
     },
     {
         group: 'Reports',

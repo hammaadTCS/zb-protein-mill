@@ -83,7 +83,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 ## M6: Checks and reports  ·  card file `docs/cards/M6.md`
 
 - [x] **T6.1** Daily cash check. *Done when:* tests pass.
-- [ ] **T6.2** Daily summary. *Done when:* tests pass.
+- [x] **T6.2** Daily summary. *Done when:* tests pass.
 - [ ] **T6.3** Ageing service. *Done when:* T-12 passes.
 - [ ] **T6.4** Pending balances report. *Done when:* tests pass.
 - [ ] **T6.5** Accounts list and account statement. *Done when:* tests pass.

@@ -370,3 +370,11 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - **"With parties":** grouped by `party_id` now; `party_code` stays null until the parties table exists (T2.4 adds the lookup).
 - Tests: R-07 three hand-made journals (full rows and totals 42,000 = 42,000); as-of excludes later postings (40,000 = 40,000); zero-net account kept; empty before the first posting.
 - Checks: Pint, Larastan pass; tests pass except the known T0.3 Actions rule.
+
+### T1.11 Database roles: migrator connection and privilege check
+
+- `config/database.php`: connection `pgsql_migrator`, a copy of `pgsql` with `env('DB_MIGRATOR_USERNAME', env('DB_USERNAME'))` and `env('DB_MIGRATOR_PASSWORD', env('DB_PASSWORD'))`, exactly as the card writes them. Nothing else changed; default stays `pgsql`.
+- Test: BR-SEC-12 the migrator connection differs from pgsql only in username and password.
+- **T-19 run for real on this cloud machine** (`infra/tests/ci-db-privileges.sh`, unchanged): migrations as the non-superuser owner `zb_migrator`, then the production grants. Result: **23 tables, 100 passed, 0 failed**. No migration needs a superuser (no `CREATE EXTENSION`), so nothing to report under the card's stop rule. To run it I created a throwaway superuser `zb_ci_super` in this session's local PostgreSQL only (CI's database container provides its own); it is not in the repository.
+- CI's "Database privilege check" step starts running on the next pull request, because `pgsql_migrator` now appears in `config/database.php`.
+- Checks: Pint passes; tests pass except the known T0.3 Actions rule.

@@ -31,7 +31,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T1.8** Audit log. *Done when:* tests pass.
 - [x] **T1.9** Periods and date rules. *Done when:* tests pass.
 - [x] **T1.10** Trial balance query. *Done when:* tests pass.
-- [ ] **T1.11** Database roles: migrator connection and privilege check. *Done when:* tests pass; the CI step "Database privilege check" is green and its log lists every table.
+- [x] **T1.11** Database roles: migrator connection and privilege check. *Done when:* tests pass; the CI step "Database privilege check" is green and its log lists every table.
 - [ ] **T1.12** Security baseline. *Done when:* tests pass; after `npm run build`, with `CSP_ENABLED=true php artisan serve` running, `curl -si http://127.0.0.1:8000/login` shows the CSP header and the same nonce on every `<script>` tag (paste the relevant lines in the pull request).
 - [ ] **T1.13** Idempotency helper. *Done when:* tests pass.
 

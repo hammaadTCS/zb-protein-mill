@@ -50,7 +50,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 ## M3: Core entries  ·  card file `docs/cards/M3.md`
 
-- [ ] **T3.1** Rate pending and adding the rate later. *Done when:* tests pass.
+- [x] **T3.1** Rate pending and adding the rate later. *Done when:* tests pass.
 - [ ] **T3.2** Edit and cancel purchases. *Done when:* tests pass.
 - [ ] **T3.3** Purchase warnings and weight-slip settings. *Done when:* tests pass.
 - [ ] **T3.4** Sales. *Done when:* tests pass.

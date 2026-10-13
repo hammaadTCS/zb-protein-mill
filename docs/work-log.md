@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9 |
-| Next task | T3.1 Rate pending (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 |
+| Next task | T3.2 Edit and cancel purchases (T2.10 client review is yours) |
 
 ---
 
@@ -577,3 +577,16 @@ Choices and questions:
 - Tests: loads the data (7 parties, PUR-000001 and PUR-000002), refuses production and a second run.
 
 **M2 built (except your review).** Next: M3.
+
+### T3.1 Rate pending and adding the rate later
+
+Built as the card lists: `CreatePurchase` accepts an empty rate (status "pending", no rate, no amount, **no journal**; "Paid now" still posts, so the supplier shows an advance), table `rate_changes` (spec §9.5, `prevent_change()` trigger) and model `RateChange`, `AddPurchaseRate` (only active pending entries; amount = kg × rate; PR-01 dated on the purchase date, or on the day the rate is added when the purchase month is closed, BR-LED-08; `rate_changes` row and audit `rate_added`), pending kg on the party balance, rate-pending rows in the khata (kg, "Rate pending", no amount, balance unchanged), `POST /purchases/{id}/rate` with an "Add rate" dialog on page 5, page 26 `/rate-pending` (age in days, red when older than `rate_pending_age_days`, "Add rate" inline) and its menu entry under Checks.
+
+Choices and questions:
+- **Changed one T2.7 test, as the T2.7 card planned:** "BR-PUR-03 the rate is required in this version" now checks that an empty rate saves as "Rate pending". The T2.7 card says the rate is required "until T3.1".
+- **The DemoSeeder now loads the day-1 rate-pending purchase too** (the skip from T2.10 is removed).
+- **The add-rate date must be a valid entry date** (not in the future, in an open month), checked on the date actually used for posting.
+- **Pending kg for lists is loaded in one grouped query** (`Party::pendingKgFor()`).
+- Message not in the glossary: "Only an active rate-pending entry can get a rate."; page words "Days", "Party".
+- Tests: the card's five (T-05 no journal; T-05 PR-01 and `rate_changes`; AT-1 #4 and #12 → "We owe 38400.00"; BR-LED-08 closed January posts on 05 Feb; BR-CHK-05 8 days flagged, 7 not), plus refused for a fixed entry, paid now on a pending purchase → advance, khata pending row, add-rate route permission and save.
+- Checks: build, check, types, Pint, Larastan, guard pass; **303 PHP tests pass**.

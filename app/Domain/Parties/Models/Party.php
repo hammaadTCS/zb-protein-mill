@@ -126,14 +126,15 @@ class Party extends Model
      * account code, so a list can load all its balances in one query.
      *
      * @param  array<int|string, string>  $nets  account code => net (PHP keeps numeric codes as int keys)
+     * @param  string|null  $pendingKg  already loaded rate-pending kg (lists), or null to read it
      */
-    public function balanceFrom(array $nets): PartyBalance
+    public function balanceFrom(array $nets, ?string $pendingKg = null): PartyBalance
     {
         if ($this->type === PartyType::Partner) {
             return $this->partnerBalance($nets['3000'] ?? '0.00', $nets['3100'] ?? '0.00');
         }
 
-        return $this->balanceOfNet($nets[(string) $this->type->controlAccountCode()] ?? '0.00', $this->pendingKg());
+        return $this->balanceOfNet($nets[(string) $this->type->controlAccountCode()] ?? '0.00', $pendingKg ?? $this->pendingKg());
     }
 
     /**
@@ -162,10 +163,33 @@ class Party extends Model
         };
     }
 
-    /** Rate-pending kg of this party's purchases or sales (T3.1). */
+    /** Kg of this party's active rate-pending purchases (sales are added in T3.4). */
     public function pendingKg(): string
     {
-        return '0.000';
+        return self::pendingKgFor([$this->id])[$this->id] ?? '0.000';
+    }
+
+    /**
+     * Rate-pending kg for many parties in one query (lists).
+     *
+     * @param  list<int>  $partyIds
+     * @return array<int, string> party id => kg with 3 decimals
+     */
+    public static function pendingKgFor(array $partyIds): array
+    {
+        if ($partyIds === []) {
+            return [];
+        }
+
+        return Purchase::query()
+            ->whereIn('party_id', $partyIds)
+            ->where('status', 'active')
+            ->where('rate_status', 'pending')
+            ->groupBy('party_id')
+            ->selectRaw('party_id, SUM(kg)::numeric(20, 3)::text AS kg')
+            ->pluck('kg', 'party_id')
+            ->map(fn (mixed $kg): string => Decimal::kg((string) $kg))
+            ->all();
     }
 
     /**

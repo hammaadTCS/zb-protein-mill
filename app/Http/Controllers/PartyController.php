@@ -47,7 +47,9 @@ class PartyController extends Controller
 
         /** @var list<Party> $page */
         $page = $parties->items();
-        $nets = LedgerBalance::partyNets(array_map(fn (Party $party): int => $party->id, $page));
+        $ids = array_map(fn (Party $party): int => $party->id, $page);
+        $nets = LedgerBalance::partyNets($ids);
+        $pendingKg = Party::pendingKgFor($ids);
 
         return Inertia::render('parties/index', [
             'filters' => ['q' => $filters['q'] ?? '', 'type' => $filters['type'] ?? '', 'status' => $filters['status'] ?? ''],
@@ -61,7 +63,7 @@ class PartyController extends Controller
                     'type' => $party->type->value,
                     'status' => $party->status->value,
                     'needs_review' => $party->needs_review || $party->bank_change_needs_review,
-                    'balance' => $party->balanceFrom($nets[$party->id] ?? [])->toArray(),
+                    'balance' => $party->balanceFrom($nets[$party->id] ?? [], $pendingKg[$party->id] ?? '0.000')->toArray(),
                 ], $page),
                 'current_page' => $parties->currentPage(),
                 'last_page' => $parties->lastPage(),

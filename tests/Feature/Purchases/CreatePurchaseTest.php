@@ -128,11 +128,11 @@ it('BR-PUR-02 kg 0 is refused; kg with 4 decimals is refused', function () {
         ->and(buy($owner, [...$data, 'kg' => '812.500'])->kg)->toBe('812.500');
 });
 
-it('BR-PUR-03 the rate is required in this version and has at most rate_decimals decimals', function () {
+it('BR-PUR-03 an empty rate is "Rate pending" (from T3.1); a rate has at most rate_decimals decimals', function () {
     [$owner, , $parties] = purchaseWorld();
     $data = ['date' => '2026-01-05', 'party_id' => $parties['aslam']->id, 'item_id' => Item::query()->where('code', 'WASTE')->value('id'), 'kg' => '100'];
 
-    expect(fn () => buy($owner, $data))->toThrow(ValidationException::class, 'Rate is required')
+    expect(buy($owner, $data)->rate_status->value)->toBe('pending')
         ->and(fn () => buy($owner, [...$data, 'rate' => '52.555']))->toThrow(ValidationException::class, 'Rate can have at most 2 decimals.')
         ->and(fn () => buy($owner, [...$data, 'rate' => '0']))->toThrow(ValidationException::class, 'Rate must be greater than 0.');
 });

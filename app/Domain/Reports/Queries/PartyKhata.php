@@ -8,6 +8,8 @@ use App\Domain\Ledger\Models\JournalLine;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Parties\PartyBalance;
+use App\Domain\Purchases\Models\Purchase;
 use App\Support\Decimal;
 use Illuminate\Database\Query\Builder;
 
@@ -70,7 +72,57 @@ final class PartyKhata
             );
         }
 
-        return new KhataResult($from, $to, $party->balanceOfNet($opening), $rows, $party->balanceOfNet($net));
+        $rows = self::withPendingRows($party, $rows, $from, $to, $party->balanceOfNet($opening));
+
+        return new KhataResult($from, $to, $party->balanceOfNet($opening), $rows, $party->balanceOfNet($net, $party->pendingKg()));
+    }
+
+    /**
+     * Rate-pending entries are shown with their kg and no amount, on their entry date,
+     * after the money rows of that day; they leave the balance unchanged.
+     *
+     * @param  list<KhataRow>  $rows
+     * @return list<KhataRow>
+     */
+    private static function withPendingRows(Party $party, array $rows, ?string $from, ?string $to, PartyBalance $opening): array
+    {
+        $pending = Purchase::query()
+            ->with('item')
+            ->where('party_id', $party->id)
+            ->where('status', 'active')
+            ->where('rate_status', 'pending')
+            ->when($from !== null, fn ($q) => $q->where('entry_date', '>=', $from))
+            ->when($to !== null, fn ($q) => $q->where('entry_date', '<=', $to))
+            ->orderBy('entry_date')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($pending as $purchase) {
+            $position = count($rows);
+
+            foreach ($rows as $index => $row) {
+                if ($row->date > $purchase->entry_date) {
+                    $position = $index;
+
+                    break;
+                }
+            }
+
+            $before = $position > 0 ? $rows[$position - 1]->balance : null;
+
+            array_splice($rows, $position, 0, [new KhataRow(
+                date: $purchase->entry_date,
+                voucher: $purchase->voucher_no,
+                description: EntrySources::entryText($purchase->item->name, $purchase->kg, null),
+                increase: null,
+                decrease: null,
+                balance: $before ?? $opening,
+                route: route('purchases.show', $purchase->id, false),
+                pendingKg: $purchase->kg,
+            )]);
+        }
+
+        return $rows;
     }
 
     /**

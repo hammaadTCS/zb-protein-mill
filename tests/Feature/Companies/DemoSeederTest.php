@@ -12,7 +12,7 @@ it('T2.10 DemoSeeder loads the AT-1 parties and first-day purchases through the 
     $this->seed(DemoSeeder::class);
 
     expect(Party::query()->count())->toBe(count(acceptance('at1')['parties']))
-        ->and(Purchase::query()->orderBy('id')->pluck('voucher_no')->all())->toBe(['PUR-000001', 'PUR-000002'])
+        ->and(Purchase::query()->orderBy('id')->pluck('voucher_no')->all())->toBe(['PUR-000001', 'PUR-000002', 'PUR-000003'])
         ->and(auth()->check())->toBeFalse();
 });
 

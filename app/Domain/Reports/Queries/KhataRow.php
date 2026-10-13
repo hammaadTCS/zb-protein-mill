@@ -9,7 +9,8 @@ use App\Domain\Parties\PartyBalance;
 /**
  * One khata line (R-01): what changed and the balance after it, in words.
  * Increase = the party's balance grew in its usual direction (we owe more to a
- * supplier, a buyer owes us more); decrease = the other way.
+ * supplier, a buyer owes us more); decrease = the other way. A rate-pending entry
+ * has kg and no amount, and does not change the balance.
  */
 final readonly class KhataRow
 {
@@ -21,5 +22,6 @@ final readonly class KhataRow
         public ?string $decrease,
         public PartyBalance $balance,
         public ?string $route = null,
+        public ?string $pendingKg = null,
     ) {}
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
     Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
     Route::get('purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
+    Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
+
+    // Page 26: rate pending (T3.1).
+    Route::get('rate-pending', [RatePendingController::class, 'index'])->name('rate-pending.index');
 
     // Slip and receipt photos, only through a permission check (BR-SEC-06, T2.8).
     Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');

@@ -25,12 +25,12 @@ use App\Support\Idempotency;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 /**
- * Records a purchase (BR-PUR-01 to BR-PUR-03) and, optionally, the payment made at
+ * Records a purchase (BR-PUR-01 to BR-PUR-04) and, optionally, the payment made at
  * the same time ("Paid now", BR-PUR-10), in one transaction (conventions §2).
- * The amount is always kg × rate on the server (BR-GEN-06).
+ * The amount is always kg × rate on the server (BR-GEN-06); without a rate the
+ * purchase is "Rate pending" and posts nothing until the rate is added.
  */
 final class CreatePurchase
 {
@@ -85,9 +85,9 @@ final class CreatePurchase
             'item_id' => $item->id,
             'kg' => $kg,
             'rate' => $rate,
-            'amount' => Decimal::amount($kg, $rate), // BR-GEN-06
-            'rate_status' => RateStatus::Fixed,
-            'rate_fixed_at' => now(),
+            'amount' => $rate === null ? null : Decimal::amount($kg, $rate), // BR-GEN-06
+            'rate_status' => $rate === null ? RateStatus::Pending : RateStatus::Fixed,
+            'rate_fixed_at' => $rate === null ? null : now(),
             'slip_no' => self::filled($data, 'slip_no') ? (string) $data['slip_no'] : null,
             'our_weight_kg' => $ourWeight,
             'note' => self::filled($data, 'note') ? (string) $data['note'] : null,
@@ -96,8 +96,10 @@ final class CreatePurchase
         ]);
         $purchase->setRelation('item', $item);
 
-        $journal = PostingService::post(PostingRules::pr01PurchaseFixedRate($purchase), $by); // PR-01
-        $purchase->update(['journal_entry_id' => $journal->id]);
+        if ($rate !== null) {
+            $journal = PostingService::post(PostingRules::pr01PurchaseFixedRate($purchase), $by); // PR-01
+            $purchase->update(['journal_entry_id' => $journal->id]);
+        } // BR-PUR-04, BR-LED-06: a rate-pending purchase has no journal yet.
 
         AuditLogger::log(AuditActions::CREATED, $purchase, [], self::audited($purchase), by: $by);
 
@@ -141,18 +143,13 @@ final class CreatePurchase
     }
 
     /**
-     * BR-PUR-03: in this version of the form the rate is required; rate pending
-     * comes with T3.1.
+     * BR-PUR-03: the rate is optional; empty means "Rate pending".
      *
      * @param  array<string, mixed>  $data
      */
-    private static function rate(array $data): string
+    private static function rate(array $data): ?string
     {
-        if (! self::filled($data, 'rate')) {
-            throw ValidationException::withMessages(['rate' => __('Rate is required')]);
-        }
-
-        return EntryChecks::rate((string) $data['rate']);
+        return self::filled($data, 'rate') ? EntryChecks::rate((string) $data['rate']) : null;
     }
 
     /**

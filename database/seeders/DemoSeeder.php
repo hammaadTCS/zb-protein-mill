@@ -82,8 +82,7 @@ class DemoSeeder extends Seeder
         $firstDay = $data['entries'][0]['date'];
 
         foreach ($data['entries'] as $entry) {
-            // Rate-pending purchases can be saved from T3.1; until then they are skipped.
-            if ($entry['type'] !== 'purchase' || $entry['date'] !== $firstDay || $entry['rate'] === null) {
+            if ($entry['type'] !== 'purchase' || $entry['date'] !== $firstDay) {
                 continue;
             }
 

@@ -1,12 +1,16 @@
 import { Head, Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { AddRateDialog } from '@/components/app/AddRateDialog';
 import { KgText } from '@/components/app/KgText';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
 import { StatusBadge } from '@/components/app/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { useCan } from '@/hooks/use-can';
 import { useFormats } from '@/hooks/use-formats';
 import { formatDate, formatRate } from '@/lib/format';
-import { index } from '@/routes/purchases';
+import { index, rate } from '@/routes/purchases';
 
 type Purchase = {
     id: number;
@@ -23,6 +27,7 @@ type Purchase = {
     note: string | null;
     status: 'active' | 'cancelled';
     cancel_reason: string | null;
+    can_add_rate: boolean;
     created_by: string | null;
     created_at: string | null;
 };
@@ -48,12 +53,16 @@ export default function ShowPurchase({
     purchase,
     attachments,
     payments,
+    today,
 }: {
     purchase: Purchase;
     attachments: Attachment[];
     payments: LinkedPayment[];
+    today: string;
 }) {
     const formats = useFormats();
+    const can = useCan();
+    const [addingRate, setAddingRate] = useState(false);
 
     return (
         <>
@@ -67,6 +76,11 @@ export default function ShowPurchase({
                         purchase.rate_status === 'pending' && (
                             <StatusBadge status="rate_pending" />
                         )}
+                    {purchase.can_add_rate && can('purchase.update') && (
+                        <Button onClick={() => setAddingRate(true)}>
+                            Add rate
+                        </Button>
+                    )}
                 </PageHeader>
 
                 <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -189,6 +203,14 @@ export default function ShowPurchase({
                     Purchases
                 </Link>
             </div>
+            <AddRateDialog
+                open={addingRate}
+                title={purchase.voucher_no}
+                kg={purchase.kg}
+                url={rate.url(purchase.id)}
+                today={today}
+                onClose={() => setAddingRate(false)}
+            />
         </>
     );
 }

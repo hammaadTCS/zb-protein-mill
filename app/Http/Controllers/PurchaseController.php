@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Items\Models\Item;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Purchases\Actions\AddPurchaseRate;
 use App\Domain\Purchases\Actions\CreatePurchase;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
@@ -11,6 +12,7 @@ use App\Domain\Settings\SettingKeys;
 use App\Domain\Settings\Settings;
 use App\Http\Controllers\Concerns\ListsEntries;
 use App\Http\Controllers\Concerns\PresentsEntries;
+use App\Http\Requests\Purchases\AddRateRequest;
 use App\Http\Requests\Purchases\StorePurchaseRequest;
 use App\Support\EntryStatus;
 use App\Support\Flash;
@@ -123,9 +125,11 @@ class PurchaseController extends Controller
                 'note' => $purchase->note,
                 'status' => $purchase->status->value,
                 'cancel_reason' => $purchase->cancel_reason,
+                'can_add_rate' => $purchase->status === EntryStatus::Active && $purchase->rate_status === RateStatus::Pending,
                 'created_by' => $purchase->creator?->name,
                 'created_at' => $purchase->created_at?->toIso8601String(),
             ],
+            'today' => Today::date(),
             'attachments' => $this->attachmentsOf($purchase),
             'payments' => $purchase->payments->map(fn (Payment $payment): array => [
                 'id' => $payment->id,
@@ -136,6 +140,18 @@ class PurchaseController extends Controller
                 'approval_status' => $payment->approval_status->value,
             ])->values(),
         ]);
+    }
+
+    /** "Add rate" on page 5 and on the rate-pending list (BR-PUR-04). */
+    public function addRate(AddRateRequest $request, Purchase $purchase, AddPurchaseRate $action): RedirectResponse
+    {
+        $this->authorize('update', $purchase);
+
+        $action->handle($this->actor($request), $purchase, (string) $request->validated('rate'), (string) $request->validated('date'), $request->confirmedWarnings());
+
+        Flash::saved($purchase->voucher_no);
+
+        return back();
     }
 
     /**

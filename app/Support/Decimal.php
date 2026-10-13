@@ -38,6 +38,12 @@ final class Decimal
         };
     }
 
+    /** A value as kg: exactly 3 decimals, half up. */
+    public static function kg(string $value): string
+    {
+        return (string) BigDecimal::of($value === '' ? '0' : $value)->toScale(3, RoundingMode::HalfUp);
+    }
+
     /** A value as money: exactly 2 decimals, half up. */
     public static function money(string $value): string
     {

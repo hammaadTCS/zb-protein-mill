@@ -110,7 +110,7 @@ export default function PartnerStatement({
                                     <MoneyText value={row.withdrawn} />
                                 </TableCell>
                                 <TableCell className="text-right font-semibold">
-                                    <MoneyText value={row.net} />
+                                    <MoneyText value={row.net} signed />
                                 </TableCell>
                             </TableRow>
                         ))}

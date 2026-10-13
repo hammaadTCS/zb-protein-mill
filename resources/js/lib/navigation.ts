@@ -8,6 +8,7 @@ import {
     ArrowLeftRight,
     BookOpen,
     CheckCheck,
+    Coins,
     Clock,
     Tags,
     FileSpreadsheet,
@@ -25,6 +26,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as cashCounts } from '@/routes/cash-counts';
 import { index as auditLog } from '@/routes/audit-log';
 import { edit as companySettings } from '@/routes/company-settings';
 import { index as items } from '@/routes/items';
@@ -150,6 +152,14 @@ export const navigation: NavEntry[] = [
         permission: 'payment.approve',
         mobileFirst: true,
         icon: CheckCheck,
+    },
+    {
+        group: 'Checks',
+        label: 'Cash check',
+        href: cashCounts(),
+        permission: 'cashcount.create',
+        mobileFirst: true,
+        icon: Coins,
     },
     {
         group: 'Reports',

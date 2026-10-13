@@ -159,6 +159,7 @@ export default function Dashboard({
                                         </div>
                                         <MoneyText
                                             value={account.balance}
+                                            signed
                                             className={cn(
                                                 'text-lg font-semibold',
                                                 account.balance.startsWith(

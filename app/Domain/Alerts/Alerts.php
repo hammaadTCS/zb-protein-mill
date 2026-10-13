@@ -6,6 +6,7 @@ namespace App\Domain\Alerts;
 
 use App\Domain\Alerts\Providers\BankChangesToReview;
 use App\Domain\Alerts\Providers\BuyersOverCreditLimit;
+use App\Domain\Alerts\Providers\MissingCashCount;
 use App\Domain\Alerts\Providers\NegativeCashBalance;
 use App\Domain\Alerts\Providers\NewPartiesToReview;
 use App\Domain\Alerts\Providers\PaymentsAwaitingApproval;
@@ -24,6 +25,7 @@ final class Alerts
         NewPartiesToReview::class,
         BankChangesToReview::class,
         BuyersOverCreditLimit::class,
+        MissingCashCount::class,
         NegativeCashBalance::class,
         TrialBalanceError::class,
     ];

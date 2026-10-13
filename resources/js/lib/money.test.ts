@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { compareDecimals, multiplyToPaisa, previewAmount } from './money';
+import {
+    compareDecimals,
+    multiplyToPaisa,
+    previewAmount,
+    subtractDecimals,
+} from './money';
 
 describe('multiplyToPaisa (BR-GEN-06 preview only)', () => {
     it('multiplies exactly in whole paisa', () => {
@@ -39,5 +44,19 @@ describe('compareDecimals (BR-EXP-03 limit in the form)', () => {
     it('is null while the amount is incomplete', () => {
         expect(compareDecimals('', '10000.00')).toBeNull();
         expect(compareDecimals('1.', '10000.00')).toBeNull();
+    });
+});
+
+describe('subtractDecimals (BR-CHK-03 preview only)', () => {
+    it('subtracts exactly, with a sign', () => {
+        expect(subtractDecimals('18400.50', '18900.00')).toBe('-499.50');
+        expect(subtractDecimals('20900', '21900.00')).toBe('-1000.00');
+        expect(subtractDecimals('100', '-50.25')).toBe('150.25');
+        expect(subtractDecimals('5', '5')).toBe('0.00');
+    });
+
+    it('is null while the counted amount is incomplete', () => {
+        expect(subtractDecimals('', '100.00')).toBeNull();
+        expect(subtractDecimals('1.', '100.00')).toBeNull();
     });
 });

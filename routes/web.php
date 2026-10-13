@@ -4,6 +4,7 @@ use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\CashCountController;
 use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseCategoryController;
@@ -124,6 +125,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance')->can('report.view');
 
     // Page 47: Opening balances (T2.6).
+    // Page 28: daily cash check (T6.1).
+    Route::get('cash-counts', [CashCountController::class, 'index'])->name('cash-counts.index')->can('cashcount.create');
+    Route::get('cash-counts/system-amount', [CashCountController::class, 'systemAmount'])->name('cash-counts.system-amount')->can('cashcount.create');
+    Route::post('cash-counts', [CashCountController::class, 'store'])->name('cash-counts.store')->can('cashcount.create');
+    Route::post('cash-counts/dismiss', [CashCountController::class, 'dismiss'])->name('cash-counts.dismiss')->can('period.close');
+
     // Page 41: audit log (T5.5).
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-log.index')->can('audit.view');
 

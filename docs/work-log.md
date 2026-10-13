@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6 |
-| Next task | T6.1 (M6 reports) (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 |
+| Next task | T6.2 Daily summary (T2.10 client review is yours) |
 
 ---
 
@@ -888,3 +888,18 @@ Choices and questions:
 - Checks: build, check, types, Pint, Larastan, guard pass; **471 PHP tests pass**.
 
 **M5 built.**
+
+### T6.1 Daily cash check
+
+Built as the card lists: table `cash_counts` (spec §9.5 with `business_closed`; counted amount and difference empty only when the business was closed, counted ≥ 0, delete trigger), `CreateCashCount` (system amount = ledger balance with postings up to that date; difference = counted − system; stored, never posted; audit `cash_count_entered`), `DismissCashCount` (Owner; a `business_closed` row), page 28 `/cash-counts` (mobile-first: date, cash account, system amount refreshed from the server when the date or account changes, counted amount, live difference, note; history list), alert `MissingCashCount` ("No cash count for {date}" when yesterday has no count and no dismissal for an active cash account; the page shows "Mark business closed" to the Owner). "Cash check" added to Checks in the menu.
+
+Choices and questions:
+- **"Mark business closed" uses the `period.close` permission** (Owner only), as the card says "owner".
+- **The button is on the cash check page** (the alert opens it); dashboard alerts stay plain links.
+- **No alert before the system start date.** A cash account added today also asks for yesterday's count; the Owner can mark that day closed.
+- **Counts can be entered for any past date, also in a closed month** (BR-CHK-01 "any date"; nothing is posted). Future dates are refused.
+- **Bug found and fixed in the browser check**: the shared money display refuses a minus sign unless the value is marked as signed (rule: party balances in words). The cash difference, a rate correction that lowers an amount, a negative cash balance on the dashboard and a partner's net could be negative and would have broken the page. They are now marked `signed`. Party balances still use words.
+- **One earlier test of mine changed its setup, not its assertions**: the T5.6 test "the accountant sees no owner-only alerts" now records yesterday's cash count first, because the new missing-count alert (visible to both roles) is correct here.
+- Words not in the glossary: "Daily cash check", "Cash check", "Cash account", "System amount", "Counted amount", "Difference", "History", "Counted", "System", "Business closed", "Mark business closed", "Marked business closed.", "Cash count saved. Difference …", "Select a cash account.", "Enter the counted amount: 0 or more, at most 2 decimals.". "No cash count for (date)" is spec BR-CHK-04 text.
+- Tests: the card's three (system amount 18900.00 after AT-1 day 1; difference stored, no journal; dismissal clears the alert) plus a count also clears it and only the Owner may dismiss, the system-amount endpoint, history, bank refused; front-end test for the exact signed difference.
+- Checks: build, check, types, front-end tests, Pint, Larastan, guard pass; **476 PHP tests pass**.

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Audit\AuthenticationAuditor;
+use App\Domain\Checks\Models\CashCount;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\Expenses\Models\ExpenseCategory;
 use App\Domain\Items\Models\Item;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'adjustment' => Adjustment::class,
+            'cash_count' => CashCount::class,
             'expense' => Expense::class,
             'expense_category' => ExpenseCategory::class,
             'item' => Item::class,

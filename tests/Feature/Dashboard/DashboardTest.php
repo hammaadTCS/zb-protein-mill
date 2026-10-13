@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Checks\Actions\CreateCashCount;
 use App\Domain\Items\Models\Item;
 use App\Domain\Parties\Actions\CreateParty;
 use App\Domain\Payments\Actions\CreatePayment;
@@ -38,6 +39,8 @@ it('the accountant sees no owner-only alerts', function () {
     $owner = owner();
     $accountant = accountant();
     $world = acceptanceWorld(acceptance('at1'), $owner);
+    // Yesterday's cash count is done (T6.1), so only the alerts below are open.
+    app(CreateCashCount::class)->handle($owner, $world['accounts']['cash'], '2026-01-30', '80000');
     // A party the accountant adds (needs review) and a payment above the approval limit (waits).
     $party = app(CreateParty::class)->handle($accountant, ['type' => 'supplier', 'name' => 'New Supplier', 'mobile' => '03000000099']);
     app(CreatePayment::class)->handle($accountant, [

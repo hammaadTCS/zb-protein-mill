@@ -316,7 +316,7 @@ export default function ShowPurchase({
                                         {row.reason}
                                     </span>
                                 </span>
-                                <MoneyText value={row.difference} />
+                                <MoneyText value={row.difference} signed />
                             </div>
                         ))}
                     </section>

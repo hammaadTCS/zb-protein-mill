@@ -85,3 +85,40 @@ export function compareDecimals(a: string, b: string): -1 | 0 | 1 | null {
 
     return left === right ? 0 : left > right ? 1 : -1;
 }
+
+/** A signed decimal string as an integer and its number of decimals: "-52.5" -> [-525n, 1]. */
+function signedScaled(value: string): [bigint, number] | null {
+    const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.trim());
+
+    if (!match) {
+        return null;
+    }
+
+    const fraction = match[3] ?? '';
+    const magnitude = BigInt(match[2] + fraction);
+
+    return [match[1] === '-' ? -magnitude : magnitude, fraction.length];
+}
+
+/**
+ * a − b as a money string with 2 decimals (for previews such as the cash count
+ * difference, BR-CHK-03). Null while either value is not a number yet.
+ */
+export function subtractDecimals(a: string, b: string): string | null {
+    const left = signedScaled(a);
+    const right = signedScaled(b);
+
+    if (left === null || right === null || left[1] > 2 || right[1] > 2) {
+        return null;
+    }
+
+    const paisa =
+        left[0] * 10n ** BigInt(2 - left[1]) -
+        right[0] * 10n ** BigInt(2 - right[1]);
+    const negative = paisa < 0n;
+
+    return (
+        (negative ? '-' : '') +
+        paisaToMoney((negative ? -paisa : paisa).toString())
+    );
+}

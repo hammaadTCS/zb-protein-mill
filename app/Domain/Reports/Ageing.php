@@ -25,9 +25,12 @@ final class Ageing
 {
     /**
      * Unmatched part of sales older than the buyer's payment terms (BR-CHK-06 for
-     * buyers); "0.00" when the buyer has no terms.
+     * buyers); "0.00" when the buyer has no terms. `$matched` is match($buyer, $asOf)
+     * when the caller already has it.
+     *
+     * @param  array{open_increases: list<array{source_type: string, date: string, amount: string}>, open_reductions: list<array{source_type: string, date: string, amount: string}>, completed: list<array{source_type: string, date: string, amount: string, completed_on: string}>}|null  $matched
      */
-    public static function overdueFor(Party $buyer, string $asOf): string
+    public static function overdueFor(Party $buyer, string $asOf, ?array $matched = null): string
     {
         $terms = $buyer->payment_terms_days;
 
@@ -35,7 +38,7 @@ final class Ageing
             return '0.00';
         }
 
-        $result = self::match($buyer, $asOf);
+        $result = $matched ?? self::match($buyer, $asOf);
         $overdue = '0.00';
 
         foreach ($result['open_increases'] as $open) {
@@ -49,14 +52,17 @@ final class Ageing
 
     /**
      * Days from each sale to the receipt that completed it, weighted by sale amount,
-     * over sales completed in the period; null when none was completed.
+     * over sales completed in the period; null when none was completed. `$matched` is
+     * match($buyer, $to) when the caller already has it.
+     *
+     * @param  array{open_increases: list<array{source_type: string, date: string, amount: string}>, open_reductions: list<array{source_type: string, date: string, amount: string}>, completed: list<array{source_type: string, date: string, amount: string, completed_on: string}>}|null  $matched
      */
-    public static function averageDaysToPay(Party $buyer, string $from, string $to): ?string
+    public static function averageDaysToPay(Party $buyer, string $from, string $to, ?array $matched = null): ?string
     {
         $weighted = '0';
         $total = '0';
 
-        foreach (self::match($buyer, $to)['completed'] as $done) {
+        foreach (($matched ?? self::match($buyer, $to))['completed'] as $done) {
             if ($done['source_type'] !== 'sale' || $done['completed_on'] < $from || $done['completed_on'] > $to) {
                 continue;
             }

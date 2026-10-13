@@ -51,4 +51,62 @@ Checked on 13 October 2026 on branch `claude/lucid-ptolemy-w3fhsy` (T8.1). "Wher
 
 ## Performance
 
-Filled in by T8.2.
+Measured on 13 October 2026 (T8.2) in the cloud development container: 4 vCPU Intel Xeon 2.10 GHz, 15 GB RAM, PHP 8.3.6, PostgreSQL 16.15, everything on one machine. Data: `PerformanceSeeder`, 100,000 invented entries over 12 months saved through the real Actions in 47 minutes — 60,000 purchases, 20,000 sales, 15,000 payments (plus 23,836 paid-now and received-now payments), 5,000 expenses; 122,654 journals, 245,308 journal lines, 136,337 audit rows. `php artisan zb:verify` on this database: all five checks OK in 0.9 seconds.
+
+Timing: `php artisan zb:time-pages` (the slowest of three runs, server time including every query and the page data, logged in as the Owner). "Default" means the page as it opens; "12 months" means the whole year chosen as the date range.
+
+### Before and after the fixes
+
+| Page | Before | After (100,000 entries) |
+| --- | --- | --- |
+| Business insights, 12 months | 10,535 ms at only ~9,000 entries | 2,324 ms |
+| Rate report, 12 months | 3,932 ms at ~9,000 entries | 14,756 ms (see below) |
+| Dashboard | 1,045 ms at ~18,000 entries | 1,543 ms |
+| Statement PDF, 12 months | 1,769 ms at ~18,000 entries | 20,811 ms (see below) |
+
+Fixes (no index was needed; every slow page was slow because of code): settings read once per GET request; rate corrections loaded in one query; business insights summed in PostgreSQL; ageing run once per buyer and only for parties that can be overdue or hold an advance.
+
+### Every page after the fixes
+
+| Page | ms | Under 3 s |
+| --- | --- | --- |
+| Dashboard | 1,543 | yes |
+| Purchases / Sales / Payments / Expenses / Transfers lists | 22–110 | yes |
+| Parties list | 95 | yes |
+| Supplier profile and khata (whole history, ~1,000 entries) | 933 | yes |
+| Buyer profile and khata | 720 | yes |
+| Partners, Partner statement | 21–36 | yes |
+| Accounts | 111 | yes |
+| Account statement (default: this month) | 241 | yes |
+| Account statement, 12 months (17,926 rows) | 4,812 | **no** |
+| Rate pending | 560 | yes |
+| Approvals, Cash check | 23–26 | yes |
+| Daily summary | 128 | yes |
+| Pending balances | 1,302 | yes |
+| Expense report, 12 months | 1,251 | yes |
+| Trial balance (with and without parties) | 98–115 | yes |
+| Income vs Spending, 12 months | 111 | yes |
+| Rate report (default: this month) | 508 | yes |
+| Rate report, 12 months (57,000 entries listed) | 14,756 | **no** |
+| Weight difference (default: this month) | 237 | yes |
+| Weight difference, 12 months | 5,321 | **no** |
+| Adjustments report, 12 months | 75 | yes |
+| Business insights (default: 3 months) | 2,160 | yes |
+| Business insights, 12 months | 2,324 | yes |
+| Audit log | 147 | yes |
+| Month-end close, Months | 25–98 | yes |
+| Statement PDF, this month | 324 | yes |
+| Statement PDF, 12 months (one busy supplier, over 1,000 rows) | 20,811 | **no** |
+
+**Result:** every page as it opens, and every summary report over 12 months, is under 3 seconds. Four views that **list every single entry of a whole year** are not: the account statement (3.2 MB of page data), the rate report (5.6 MB), the weight difference report and a 12-month statement PDF. They would also be too heavy for a phone even if the server were instant. Fixing them changes what the pages show, so it is a decision for the developer and client (see `docs/work-log.md`, T8.2): page the rows (for example 100 per page, with totals over the whole range), summarise long ranges per month, or limit the range (for example 3 months per statement PDF).
+
+### Front-end size (NFR-11)
+
+From `npm run build` (gzip):
+
+| Page | JavaScript | CSS |
+| --- | --- | --- |
+| Login | 197.7 kB (16 files) | 15.6 kB + 0.4 kB fonts |
+| Dashboard | 196.2 kB (15 files) | 15.6 kB + 0.4 kB fonts |
+
+The largest single file is the Wayfinder route chunk (109.5 kB gzip): the signed-in menu imports the route helpers of every page, and the bundler puts them in one shared file that the login page also loads. Each page's own code is split out (login 1.1 kB, dashboard 2.1 kB). Files have content hashes for one-year caching. Possible improvement (not done, it changes the starter kit's layout loading): load the signed-in layout only after login.

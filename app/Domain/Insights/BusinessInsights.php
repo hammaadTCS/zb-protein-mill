@@ -241,14 +241,15 @@ final class BusinessInsights
             }
 
             $his = self::row($row)['fixed_amount'];
+            $matched = Ageing::match($party, $to); // once for both figures (spec §12.6)
             $adjusted = (string) ($adjustments[$party->id] ?? '0.00');
 
             $result[] = [
                 'party_id' => $party->id,
                 'code' => $party->code,
                 'name' => $party->name,
-                'average_days_to_pay' => Ageing::averageDaysToPay($party, $from, $to),
-                'overdue' => Ageing::overdueFor($party, $to),
+                'average_days_to_pay' => Ageing::averageDaysToPay($party, $from, $to, $matched),
+                'overdue' => Ageing::overdueFor($party, $to, $matched),
                 'adjustments' => $adjusted,
                 'adjustments_percent' => self::percent($adjusted, $his),
                 'share_percent' => self::percent($his, $allSales),

@@ -8,10 +8,10 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Item | Status |
 | --- | --- |
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
-| State | **M0 to M6 done (except your tasks T2.10); M7 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
+| State | **All Claude tasks built (T0.1 to T8.3, Claude's part).** T8.2 is built but not ticked: four 12-month views are over 3 seconds (your decision). One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8 (T7.6 built; tick it after your restore) |
-| Next task | T8.1 (M8). T2.10 client review and the T7.6 restore are yours |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8, T8.1 (T7.6 and T8.2 built, not ticked: see below) |
+| Next task | Your decisions (see "Questions for you" at the end) and your tasks: T2.10, the T7.6 restore, T8.3 staging, T8.4 to T8.7 |
 
 
 ## How to test on your laptop
@@ -1154,4 +1154,39 @@ Fixed because measurement showed it (no index was needed; every slow page was sl
 - **Rate corrections were looked up one query per entry** in the rate report and business insights: now one query for all (`RateCorrections::effectiveMany`).
 - **Business insights summed every entry in PHP**: the sums now run in PostgreSQL (same results; AT-1 and a new AT-5 check prove it).
 - **Dashboard alerts ran the ageing method for every supplier and buyer**: "Aged advances" now ages only parties whose balance is an advance, "Overdue buyers" only buyers who owe us (the same counts; the T-12 tests prove it).
-- **Timings**: being measured on the full 100,000 entries; recorded in a follow-up commit and in `docs/release-checks.md`.
+- **Ageing once per buyer**: business insights computed the ageing match twice per buyer (days to pay and overdue); now once (`Ageing` accepts the match it already has).
+
+Results on 100,000 entries (details and machine in `docs/release-checks.md`, "Performance"): **every page as it opens, and every summary report over 12 months, is under 3 seconds** (slowest: business insights 2.2 s, dashboard 1.5 s, pending balances 1.3 s). `zb:verify` on that data: all checks OK in 0.9 s. Front end: login and dashboard each load about 197 kB of JavaScript and 16 kB of CSS (gzip).
+
+**Not met — please decide.** Four views that list every entry of a whole year take longer: account statement for 12 months (4.8 s, 17,926 rows), rate report for 12 months (14.8 s, 57,000 entries), weight difference for 12 months (5.3 s) and a 12-month statement PDF for a busy supplier (20.8 s). Their page data is 3 to 6 MB, too heavy for a phone even if the server were instant. Fixing them changes what the pages show, so I did not choose:
+1. **Page the rows** (for example 100 per page) with totals still over the whole range — keeps every row reachable; my recommendation for the account statement.
+2. **Summarise long ranges** (one line per month and party in the rate and weight reports when the range is over 3 months) — my recommendation for those two reports.
+3. **Limit the range** (for example at most 3 months per statement PDF) — simplest for the PDF.
+So I left **T8.2 unticked** in `docs/tasks.md`: its "done when" says every report and list under 3 seconds.
+
+Also found: the Wayfinder route file (109 kB gzip) is loaded on the login page because the signed-in menu imports every page's route helpers. Loading the signed-in layout only after login would remove it from the login page; it changes the starter kit's layout loading, so I left it as a proposal.
+- Tests: the existing ageing, dashboard, insights and acceptance tests still pass (the counts and figures are unchanged); new `RememberSettingsTest` (one query per setting inside a GET request; fresh reads outside it; a set inside it is seen).
+
+## Questions for you (all in one place)
+
+Each one is explained in the task section named in brackets. Nothing here blocks testing on your laptop.
+
+**Needs a decision or a protected-file change by you**
+1. **G-30 spec change** (T0.1): apply `docs/proposals/G-30-cloud-composer.patch` in a `[spec-change]` pull request.
+2. **Party merge posting has no PR number** (T7.4): CLAUDE.md rule 2 says PR-01 to PR-27 are the only postings, but BR-PTY-08 and card T7.4 require the merge journal. Proposed: add "PR-28 Party merge" to spec §8.3 and allow it in CLAUDE.md rule 2.
+3. **README "Backups and restore"** (T7.6): README.md is protected; the proposed text is in the T7.6 section.
+4. **Four 12-month views over 3 seconds** (T8.2): choose paging, monthly summaries or a range limit. T8.2 stays unticked until then.
+5. **Charts** (T7.5): the card says shadcn charts, which need the `recharts` package (not allowed without your approval). Built with simple bars instead.
+6. **Login by e-mail** (see the note on the requirements PDF): the client PDF says "username"; the spec and the starter kit use e-mail.
+
+**Tests of mine I changed after they were written** (please look once)
+7. `ReportsHomeTest` (T7.5: the count assumption became a check of the two Owner-only report names), `PostingServiceTest` and `ItemsTest` (query order), the BR-SEC-13 session test (random id order), `DashboardTest` (setup: yesterday's cash count), `RoutePermissionTest` (new routes and a month parameter added to its table, as every task does).
+
+**Defaults I chose where the documents are silent** (say if any should change)
+8. A month can be closed only after it has ended; the cash difference posted at month end must be exactly what is left; "business closed" on the last day is not a cash count (T7.1).
+9. Reopening every closed month unlocks the opening balances again (T7.3); a reopen reason needs 5 characters (T7.2).
+10. A party with rate-pending entries or payments awaiting approval cannot be merged away (T7.4).
+11. PDFs: DejaVu Sans font (no IBM Plex Sans TTF in the repository); kg follows `kg_decimals` ("800.000 kg" with the test value 3) (T6.10).
+12. The rate report and insights use the corrected rate after a rate correction (T6.8, T7.5); settled parties are left out of pending balances even with pending kg (pending balances task).
+13. A buyer or partner cannot be the party of a paid expense (expenses task).
+14. The login page loads the 109 kB route file because of the signed-in menu (T8.2); fixing it changes the kit's layout loading.

@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.5 |
-| Next task | T6.6 Expense report (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.6 |
+| Next task | T6.7 Income vs Spending (T2.10 client review is yours) |
 
 ---
 
@@ -952,3 +952,14 @@ Choices and questions:
 - Words not in the glossary: "Accounts" (spec page name), "Account", "Type", "Bank", "Cash", "Balance", "Inactive", "Opening balance", "Closing balance", "In", "Out", "Description", "Party".
 - Tests: the card's R-06 (HBL after AT-1: opening 300000.00, 8 movements on 5 and 6 January, closing 417600.00, equal to `at1.json`) plus a later range starting from the earlier balance, and the pages for the accountant.
 - Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.6 Expense report
+
+Built as the card lists: page 34 `/reports/expenses` (`report.view`): date range (default current month), category and party filters; total per category, then each active expense (date, voucher, category, amount, payment mode, party, note).
+
+Choices and questions:
+- **Category totals come from the journal lines on the category accounts** (spec §12.1 "money from journal lines only"), joined to their expense for the party filter. So the edited #20 counts once at 2000.00 and a cancelled expense counts 0. The list shows active expenses by entry date.
+- The party filter offers suppliers, employees and other parties (the types an expense can have).
+- Words not in the glossary: "Expense report" (spec page name), "By category", "All categories", "All parties", "Payment mode", "Total".
+- Tests: the card's R-05 (Wages 8000.00, Food 4500.00, Tea 600.00, Electricity 15000.00, Vehicle Fuel 5000.00, total 33100.00, #20 once at 2000.00) plus the category filter and the page.
+- Checks: build, check, types, Pint, Larastan, guard pass; **486 PHP tests pass**.

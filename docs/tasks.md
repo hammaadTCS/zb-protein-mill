@@ -87,7 +87,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T6.3** Ageing service. *Done when:* T-12 passes.
 - [x] **T6.4** Pending balances report. *Done when:* tests pass.
 - [x] **T6.5** Accounts list and account statement. *Done when:* tests pass.
-- [ ] **T6.6** Expense report. *Done when:* tests pass.
+- [x] **T6.6** Expense report. *Done when:* tests pass.
 - [ ] **T6.7** Income vs Spending. *Done when:* tests pass.
 - [ ] **T6.8** Rate, weight difference and adjustments reports. *Done when:* T-13 passes.
 - [ ] **T6.9** Reports home and printing. *Done when:* tests pass; printed samples of the trial balance and pending balances checked by you before you finish the task.

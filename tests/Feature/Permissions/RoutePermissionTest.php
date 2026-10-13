@@ -93,6 +93,7 @@ const ROUTE_PERMISSIONS = [
     'sales.adjustments.store' => 'adjustment.create',
     'reports.trial-balance' => 'report.view',
     'reports.daily-summary' => 'report.view',
+    'reports.expenses' => 'report.view',
     'reports.pending-balances' => 'report.view',
     'company-settings.edit' => 'settings.manage',
     'company-settings.update' => 'settings.manage',

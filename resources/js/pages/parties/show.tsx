@@ -7,6 +7,10 @@ import { ChangeHistory } from '@/components/app/ChangeHistory';
 import type { KhataLine, Words } from '@/components/app/KhataTable';
 import { KhataTable } from '@/components/app/KhataTable';
 import { MoneyText } from '@/components/app/MoneyText';
+import type { RateGroup } from '@/components/app/RateHistory';
+import { RateHistory } from '@/components/app/RateHistory';
+import type { WeightGroup } from '@/components/app/WeightDifferences';
+import { WeightDifferences } from '@/components/app/WeightDifferences';
 import type { PartyType } from '@/components/app/PartyPicker';
 import { PageHeader } from '@/components/app/PageHeader';
 import { StatusBadge } from '@/components/app/StatusBadge';
@@ -74,7 +78,13 @@ type Khata = {
     rows: KhataLine[];
 };
 
-const TABS = ['Details', 'Khata', 'Change history'] as const;
+const TABS = [
+    'Details',
+    'Khata',
+    'Rate history',
+    'Weight differences',
+    'Change history',
+] as const;
 
 /** Page 19 (spec §11.11): header with balance in words; tabs Details and Khata. */
 export default function PartyProfile({
@@ -82,11 +92,15 @@ export default function PartyProfile({
     khata,
     history,
     review,
+    rate_history,
+    weights,
 }: {
     party: Profile;
     khata: Khata;
     history: HistoryRow[];
     review: Review;
+    rate_history?: RateGroup[];
+    weights?: WeightGroup[];
 }) {
     const can = useCan();
     const [tab, setTab] = useState<(typeof TABS)[number]>(
@@ -258,7 +272,12 @@ export default function PartyProfile({
                 )}
 
                 <div role="tablist" className="flex gap-1 border-b">
-                    {TABS.map((name) => (
+                    {TABS.filter(
+                        (name) =>
+                            (name !== 'Rate history' &&
+                                name !== 'Weight differences') ||
+                            rate_history !== undefined,
+                    ).map((name) => (
                         <button
                             key={name}
                             role="tab"
@@ -329,6 +348,14 @@ export default function PartyProfile({
                 )}
 
                 {tab === 'Change history' && <ChangeHistory rows={history} />}
+
+                {tab === 'Rate history' && rate_history && (
+                    <RateHistory groups={rate_history} />
+                )}
+
+                {tab === 'Weight differences' && weights && (
+                    <WeightDifferences groups={weights} />
+                )}
 
                 {tab === 'Khata' && (
                     <div className="grid gap-3">

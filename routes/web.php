@@ -23,6 +23,7 @@ use App\Http\Controllers\Reports\DailySummaryController;
 use App\Http\Controllers\Reports\ExpenseReportController;
 use App\Http\Controllers\Reports\IncomeVsSpendingController;
 use App\Http\Controllers\Reports\PendingBalancesController;
+use App\Http\Controllers\Reports\RateWeightReportsController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TransferController;
@@ -131,6 +132,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports/pending-balances', [PendingBalancesController::class, 'show'])->name('reports.pending-balances')->can('report.view');
     Route::get('reports/expenses', [ExpenseReportController::class, 'show'])->name('reports.expenses')->can('report.view');
     Route::get('reports/income-vs-spending', [IncomeVsSpendingController::class, 'show'])->name('reports.income-vs-spending')->can('report.view');
+    Route::get('reports/rates', [RateWeightReportsController::class, 'rates'])->name('reports.rates')->can('report.view');
+    Route::get('reports/weight-difference', [RateWeightReportsController::class, 'weights'])->name('reports.weight-difference')->can('report.view');
+    Route::get('reports/adjustments', [RateWeightReportsController::class, 'adjustments'])->name('reports.adjustments')->can('report.view');
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance')->can('report.view');
 
     // Page 47: Opening balances (T2.6).

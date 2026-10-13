@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.7 |
-| Next task | T6.8 Rate, weight difference and adjustments reports (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.8 |
+| Next task | T6.9 Reports home and printing (T2.10 client review is yours) |
 
 ---
 
@@ -973,4 +973,16 @@ Choices and questions:
 - **The result is shown with its sign** (it can be below zero, as in AT-1).
 - Words not in the glossary: "Income", "Spending", "Account", "Total", "Income − Spending", "Rate pending (not in the amounts above)".
 - Tests: the card's (AT-1 104000.00 / 200500.00 / −96500.00 and AT-2 91000.00 / 80800.00 / 10200.00 with 400.000 kg pending, read from the JSON files; banner present; "profit" appears only in the banner: not in any other prop and not in the page source); AT-1 and AT-2 pass with the report check on.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.8 Rate, weight difference and adjustments reports
+
+Built as the card lists: page 37 `/reports/rates` (per item and party, each fixed rate over time and the weighted average Σ amount ÷ Σ kg, 2 decimals, before agreed adjustments), page 38 `/reports/weight-difference` (per party, only entries with our weight; purchase difference = supplier kg − our kg, sale difference = our kg − buyer kg; % = Σ difference ÷ Σ our kg × 100), page 39 `/reports/adjustments` (per party and reason: total, count, % of that party's sales or purchases in the range), and the party profile tabs "Rate history" and "Weight differences" (suppliers and buyers, since the system start date). Filters: purchases or sales, date range (default current month), party; item (rates), reason (adjustments).
+
+Choices and questions:
+- **A rate correction counts at the corrected rate** in the rate report (it is the rate finally agreed). BR-RPT-03 only says "before agreed adjustments". Tell me if the original rate should show instead.
+- **The adjustment % base** is the party's active fixed-rate entries dated in the same range; adjustments count by their own date.
+- Shared React pieces: `ReportFilters`, `RateHistory`, `WeightDifferences` (used by the reports and the party profile).
+- Words not in the glossary: "Rate report", "Weight difference", "Adjustments report" (spec page names), "Rate history", "Weight differences" (spec §11.11 tab names), "Weighted average", "Their kg", "Our kg", "Difference", "Count", "%", "All items", "All reasons", "Purchases", "Sales".
+- Tests: T-13 (Aslam 800 @ 50 and 1000 @ 52 → 51.11; purchases 1000/960 and 500/500 → 40.000 kg, 2.74%; sale 300/295 → 5.000 kg, 1.67%; AT-2 ABC quality 2000.00, 1 adjustment, 3.17% of 63000.00) plus the profile tab and the three pages.
 - Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.

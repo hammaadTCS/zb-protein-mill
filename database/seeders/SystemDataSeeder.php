@@ -18,6 +18,7 @@ class SystemDataSeeder extends Seeder
             CompanySeeder::class,
             SettingsDefinitionSeeder::class,
             RolesAndPermissionsSeeder::class,
+            SystemLedgerAccountsSeeder::class,
         ]);
     }
 }

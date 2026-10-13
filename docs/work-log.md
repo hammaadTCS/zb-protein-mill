@@ -306,3 +306,12 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - Test helpers `owner()` and `accountant()` in `tests/Pest.php`.
 - Tests: owner has every permission; accountant has exactly the accountant list; BR-OPS-11 restores a removed permission and adds no duplicates; BR-OPS-11 takes away a permission the accountant must not have; local test user is owner.
 - Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.
+
+### T1.4 Ledger accounts
+
+- Migration `create_ledger_accounts_table` (spec §9.2 plus the §9.1 common columns `created_by`/`updated_by`, nullable because system accounts are seeded without a user); check constraints on `type`, `normal_side`, `party_type`.
+- Enums `AccountType`, `NormalSide`; model `LedgerAccount` (`BelongsToCompany`). BR-LED-01 guard: changing `code`, `name`, `type`, `normal_side`, `party_type` or `is_active` on a system account throws. **Small addition:** deleting any ledger account also throws (BR-GEN-03), so the rule holds in code as well as in the database.
+- `SystemLedgerAccountsSeeder` (in `SystemDataSeeder`): the 14 accounts of the card, per company, only when the code is missing.
+- `AccountCodeAllocator::next()` with the five ranges; lowest free code; throws when full or for an unknown range.
+- Tests: §8.1 seeded exactly (full table), BR-OPS-11 no duplicates, BR-LED-01 (six kinds of change), allocator (gaps, range end, every range), unknown range.
+- Checks: Pint, Larastan pass; tests pass except the known T0.3 Actions rule.

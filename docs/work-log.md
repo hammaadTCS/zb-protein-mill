@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.4 |
-| Next task | T5.5 Audit log page (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.5 |
+| Next task | T5.6 Dashboard (T2.10 client review is yours) |
 
 ---
 
@@ -858,3 +858,16 @@ Choices and questions:
 - Words not in the glossary: "New parties to review", "Bank detail changes to review" (spec §11.3 wording), "Bank details changed", "Mark reviewed", "Marked reviewed.", "Bank name", "Account title", "Account number", "Choose what was reviewed.".
 - Tests: the card's two (owner marks reviewed, accountant 403; alert counts drop after review) plus the accountant sees no review alerts, and the profile box with old and new bank details.
 - Checks: build, check, types, Pint, Larastan, guard pass; **465 PHP tests pass**.
+
+### T5.5 Audit log page
+
+Built as the card lists: page 41 `/audit-log` (`audit.view`): filters user, action, date range, record type, voucher or party search; columns time (Asia/Karachi), user, action, record (type and voucher or name, linked to its page for purchases, sales, payments, expenses and parties), changes (old → new), reason, IP; 50 per page, newest first. "Audit log" added to the menu (its own group, spec §15.1).
+
+Choices and questions:
+- **Default range is the current month** (spec §11.2 list rule).
+- **Search** matches the record's voucher number, a party's name or code, and the entries of that party.
+- **Setting rows show the setting name as the field** ("advance age days: 30 → 45"); transfer rows now show account names instead of ids (also in change history).
+- `audit-log.index` added to the T-09 route list.
+- Words not in the glossary: "Audit log" (spec page name), "Time", "User", "Action", "Record", "Changes", "Reason", "IP", "All users", "All actions", "All records", "Voucher or party", and the action names ("Setting changed", "Login", …).
+- Tests: the card's two (accountant 403; filter by action returns only that action) plus record type filter with link, search by voucher and by party.
+- Checks: build, check, types, Pint, Larastan, guard pass; **467 PHP tests pass** (one test of this task fixed for a hard-coded id before commit).

@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Model;
 final class ChangeHistory
 {
     /** Screen words for the audit actions. */
-    private const ACTIONS = [
+    public const ACTIONS = [
         'created' => 'Created',
         'updated' => 'Edited',
         'cancelled' => 'Cancelled',
@@ -41,6 +41,8 @@ final class ChangeHistory
         'handled_by_party_id' => Party::class,
         'item_id' => Item::class,
         'money_account_id' => MoneyAccount::class,
+        'from_account_id' => MoneyAccount::class,
+        'to_account_id' => MoneyAccount::class,
         'category_id' => ExpenseCategory::class,
     ];
 
@@ -111,7 +113,7 @@ final class ChangeHistory
      * @param  array<string, mixed>  $new
      * @return list<array{field: string, old: string|null, new: string|null}>
      */
-    private static function changes(array $old, array $new, bool $created): array
+    public static function changes(array $old, array $new, bool $created): array
     {
         $changes = [];
 

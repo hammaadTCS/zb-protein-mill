@@ -12,6 +12,7 @@ import {
     Tags,
     FileSpreadsheet,
     Handshake,
+    History,
     Banknote,
     Landmark,
     LayoutGrid,
@@ -24,6 +25,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as auditLog } from '@/routes/audit-log';
 import { edit as companySettings } from '@/routes/company-settings';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
@@ -156,6 +158,14 @@ export const navigation: NavEntry[] = [
         permission: 'report.view',
         mobileFirst: false,
         icon: FileSpreadsheet,
+    },
+    {
+        group: 'Audit log',
+        label: 'Audit log',
+        href: auditLog(),
+        permission: 'audit.view',
+        mobileFirst: false,
+        icon: History,
     },
     {
         group: 'Settings',

@@ -10,6 +10,7 @@ use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 use LogicException;
 
@@ -47,6 +48,16 @@ class AuditLog extends Model
 
         static::updating(fn () => throw new LogicException('Audit rows are never changed (BR-AUD-02).'));
         static::deleting(fn () => throw new LogicException('Audit rows are never deleted (BR-AUD-02).'));
+    }
+
+    /**
+     * The record the row is about (morph map, conventions §7).
+     *
+     * @return MorphTo<Model, $this>
+     */
+    public function auditable(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     /**

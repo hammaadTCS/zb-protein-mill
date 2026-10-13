@@ -26,6 +26,7 @@ const ROUTE_PERMISSIONS = [
     'rate-pending.index' => null, // purchase.view or sale.view, checked in the controller
     'attachments.show' => null, // the attached record's own view permission
     'adjustments.cancel' => 'adjustment.cancel',
+    'audit-log.index' => 'audit.view',
     'approvals.index' => 'payment.approve',
     'approvals.approve' => 'payment.approve',
     'approvals.reject' => 'payment.approve',

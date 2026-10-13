@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
@@ -122,6 +123,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance')->can('report.view');
 
     // Page 47: Opening balances (T2.6).
+    // Page 41: audit log (T5.5).
+    Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-log.index')->can('audit.view');
+
     // Page 43: users (T5.2). No delete route: users are only disabled (BR-USR-03).
     Route::get('settings/users', [UserController::class, 'index'])->name('users.index')->can('users.manage');
     Route::post('settings/users', [UserController::class, 'store'])->name('users.store')->can('users.manage');

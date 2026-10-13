@@ -77,7 +77,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T5.2** Users page and account safety commands. *Done when:* tests pass.
 - [x] **T5.3** Permission tests across every route. *Done when:* T-09 passes and covers every route.
 - [x] **T5.4** Party review and bank-change alerts. *Done when:* tests pass.
-- [ ] **T5.5** Audit log page. *Done when:* tests pass.
+- [x] **T5.5** Audit log page. *Done when:* tests pass.
 - [ ] **T5.6** Dashboard. *Done when:* tests pass; screenshot at 375 px.
 
 ## M6: Checks and reports  ·  card file `docs/cards/M6.md`

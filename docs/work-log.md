@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.5 |
-| Next task | T3.6 Payment pages (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.6 |
+| Next task | T3.7 Payment approvals (T2.10 client review is yours) |
 
 ---
 
@@ -653,3 +653,15 @@ Choices and questions:
 - Messages not in the glossary: "Choose Paid or Received.", "Select an active party. Partner money is entered on the partner page.", "Only an active payment can be edited."; `missing_reference` and `overpayment_info` texts are glossary §4.
 - Tests: the card's list (AT-1 #3, #13, #14, #18; one test per mapping row with exact lines (8); partner refused; "Handled by" supplier refused; bank without reference warns, cash does not; overpayment information and saves; direction edit keeps PAY-000001; T-18) plus the balance preview.
 - Checks: Pint, Larastan, guard pass; **354 PHP tests pass**.
+
+### T3.6 Payment pages
+
+Built as the card lists: page 10 `/payments/create` (mobile-first; "Paid" / "Received" as two large buttons, red and green with the word; date; party picker for every type except partner; the balance now and after under the amount, from the server, with the overpayment information; account with "Cash" / "Bank transfer"; reference shown for bank accounts; handled by; photo; note), page 9 `/payments` (direction filter plus the spec §11.2 filters and search; totals of paid and of received, active and not awaiting approval), page 11 `/payments/{id}` (every field, linked purchase or sale, photo, Edit and Cancel entry), the edit page (same form with `version`), "New payment" on party profiles and in the phone bottom bar. The receipt photo is stored by `CreatePayment` (kind `receipt_photo`).
+
+Choices and questions:
+- **Totals on page 9 are shown as two figures, Paid and Received**, because adding payments and receipts together means nothing.
+- **After saving, the detail page opens** (no "Save and add another" on page 10: spec §11.8 lists no buttons).
+- Words not in the glossary: "Balance now", "Balance after", "Paid and received", "All parties", "Select party", "Photo", "Direction".
+- Checked at 375 px: Karim, 20,000 paid → "We owe Rs 18,800.00" now, "Advance Rs 1,200.00" after, and the information line. No console errors.
+- Tests: the card's two (list filters by direction with totals; detail shows the linked purchase and the linked sale) plus pre-selected party and redirect to the detail page, and page permissions.
+- Checks: build, check, types, Pint, Larastan, guard pass; **358 PHP tests pass**.

@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { edit, index, show } from '@/routes/parties';
 import { create as newPurchase } from '@/routes/purchases';
 import { create as newSale } from '@/routes/sales';
+import { create as newPayment } from '@/routes/payments';
 import { PARTY_TYPE_LABELS } from './types';
 
 type Profile = {
@@ -100,6 +101,19 @@ export default function PartyProfile({
                                     })}
                                 >
                                     New sale
+                                </Link>
+                            </Button>
+                        )}
+                    {party.type !== 'partner' &&
+                        party.status === 'active' &&
+                        can('payment.create') && (
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={newPayment({
+                                        query: { party_id: party.id },
+                                    })}
+                                >
+                                    New payment
                                 </Link>
                             </Button>
                         )}

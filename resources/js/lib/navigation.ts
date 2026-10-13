@@ -8,6 +8,7 @@ import {
     BookOpen,
     Clock,
     FileSpreadsheet,
+    Banknote,
     Landmark,
     LayoutGrid,
     Package,
@@ -20,6 +21,7 @@ import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
+import { create as newPayment, index as payments } from '@/routes/payments';
 import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
 import { trialBalance } from '@/routes/reports';
@@ -76,6 +78,14 @@ export const navigation: NavEntry[] = [
         permission: 'sale.view',
         mobileFirst: false,
         icon: Receipt,
+    },
+    {
+        group: 'Daily entries',
+        label: 'Payments',
+        href: payments(),
+        permission: 'payment.view',
+        mobileFirst: false,
+        icon: Banknote,
     },
     {
         group: 'People',
@@ -147,6 +157,14 @@ export const bottomBar: NavEntry[] = [
         permission: 'sale.create',
         mobileFirst: true,
         icon: Receipt,
+    },
+    {
+        group: 'Daily entries',
+        label: 'New payment',
+        href: newPayment(),
+        permission: 'payment.create',
+        mobileFirst: true,
+        icon: Banknote,
     },
 ];
 

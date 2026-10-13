@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Payments\Actions;
 
+use App\Domain\Attachments\Actions\StoreAttachment;
+use App\Domain\Attachments\Enums\AttachmentKind;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\PaymentInput;
 use App\Domain\Periods\Periods;
@@ -12,6 +14,7 @@ use App\Models\User;
 use App\Support\Idempotency;
 use App\Support\Warnings\Warnings;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -57,6 +60,10 @@ final class CreatePayment
                 ]);
 
                 $warnings->audit($payment, $by);
+
+                if (($data['photo'] ?? null) instanceof UploadedFile) {
+                    app(StoreAttachment::class)->handle($by, $payment, $data['photo'], AttachmentKind::ReceiptPhoto, 'photo');
+                }
 
                 return $payment;
             });

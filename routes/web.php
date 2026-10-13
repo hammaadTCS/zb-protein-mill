@@ -33,9 +33,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
     Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
 
-    // Payments and receipts (T3.5; pages in T3.6).
+    // Pages 9, 10 and 11: payments and receipts (T3.5, T3.6).
+    Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
     Route::get('payments/balance-preview', [PaymentController::class, 'balancePreview'])->name('payments.balance-preview');
+    Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
+    Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
     Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::post('payments/{payment}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
 

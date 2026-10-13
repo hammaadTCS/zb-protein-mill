@@ -33,8 +33,28 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // BR-SEC-06: never served directly; files go out only through a permission-checked route.
+            'serve' => false,
+            // conventions §12: the backup user (group) can read uploads, nobody else.
+            'permissions' => [
+                'file' => ['public' => 0640, 'private' => 0640],
+                'dir' => ['public' => 0750, 'private' => 0750],
+            ],
             'throw' => false,
+            'report' => false,
+        ],
+
+        // T2.8, BR-SEC-06: slip and receipt photos. Private, never served directly.
+        'attachments' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/attachments'),
+            'serve' => false,
+            'visibility' => 'private',
+            'permissions' => [
+                'file' => ['public' => 0640, 'private' => 0640],
+                'dir' => ['public' => 0750, 'private' => 0750],
+            ],
+            'throw' => true,
             'report' => false,
         ],
 

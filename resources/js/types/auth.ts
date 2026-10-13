@@ -1,13 +1,11 @@
+/** The logged-in user as shared by the server (conventions §10). */
 export type User = {
     id: number;
     name: string;
     email: string;
     avatar?: string;
-    email_verified_at: string | null;
-    two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
+    roles: string[];
+    permissions: string[];
 };
 
 export type Auth = {

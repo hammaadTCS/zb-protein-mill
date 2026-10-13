@@ -1,21 +1,18 @@
 import { Form, Head } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
-import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/login';
-import { request } from '@/routes/password';
 
 type Props = {
     status?: string;
-    canResetPassword: boolean;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({ status }: Props) {
     return (
         <>
             <Head title="Log in" />
@@ -44,18 +41,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             </div>
 
                             <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
-                                        >
-                                            Forgot your password?
-                                        </TextLink>
-                                    )}
-                                </div>
+                                <Label htmlFor="password">Password</Label>
                                 <PasswordInput
                                     id="password"
                                     name="password"
@@ -100,7 +86,26 @@ export default function Login({ status, canResetPassword }: Props) {
     );
 }
 
+/**
+ * The company logo: shown only here and in PDFs (spec §15.7). The bird in the logo is
+ * white, so it always sits on white, also in dark mode (a white tile with 12 px padding).
+ */
+function LoginLogo() {
+    return (
+        <div className="rounded-xl bg-white dark:p-3">
+            <img
+                src="/images/zb-logo-256.png"
+                alt="ZB Poultry Protein Mill"
+                width={120}
+                height={120}
+                className="h-auto w-full max-w-[120px]"
+            />
+        </div>
+    );
+}
+
 Login.layout = {
     title: 'Log in to your account',
     description: 'Enter your email and password below to log in',
+    mark: <LoginLogo />,
 };

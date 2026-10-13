@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Domain\Companies\Models\Company;
 use App\Models\User;
+use Database\Seeders\CompanySeeder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -25,6 +27,8 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'company_id' => fn (): int => self::firstCompanyId(),
+            'is_active' => true,
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
@@ -34,6 +38,18 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
         ];
+    }
+
+    /**
+     * Users join the first company; CompanySeeder creates it when none exists yet.
+     */
+    private static function firstCompanyId(): int
+    {
+        if (! Company::query()->exists()) {
+            (new CompanySeeder)->run();
+        }
+
+        return (int) Company::query()->orderBy('id')->value('id');
     }
 
     /**

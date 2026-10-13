@@ -4,6 +4,8 @@
 #   1. starts PostgreSQL and creates the TEST login and both databases;
 #   2. once the app exists (task T0.1 onward): installs PHP and JS packages if they are missing,
 #      and creates .env with a new APP_KEY if it is missing (.env is never committed).
+#      PHP packages: the cloud GitHub proxy refuses GitHub zip downloads, so
+#      scripts/cloud-composer-cache.sh first builds every zip from git into Composer's cache.
 # On your laptop it only prints a short status; it never changes anything there.
 # Test values only. Never put real or production credentials here.
 # The test role is called zb_test on purpose: zb_app, zb_migrator and zb_backup are the production
@@ -51,8 +53,11 @@ fi
 
 if [ -f artisan ]; then
   if [ ! -f vendor/autoload.php ]; then
-    echo "Installing PHP packages (composer install)..."
-    COMPOSER_NO_INTERACTION=1 composer install --no-progress --quiet || echo "WARNING: composer install failed; run it yourself and report the error."
+    echo "Installing PHP packages (git-built zips, then composer install)..."
+    # Root user in a throwaway cloud machine: COMPOSER_ALLOW_SUPERUSER=1 keeps Composer plugins on
+    # (Pest needs its plugin), as on the laptop and in CI.
+    bash scripts/cloud-composer-cache.sh . || echo "WARNING: some package zips could not be built from git; see above."
+    COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_NO_INTERACTION=1 composer install --no-progress --quiet || echo "WARNING: composer install failed; run it yourself and report the error."
   fi
   if [ -f package-lock.json ] && [ ! -d node_modules ]; then
     echo "Installing JS packages (npm ci)..."

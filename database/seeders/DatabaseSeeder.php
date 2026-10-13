@@ -2,24 +2,30 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Companies\Models\Company;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
+/**
+ * Local computers, cloud sessions and tests only. Servers run SystemDataSeeder.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (app()->environment('production')) {
+            throw new RuntimeException('DatabaseSeeder is for local use. Servers use SystemDataSeeder.');
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $this->call(SystemDataSeeder::class);
+
+        if (! User::query()->where('email', 'test@example.com')->exists()) {
+            User::factory()->create([
+                'company_id' => Company::query()->orderBy('id')->value('id'),
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+            ]);
+        }
     }
 }

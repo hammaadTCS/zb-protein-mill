@@ -272,3 +272,14 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - **Added (not in the card): an `Arch` test suite in `phpunit.xml`.** The kit's `phpunit.xml` runs only `tests/Unit` and `tests/Feature`, so without it `php artisan test` (and CI) would never run the architecture tests.
 - **Reported as the card asks: one rule fails only because its namespace does not exist yet.** `conventions §2: actions are classes with a handle method` uses `expect('App\Domain\*\Actions')`; with no Actions folder Pest stops with "The app/Domain/*/Actions directory does not exist". I proved with a temporary class (deleted afterwards) that the rule passes as soon as one `App\Domain\<Module>\Actions` class exists. The first real Actions come in T2.2, so **from T0.3 to T2.1 this single test fails** for that reason only; I check after every task that it is the only failure. Possible `[spec-change]` if you want it green earlier: none needed in the test; it fixes itself in T2.2.
 - Checks: all pass except that one architecture rule (35 of 36 PHP tests).
+
+### T1.1 Companies and company scope
+
+- Migrations `create_companies_table` and `add_company_and_active_to_users_table` (users that already exist join the first company; `company_id` then becomes NOT NULL).
+- `App\Domain\Companies\Models\Company`; trait `App\Support\Tenancy\BelongsToCompany` (global scope on the logged-in user's company; fills `company_id` on create; without a logged-in user `company_id` must be given). **Choice of mine (safer than the card's wording):** a logged-in user who passes another company's id gets a `LogicException` instead of silently writing into that company.
+- `CompanySeeder` (only when no company exists), `SystemDataSeeder` (BR-OPS-11), `DatabaseSeeder` (refuses production, keeps `test@example.com`). `UserFactory` fills `company_id` and `is_active`.
+- Disabled users cannot log in: Fortify `authenticateUsing` checks the password first, then shows "This account is disabled. Ask the owner." and fires the failed-login event.
+- `tests/Pest.php` seeds `SystemDataSeeder` before every feature test (conventions §11).
+- Tests: BR-GEN-01 (other company invisible; company filled on create; cannot create for another company), BR-USR-03 (disabled cannot log in; active can; wrong password does not reveal disabled), BR-OPS-11 (seeder twice, production refusal), local test user.
+- The production-refusal test calls the seeder class directly, because `db:seed` itself asks "are you sure?" in production.
+- Checks: tests pass except the known T0.3 Actions rule; Larastan reports "trait used zero times" until T1.2 adds the first model that uses it.

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/accounts', [MoneyAccountController::class, 'store'])->name('money-accounts.store');
     Route::put('settings/accounts/{moneyAccount}', [MoneyAccountController::class, 'update'])->name('money-accounts.update');
     Route::post('settings/accounts/{moneyAccount}/deactivate', [MoneyAccountController::class, 'deactivate'])->name('money-accounts.deactivate');
+
+    // Page 45: Items (T2.3).
+    Route::get('settings/items', [ItemController::class, 'index'])->name('items.index');
+    Route::post('settings/items', [ItemController::class, 'store'])->name('items.store');
+    Route::put('settings/items/{item}', [ItemController::class, 'update'])->name('items.update');
+    Route::post('settings/items/{item}/deactivate', [ItemController::class, 'deactivate'])->name('items.deactivate');
 });
 
 require __DIR__.'/settings.php';

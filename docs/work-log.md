@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1, T2.2 |
-| Next task | T2.3 Items |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.3 |
+| Next task | T2.4 Parties backend |
 
 ---
 
@@ -458,3 +458,17 @@ Choices and questions:
 - The T0.3 architecture rule "actions are classes with a handle method" now passes: **all 212 PHP tests pass.**
 - Checked on desktop: list, create dialog, toast "Saved.". No console errors.
 - Checks: build, `npm test`, check, types, Pint, Larastan, guard pass.
+
+### T2.3 Items
+
+Built as the card lists: table `items` (spec §9.2 plus `code`), foreign key `journal_lines.item_id → items.id`, enum `ItemType`, `ItemsSeeder` in `SystemDataSeeder` (only adds missing codes, never changes a row), Actions `CreateItem` / `UpdateItem` / `DeactivateItem`, `Item::hasEntries()` (false until T2.7 and T3.4), `ItemPolicy` (`settings.manage`), page 45 `/settings/items` and its menu entry.
+
+Choices and questions:
+- **Item codes are not given anywhere.** Seeded codes: `WASTE`, `WOOD`, `PROTEIN`, `OILFAT`. For a new item the Owner types the code (up to 10 capital letters, digits or dashes, unique; it never changes). Please confirm or give the codes.
+- **Item names are unique per company** (form check only). The acceptance files find items by name, and two items called "Waste" would confuse users. The spec does not say this.
+- **The four system items cannot be changed at all** (name or type). Their ledger accounts are system accounts, which BR-LED-01 says cannot be renamed. The card says "name only"; renaming a system item would leave "Purchases – Waste" on a renamed item.
+- **Changing a new item between bought (raw material, fuel) and sold (product)** before its first entry creates the other kind of ledger account and makes the old one inactive (it has no entries). Raw material ↔ fuel keeps its account.
+- Words not in the glossary: "New item", "Raw material", "Fuel", "Product", "Code", "Account".
+- Tests: the card's four, plus: a new product gets 4020; rename and type change before entries; deactivate; page 45 for owner and refused for accountant; code and name unique.
+- Note: PHP page tests need `npm run build` first (CI does this; `check-all.sh` runs the PHP tests before the build). Same question as in T0.1.
+- Checks: build, check, types, Pint, Larastan, guard pass; **221 PHP tests pass**.

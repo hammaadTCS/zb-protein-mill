@@ -4,8 +4,9 @@
  */
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, LayoutGrid } from 'lucide-react';
+import { Landmark, LayoutGrid, Package } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 
 /** Sidebar groups in the order of spec §15.1. */
@@ -51,6 +52,14 @@ export const navigation: NavEntry[] = [
         permission: 'settings.manage',
         mobileFirst: false,
         icon: Landmark,
+    },
+    {
+        group: 'Settings',
+        label: 'Items',
+        href: items(),
+        permission: 'settings.manage',
+        mobileFirst: false,
+        icon: Package,
     },
 ];
 

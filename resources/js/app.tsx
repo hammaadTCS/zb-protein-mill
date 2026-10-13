@@ -6,10 +6,11 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'ZB Poultry Protein Mill';
 
 void createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    // Browser tab: "{Page} – ZB Poultry Protein Mill" (docs/brand.md).
+    title: (title) => (title ? `${title} – ${appName}` : appName),
     layout: (name) => {
         switch (true) {
             case name.startsWith('auth/'):
@@ -30,7 +31,7 @@ void createInertiaApp({
         );
     },
     progress: {
-        color: '#4B5563',
+        color: '#0A5223',
     },
 });
 

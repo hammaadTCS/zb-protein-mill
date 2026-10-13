@@ -18,4 +18,6 @@ export type AuthLayoutProps = {
     name?: string;
     title?: string;
     description?: string;
+    /** Shown above the title instead of the monogram (the login page passes the logo). */
+    mark?: ReactNode;
 };

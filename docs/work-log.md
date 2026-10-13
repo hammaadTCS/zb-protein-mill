@@ -8,10 +8,10 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Item | Status |
 | --- | --- |
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
-| State | **T0.1 built; all local checks pass.** Waiting for CI on the pull request, then your review. G-30 (`[spec-change]`) still to be applied and merged by you |
-| Branch | `claude/lucid-ptolemy-w3fhsy`, pull request [hammaadTCS/zb-protein-mill#1](https://github.com/hammaadTCS/zb-protein-mill/pull/1) |
-| Tasks ticked in `docs/tasks.md` | T0.1 |
-| Next task | T0.2, in a new session, after T0.1 is merged into `main` |
+| State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
+| Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 |
+| Next task | T2.2 Money accounts |
 
 ---
 
@@ -415,3 +415,24 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-S1JHeCxp0a
 - Checks: Pint, Larastan, guard pass.
 
 **M1 complete.** All 13 accounting-core tasks done.
+
+### T2.1 App shell, brand, formatting helpers
+
+Built as the card lists:
+- Brand tokens `brand-deep`, `brand-green`, `brand-gold` in `resources/css/app.css`; shadcn `--primary` and `--ring` are `brand-green` in both themes; the sidebar is `brand-deep` in both themes, with a gold bar on the active item.
+- Login: `public/images/zb-logo-256.png` (copied from `brand/`), max 120 px, on white (a white tile with 12 px padding in dark mode). It is passed from `login.tsx` to the auth layout as a `mark`, so the logo file name appears only in `login.tsx` (the guard allows it only there and in PDFs). Other auth pages show the monogram.
+- Sidebar header: monogram `favicon.svg` at 32 px plus "ZB Poultry Protein Mill". The kit's GitHub and docs links in the sidebar footer are removed.
+- Menu as data in `resources/js/lib/navigation.ts` (`group, label, href, permission, mobileFirst, icon`), with Dashboard only. `visibleGroups()` hides entries without permission and empty groups. The bottom bar list is empty until the entry tasks add their items.
+- Staging banner (glossary text) on app and auth pages when `app.env_name` is `staging`.
+- Shared props (conventions §10): `auth.user` with `roles` and `permissions`, `settings.formats`, `app.env_name`, flash `success` and `voucher` (`App\Support\Flash::saved()`); a toast shows `flash.success` after every save.
+- `format.ts` (string maths only), `money.ts` (`multiplyToPaisa` with BigInt, plus `previewAmount` for the live total), components `StatusBadge`, `BalanceInWords`, `MoneyText`, `KgText`, `StagingBanner`, `MobileBottomBar`; hooks `useFormats`, `useCan`.
+- Browser tab title: "{Page} – ZB Poultry Protein Mill" (brand.md); page progress bar in brand green.
+
+Choices and questions:
+- **Lakh grouping is done on strings**, not with `Intl.NumberFormat('en-IN')` (spec §15.2 mentions `en-IN`). `Intl` needs a JavaScript number, and conventions §3 forbids floats for money. The result is the same grouping (1,23,45,678.50); the tests prove it.
+- **Dark-mode focus ring:** brand.md asks for `--ring` = brand-green in dark mode too. On the near-black background its contrast is about 2.3 : 1, below the 3 : 1 that WCAG asks for focus indicators. I followed brand.md; question for you whether dark mode should use a lighter green ring.
+- **Unused kit layouts** (header layout, card and split auth layouts) are kept; they now show the monogram. Nothing uses them.
+- **Fixed a test of mine from T1.7** (`PostingServiceTest`, BR-LED-05): its check query had no `ORDER BY`, so PostgreSQL sometimes returned the two accounts in the other order and the test failed at random. I added `orderBy('ledger_accounts.code')`; **the expected values are unchanged.** I am telling you because CLAUDE.md says never to change an existing test; this change makes the test stable, not weaker. Please review it.
+- Checked by me at 375 px and 1280 px, light and dark: login (logo on white tile, green button) and the empty dashboard (deep-green sidebar, gold marker, tab title "Dashboard – ZB Poultry Protein Mill"). No console errors.
+- Tests: the card's 10 format/money cases plus extra cases (international grouping, rounding, signed values, preview amount), navigation visibility (3), shared props (4). `npm test` 21 passed.
+- Checks: build, `npm test`, `npm run check`, `npm run types:check`, Pint, Larastan, guard pass; PHP tests pass except the known T0.3 Actions rule (fixed by T2.2).

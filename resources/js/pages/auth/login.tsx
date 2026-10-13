@@ -86,7 +86,26 @@ export default function Login({ status }: Props) {
     );
 }
 
+/**
+ * The company logo: shown only here and in PDFs (spec §15.7). The bird in the logo is
+ * white, so it always sits on white, also in dark mode (a white tile with 12 px padding).
+ */
+function LoginLogo() {
+    return (
+        <div className="rounded-xl bg-white dark:p-3">
+            <img
+                src="/images/zb-logo-256.png"
+                alt="ZB Poultry Protein Mill"
+                width={120}
+                height={120}
+                className="h-auto w-full max-w-[120px]"
+            />
+        </div>
+    );
+}
+
 Login.layout = {
     title: 'Log in to your account',
     description: 'Enter your email and password below to log in',
+    mark: <LoginLogo />,
 };

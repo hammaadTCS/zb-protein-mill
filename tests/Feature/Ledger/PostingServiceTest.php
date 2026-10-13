@@ -81,6 +81,7 @@ it('BR-LED-05 reverse swaps every line and nets each account to zero', function 
     $net = JournalLine::query()
         ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
         ->groupBy('ledger_accounts.code')
+        ->orderBy('ledger_accounts.code')
         ->selectRaw('ledger_accounts.code, (SUM(debit) - SUM(credit))::text AS net')
         ->pluck('net', 'code')
         ->all();

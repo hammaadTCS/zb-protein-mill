@@ -39,6 +39,10 @@ export default defineConfig({
             ],
         },
     },
+    test: {
+        // Front-end unit tests sit next to the code (T2.1).
+        include: ['resources/js/**/*.test.ts'],
+    },
     lint: {
         ignorePatterns: [
             'vendor/**',

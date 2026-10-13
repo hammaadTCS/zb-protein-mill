@@ -10,7 +10,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -66,6 +68,12 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // BR-SEC-16: no lazy loading and no silently discarded attributes outside production.
+        Model::shouldBeStrict(! app()->isProduction());
+
+        // BR-OPS-06: /up fails when the database does not answer.
+        Event::listen(DiagnosingHealth::class, fn () => DB::select('select 1'));
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

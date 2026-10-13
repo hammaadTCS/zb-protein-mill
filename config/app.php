@@ -16,6 +16,12 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
+    | Name of the environment shown as a banner (conventions §10): `staging` shows
+    | "TEST COPY – entries here are not real." Empty everywhere else.
+    */
+    'env_name' => env('ZB_ENV_NAME'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------

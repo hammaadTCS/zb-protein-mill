@@ -42,6 +42,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // conventions §10: the environment name for the staging banner (T2.1 shows it).
+            'app' => [
+                'env_name' => config('app.env_name'),
+            ],
         ];
     }
 }

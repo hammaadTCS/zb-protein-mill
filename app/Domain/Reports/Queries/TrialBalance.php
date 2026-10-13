@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports\Queries;
 
+use App\Domain\Ledger\Models\JournalLine;
 use App\Support\Decimal;
 use App\Support\Tenancy\CurrentCompany;
-use Illuminate\Support\Facades\DB;
 
 /**
  * R-07 trial balance, straight from the journal lines (BR-RPT-01: by posting date).
@@ -16,7 +16,9 @@ final class TrialBalance
 {
     public static function asOf(string $ymd, bool $withParties = false): TrialBalanceResult
     {
-        $query = DB::table('journal_lines')
+        $query = JournalLine::query()
+            ->withoutGlobalScope('company')
+            ->toBase()
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
             ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
             ->where('journal_entries.company_id', CurrentCompany::id())

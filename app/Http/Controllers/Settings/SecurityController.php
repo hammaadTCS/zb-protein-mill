@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
+use App\Support\Sessions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -38,9 +39,15 @@ class SecurityController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
-        $request->user()->update([
+        // BR-USR-08: a chosen password is no longer temporary.
+        $request->user()->forceFill([
             'password' => $request->password,
-        ]);
+            'must_change_password' => false,
+            'password_changed_at' => now(),
+        ])->save();
+
+        // BR-SEC-13: every other session of this user ends; this one stays.
+        Sessions::endFor($request->user(), $request->session()->getId());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 

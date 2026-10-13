@@ -378,3 +378,32 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - **T-19 run for real on this cloud machine** (`infra/tests/ci-db-privileges.sh`, unchanged): migrations as the non-superuser owner `zb_migrator`, then the production grants. Result: **23 tables, 100 passed, 0 failed**. No migration needs a superuser (no `CREATE EXTENSION`), so nothing to report under the card's stop rule. To run it I created a throwaway superuser `zb_ci_super` in this session's local PostgreSQL only (CI's database container provides its own); it is not in the repository.
 - CI's "Database privilege check" step starts running on the next pull request, because `pgsql_migrator` now appears in `config/database.php`.
 - Checks: Pint passes; tests pass except the known T0.3 Actions rule.
+
+### T1.12 Security baseline
+
+Built as the card lists: `config/security.php` (`csp_enabled`, default true); middleware `ContentSecurityPolicy` (last in the web group), `EnsureUserIsActive`, `EnsurePasswordIsChanged`, `EnsureOwnerTwoFactor`; nonce on the inline dark-mode script; users `must_change_password`, `password_changed_at`; `App\Support\Sessions::endFor()` (delete line marked `guard:allow`), called on password change; `/up` runs `select 1`; `Model::shouldBeStrict()` outside production; local disk `serve => false` with 0640/0750 permissions; `robots.txt` disallows all; plain error pages 403/404/419/429/500/503 (no scripts, no logo); shared prop `app.env_name` from `ZB_ENV_NAME`; `trustHosts(subdomains: false)`.
+
+Choices and findings (questions for you where marked):
+- **The three "after auth" checks are appended to the web group** (they act only when a user is logged in), so they also cover Fortify's own routes.
+- **Allowed routes while blocked:** the password check lets through the security page, password update, password confirmation and logout. The owner two-step check also lets through Fortify's two-factor enable/confirm/QR/secret/recovery-code routes; otherwise an Owner could never turn two-step login on. The card says "every page except the security settings page and logout".
+- **Owner check uses the role** (`hasRole('owner')`), because BR-SEC-09 is about who the user is, not about opening a screen (conventions §9 forbids role checks for screens).
+- **`Sessions::endFor()` also replaces the "remember me" token** and writes a `sessions_ended` audit row. Without the new token, another device with an old "remember me" cookie would log straight back in, so BR-SEC-13 would not hold.
+- **User model defaults** (`is_active`, `must_change_password`, `password_changed_at`, `two_factor_confirmed_at`) are declared on the model, because strict mode refuses to read an attribute of a freshly created user that the database default would only fill on a fresh read.
+- **CSP and Inertia's data blocks (card wording vs. facts):** the card says the same nonce on "every `<script>` tag". Inertia 3 writes its page data in `<script data-page="app" type="application/json">` with no way to add a nonce; browsers never run it and CSP does not apply to it (`docs/stack-baseline.md`, "Root view", says the same). The test checks every executable script and that the only other tag is that JSON block. I did not copy Inertia's markup into our template just to add an attribute.
+- **Fixed in this task:** the guard flagged `DB::table('journal_lines')` in T1.10's trial balance query; it now reads through the `JournalLine` model, which the architecture rules allow for Reports. I had not run the guard in T1.10; it now runs after every task.
+- Tests: the card's ten, plus: new nonce per request; owner with two-step login passes; robots.txt; staging banner prop.
+
+Done-when check (`CSP_ENABLED=true php artisan serve`, then `curl -si http://127.0.0.1:8000/login`):
+
+```text
+Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-S1JHeCxp0aQCtr6E1FZgAWMZCclB9yAPLYL8mel5'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+<script nonce="S1JHeCxp0aQCtr6E1FZgAWMZCclB9yAPLYL8mel5">
+<script type="module" src="http://127.0.0.1:8000/build/assets/app-6lU-vFEX.js" nonce="S1JHeCxp0aQCtr6E1FZgAWMZCclB9yAPLYL8mel5">
+<script type="module" src="http://127.0.0.1:8000/build/assets/login-BikqiNbe.js" nonce="S1JHeCxp0aQCtr6E1FZgAWMZCclB9yAPLYL8mel5">
+<script data-page="app" type="application/json">
+<script data-inertia-devtools-id type="application/json">
+```
+
+(The second JSON block is Inertia's developer-tools data, present only outside production.)
+
+- Checks: Pint, Larastan, guard, build, lint, TypeScript, audits pass; tests pass except the known T0.3 Actions rule.

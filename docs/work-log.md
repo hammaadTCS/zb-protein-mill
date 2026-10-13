@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1, T5.2 |
-| Next task | T5.3 Permission tests across every route (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.3 |
+| Next task | T5.4 Party review and bank-change alerts (T2.10 client review is yours) |
 
 ---
 
@@ -834,3 +834,15 @@ Choices and questions:
 - Words not in the glossary: "Users", "Add user", "E-mail", "Role", "Owner", "Accountant", "Status", "Active", "Disabled", "Two-step login", "On", "Off", "Last login", "Temporary password", "Reset password", "Disable", "Enable", "User … added.", "Saved.", the reset dialog sentence, and the command messages.
 - Tests: the card's twelve (last owner; no delete route; production password without a symbol; disabled login refused; sessions end on disable, role change and reset with `must_change_password`; create-owner creates, refuses with an owner, refuses without system data, is audited; reset-password prints once and forces a change; reset-two-factor clears it; unknown e-mail fails) plus page props and 403, add user, enable.
 - Checks: build, check, types, Pint, Larastan, guard pass; **458 PHP tests pass**.
+
+### T5.3 Permission tests across every route
+
+Built as the card lists: `tests/Feature/Permissions/RoutePermissionTest.php` with a dataset of every application route mapped to the permission it needs (spec §7). It fails when a route is missing from the dataset (or the dataset names a route that does not exist). Each route is called with real records for its parameters: the accountant gets 403 on every owner-only route, and the owner never gets 403.
+
+Choices and questions:
+- **Every application route now also carries `->can('<permission>')`** in `routes/web.php`. Without it, an owner-only save with a form request (for example `POST /settings/users`) answered the accountant with a validation error instead of 403, because Laravel validates the form before the controller's own check. Nothing could be saved either way, but now the permission is checked first everywhere. Controllers keep their policy checks (company of the record). A mutation check (removing one `->can`) makes T-09 fail.
+- **Not classified** (card: login, logout, assets, the kit's profile routes): home redirect, login, logout, profile, security, appearance, password and two-factor routes, plus unnamed development-tool and health-check routes.
+- **Three routes need no single permission**: dashboard (any user), rate pending (purchase.view or sale.view, checked in the controller), attachments (the attached record's own permission).
+- **Finding for T8.1**: the route list shows Inertia's development tools routes (`_inertia/devtools/...`) registered in this environment. I will check in the security task that they are off in production.
+- Tests: T-09 (every route classified; accountant 403 on owner-only routes and owner never 403, 215 assertions) plus the dataset agrees with the role matrix.
+- Checks: types, Pint, Larastan, guard pass; **461 PHP tests pass**.

@@ -27,7 +27,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T1.4** Ledger accounts. *Done when:* tests pass.
 - [x] **T1.5** Journal tables and database protections. *Done when:* tests pass.
 - [x] **T1.6** Voucher numbering. *Done when:* tests pass.
-- [ ] **T1.7** Posting Service. *Done when:* tests pass; arch test confirms only the Ledger module touches journal models.
+- [x] **T1.7** Posting Service. *Done when:* tests pass; arch test confirms only the Ledger module touches journal models.
 - [ ] **T1.8** Audit log. *Done when:* tests pass.
 - [ ] **T1.9** Periods and date rules. *Done when:* tests pass.
 - [ ] **T1.10** Trial balance query. *Done when:* tests pass.

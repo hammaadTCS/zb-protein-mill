@@ -129,6 +129,7 @@ class PartyController extends Controller
                     'decrease' => $row->decrease,
                     'balance' => $words($row->balance),
                     'route' => $row->route,
+                    'awaiting_approval' => $row->awaitingApproval,
                 ], $khata->rows),
             ],
         ]);

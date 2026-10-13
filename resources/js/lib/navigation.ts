@@ -6,6 +6,7 @@ import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     BookOpen,
+    CheckCheck,
     Clock,
     FileSpreadsheet,
     Banknote,
@@ -22,6 +23,7 @@ import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
 import { create as newPayment, index as payments } from '@/routes/payments';
+import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
 import { trialBalance } from '@/routes/reports';
@@ -102,6 +104,14 @@ export const navigation: NavEntry[] = [
         permission: 'purchase.view',
         mobileFirst: false,
         icon: Clock,
+    },
+    {
+        group: 'Checks',
+        label: 'Approvals',
+        href: approvals(),
+        permission: 'payment.approve',
+        mobileFirst: true,
+        icon: CheckCheck,
     },
     {
         group: 'Reports',

@@ -6,8 +6,10 @@ use App\Domain\Parties\Models\Party;
 use App\Domain\Payments\Actions\CancelPayment;
 use App\Domain\Payments\Actions\CreatePayment;
 use App\Domain\Payments\Actions\UpdatePayment;
+use App\Domain\Payments\Enums\ApprovalStatus;
 use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Payments\PaymentApproval;
 use App\Domain\Payments\PaymentBalance;
 use App\Domain\Payments\PaymentInput;
 use App\Http\Controllers\Concerns\ListsEntries;
@@ -100,7 +102,13 @@ class PaymentController extends Controller
         $info = $this->overpayment($data);
         $payment = $action->handle($this->actor($request), $data, $request->confirmedWarnings());
 
-        $payment->wasRecentlyCreated ? Flash::saved($payment->voucher_no) : Flash::alreadySaved($payment->voucher_no);
+        if (! $payment->wasRecentlyCreated) {
+            Flash::alreadySaved($payment->voucher_no);
+        } elseif ($payment->approval_status === ApprovalStatus::Pending) {
+            Flash::success(__(PaymentApproval::PENDING_MESSAGE)); // BR-PAY-08, glossary "Approval pending"
+        } else {
+            Flash::saved($payment->voucher_no);
+        }
 
         if ($info !== null && $payment->wasRecentlyCreated) {
             Inertia::flash(['toast' => ['type' => 'info', 'message' => $info]]); // BR-PAY-11

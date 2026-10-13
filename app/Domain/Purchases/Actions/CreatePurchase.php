@@ -13,6 +13,7 @@ use App\Domain\Ledger\PostingService;
 use App\Domain\Numbering\VoucherNumberService;
 use App\Domain\Payments\Actions\RecordPayment;
 use App\Domain\Payments\Enums\PaymentDirection;
+use App\Domain\Payments\PaymentApproval;
 use App\Domain\Periods\Periods;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
@@ -121,6 +122,7 @@ final class CreatePurchase
                 'party_id' => $input->party->id,
                 'purchase_id' => $purchase->id,
                 'idempotency_key' => $key,
+                'approval_status' => PaymentApproval::statusFor($by, $input->party, PaymentDirection::Paid, $paidNow['amount']), // BR-PUR-10, BR-PAY-06/07
             ]);
         }
 

@@ -7,6 +7,7 @@ namespace App\Domain\Payments\Actions;
 use App\Domain\Attachments\Actions\StoreAttachment;
 use App\Domain\Attachments\Enums\AttachmentKind;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Payments\PaymentApproval;
 use App\Domain\Payments\PaymentInput;
 use App\Domain\Periods\Periods;
 use App\Domain\Settings\Settings;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Page 10: a payment to or a receipt from any party except a partner (BR-PAY-01 to
  * BR-PAY-04, BR-PAY-10 to BR-PAY-12). Voucher PAY for paid, RCV for received.
- * Approval rules (BR-PAY-06, BR-PAY-07) come with T3.7.
+ * A "paid" payment by a user without `payment.approve` may wait for the Owner
+ * (BR-PAY-06, BR-PAY-07): it is saved without a journal (BR-PAY-08).
  */
 final class CreatePayment
 {
@@ -57,6 +59,7 @@ final class CreatePayment
                     'handled_by_party_id' => $input->handledBy?->id,
                     'note' => $input->note,
                     'idempotency_key' => $key,
+                    'approval_status' => PaymentApproval::statusFor($by, $input->party, $input->direction, $input->amount), // BR-PAY-06, BR-PAY-07
                 ]);
 
                 $warnings->audit($payment, $by);

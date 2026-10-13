@@ -74,7 +74,7 @@ final class EntrySources
                     'voucher' => $p->voucher_no,
                     'description' => ($p->direction === PaymentDirection::Paid ? 'Paid' : 'Received').' – '.$p->moneyAccount->name
                         .($p->reference_no !== null ? ' – '.$p->reference_no : ''),
-                    'route' => null,
+                    'route' => route('payments.show', $p->id, false),
                 ]])->all(),
             'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (OpeningBalance $o) => [$o->id => [

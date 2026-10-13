@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.6 |
-| Next task | T3.7 Payment approvals (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.7 |
+| Next task | T3.8 Negative cash warning and shared dialogs (T2.10 client review is yours) |
 
 ---
 
@@ -665,3 +665,15 @@ Choices and questions:
 - Checked at 375 px: Karim, 20,000 paid → "We owe Rs 18,800.00" now, "Advance Rs 1,200.00" after, and the information line. No console errors.
 - Tests: the card's two (list filters by direction with totals; detail shows the linked purchase and the linked sale) plus pre-selected party and redirect to the detail page, and page permissions.
 - Checks: build, check, types, Pint, Larastan, guard pass; **358 PHP tests pass**.
+
+### T3.7 Payment approvals
+
+Built as the card lists: `PaymentApproval::statusFor()` used by `CreatePayment` and "Paid now" (a "paid" payment by a user without `payment.approve` waits when the amount ≥ `payment_approval_limit`, or when the party has no earlier posted paid payment and the amount ≥ `new_party_first_payment_limit`; receipts never wait), a waiting payment has no journal and changes no balance, the glossary "Approval pending" message, `ApprovePayment` (posts on the entry date, or today when that month is closed; audit `approved`), `RejectPayment` (reason, no journal, stays visible; audit `rejected`), page 27 `/approvals` (oldest first, party balance, Approve / Reject with reason; `payment.approve` only; menu under Checks), and waiting payments greyed in the khata, outside the balance.
+
+Choices and questions:
+- **Editing a waiting payment checks the approval rules again** with the new figures; if it no longer needs approval (or the Owner edits it) it is posted. An approved payment stays approved.
+- **A rejection needs a reason of at least 5 characters**, like a cancel (BR-GEN-04). The spec says "with a reason" without a length.
+- **"Paid now" that waits** shows the purchase's "Saved. PUR-…" toast plus an information toast with the "Approval pending" text.
+- Words not in the glossary: "No payments are awaiting approval.", "Balance now", the khata suffix "– Awaiting approval", "Only a payment awaiting approval can be approved." / "rejected.".
+- Tests: the card's six (T-08 accountant 60,000 pending without journal; owner posts at once; first-payment rule with limit 0, second one after approval not pending; rejected never posts; approval in a closed month posts on the approval date; AT-4 read from `controls.json` step by step) plus receipts never wait, a large "paid now" waits, khata row and message, page 27 permission.
+- Checks: build, check, types, Pint, Larastan, guard pass; **368 PHP tests pass**.

@@ -10,6 +10,7 @@ use App\Domain\Ledger\Journals;
 use App\Domain\Ledger\PostingService;
 use App\Domain\Payments\Enums\ApprovalStatus;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Payments\PaymentApproval;
 use App\Domain\Payments\PaymentInput;
 use App\Domain\Periods\Periods;
 use App\Domain\Settings\Settings;
@@ -71,6 +72,12 @@ final class UpdatePayment
                 return $payment;
             }
 
+            // The approval rules are checked again with the new figures (BR-PAY-06, BR-PAY-07);
+            // an approved payment stays approved.
+            if ($payment->approval_status !== ApprovalStatus::Approved) {
+                $payment->approval_status = PaymentApproval::statusFor($by, $input->party, $input->direction, $input->amount, $payment->id);
+            }
+
             $payment->save();
             $payment->unsetRelation('party')->unsetRelation('moneyAccount');
 
@@ -78,7 +85,9 @@ final class UpdatePayment
                 PostingService::reverseId($payment->journal_entry_id, $oldPostingDate, "Edit of {$payment->voucher_no}", $by); // PR-25
             }
 
-            if ($payment->approval_status !== ApprovalStatus::Pending) {
+            if ($payment->approval_status === ApprovalStatus::Pending) {
+                $payment->update(['journal_entry_id' => null]); // BR-PAY-08: no journal while waiting
+            } else {
                 $journal = PostingService::post(RecordPayment::posting($payment), $by);
                 $payment->update(['journal_entry_id' => $journal->id]);
             }

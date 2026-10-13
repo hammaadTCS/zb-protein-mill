@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Items\Models\Item;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Payments\PaymentApproval;
 use App\Domain\Purchases\Actions\AddPurchaseRate;
 use App\Domain\Purchases\Actions\CancelPurchase;
 use App\Domain\Purchases\Actions\CreatePurchase;
@@ -114,6 +115,10 @@ class PurchaseController extends Controller
 
         // BR-GEN-11: a repeated save shows "Already saved. {voucher}".
         $purchase->wasRecentlyCreated ? Flash::saved($purchase->voucher_no) : Flash::alreadySaved($purchase->voucher_no);
+
+        if ($purchase->wasRecentlyCreated && $purchase->payments()->where('approval_status', 'pending')->exists()) {
+            Inertia::flash(['toast' => ['type' => 'info', 'message' => __(PaymentApproval::PENDING_MESSAGE)]]); // BR-PAY-08
+        }
 
         return $request->boolean('add_another')
             ? to_route('purchases.create')

@@ -9,6 +9,7 @@ use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Parties\PartyBalance;
+use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
 use App\Support\Decimal;
@@ -74,6 +75,7 @@ final class PartyKhata
         }
 
         $rows = self::withPendingRows($party, $rows, $from, $to, $party->balanceOfNet($opening));
+        $rows = self::withAwaitingPayments($party, $rows, $from, $to, $party->balanceOfNet($opening));
 
         return new KhataResult($from, $to, $party->balanceOfNet($opening), $rows, $party->balanceOfNet($net, $party->pendingKg()));
     }
@@ -121,6 +123,58 @@ final class PartyKhata
                 balance: $before ?? $opening,
                 route: route($model === Sale::class ? 'sales.show' : 'purchases.show', $purchase->id, false),
                 pendingKg: $purchase->kg,
+            )]);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * BR-PAY-08: payments waiting for approval, greyed and outside the balance.
+     *
+     * @param  list<KhataRow>  $rows
+     * @return list<KhataRow>
+     */
+    private static function withAwaitingPayments(Party $party, array $rows, ?string $from, ?string $to, PartyBalance $opening): array
+    {
+        $increaseIsDebit = in_array($party->type, [PartyType::Buyer, PartyType::Employee], true);
+
+        $payments = Payment::query()
+            ->with('moneyAccount')
+            ->where('party_id', $party->id)
+            ->where('status', 'active')
+            ->where('approval_status', 'pending')
+            ->when($from !== null, fn ($q) => $q->where('entry_date', '>=', $from))
+            ->when($to !== null, fn ($q) => $q->where('entry_date', '<=', $to))
+            ->orderBy('entry_date')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($payments as $payment) {
+            $position = count($rows);
+
+            foreach ($rows as $index => $row) {
+                if ($row->date > $payment->entry_date) {
+                    $position = $index;
+
+                    break;
+                }
+            }
+
+            // A payment (paid) is a debit on the control account; a receipt a credit.
+            $isDebit = $payment->direction->value === 'paid';
+            $isIncrease = $isDebit === $increaseIsDebit;
+            $source = EntrySources::describe([['payment', $payment->id]])["payment:{$payment->id}"] ?? null;
+
+            array_splice($rows, $position, 0, [new KhataRow(
+                date: $payment->entry_date,
+                voucher: $payment->voucher_no,
+                description: ($source['description'] ?? '').' – Awaiting approval',
+                increase: $isIncrease ? $payment->amount : null,
+                decrease: $isIncrease ? null : $payment->amount,
+                balance: $position > 0 ? $rows[$position - 1]->balance : $opening,
+                route: $source['route'] ?? null,
+                awaitingApproval: true,
             )]);
         }
 

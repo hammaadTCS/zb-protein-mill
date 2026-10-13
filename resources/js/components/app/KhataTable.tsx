@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table';
 import { useFormats } from '@/hooks/use-formats';
 import { formatDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 export type Words = { words: string; amount: string };
 
@@ -22,6 +23,7 @@ export type KhataLine = {
     decrease: string | null;
     balance: Words;
     route: string | null;
+    awaiting_approval?: boolean;
 };
 
 /** R-01 khata (spec §15.6): every line with the running balance in words, no minus sign. */
@@ -63,7 +65,13 @@ export function KhataTable({
                     </TableRow>
                 )}
                 {rows.map((row, index) => (
-                    <TableRow key={index}>
+                    <TableRow
+                        key={index}
+                        className={cn(
+                            row.awaiting_approval &&
+                                'text-muted-foreground italic',
+                        )}
+                    >
                         <TableCell className="tabular-nums">
                             {formatDate(row.date, formats.dateFormat)}
                         </TableCell>

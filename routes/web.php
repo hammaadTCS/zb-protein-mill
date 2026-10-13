@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
@@ -53,6 +54,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
     Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
     Route::post('sales/{sale}/rate', [SaleController::class, 'addRate'])->name('sales.rate');
+
+    // Page 27: approvals (T3.7).
+    Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+    Route::post('approvals/{payment}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+    Route::post('approvals/{payment}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
 
     // Page 26: rate pending (T3.1).
     Route::get('rate-pending', [RatePendingController::class, 'index'])->name('rate-pending.index');

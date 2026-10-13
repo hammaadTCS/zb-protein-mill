@@ -19,6 +19,7 @@ import {
     Receipt,
     Settings2,
     ShoppingCart,
+    UserCog,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
 import { trialBalance } from '@/routes/reports';
 import { index as transfers } from '@/routes/transfers';
+import { index as users } from '@/routes/users';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
 
 /** Sidebar groups in the order of spec §15.1. */
@@ -162,6 +164,14 @@ export const navigation: NavEntry[] = [
         permission: 'settings.manage',
         mobileFirst: false,
         icon: Settings2,
+    },
+    {
+        group: 'Settings',
+        label: 'Users',
+        href: users(),
+        permission: 'users.manage',
+        mobileFirst: false,
+        icon: UserCog,
     },
     {
         group: 'Settings',

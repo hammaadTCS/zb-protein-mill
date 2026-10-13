@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 |
-| Next task | T5.2 Users page and account safety commands (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1, T5.2 |
+| Next task | T5.3 Permission tests across every route (T2.10 client review is yours) |
 
 ---
 
@@ -819,3 +819,18 @@ Choices and questions:
 - Words not in the glossary: "Company settings", "Setup checklist", "All required settings are filled.", "Missing:", "Opening balances: complete / not complete", "Cash account: present / add at least one", "Not set", "Locked after the first journal.", "Locked after the first purchase or sale.", "Settings saved.", "Two-step login for owners", the confirmation sentence, and the choice labels ("Whole rupee", "Two decimals", "Lakh (1,00,000)", "International (100,000)").
 - Tests: the card's four (accountant 403 on view and save; start date locked after the first journal; rounding settings locked after the first purchase; every change audited with old and new values) plus the page props and a wrong value refused.
 - Checks: build, check, types, Pint, Larastan, guard pass; **441 PHP tests pass** (AT-1, AT-2 included).
+
+### T5.2 Users page and account safety commands
+
+Built as the card lists: page 43 `/settings/users` (`users.manage`): name, e-mail, role, status, two-step login on/off, last login (from the audit log), "Temporary password" marker; add user (name, e-mail, role, temporary password), change role, reset password, disable / enable; no delete route. Passwords use `Password::defaults()` only. Actions `CreateUser`, `UpdateUserRole`, `ResetUserPassword`, `DisableUser`, `EnableUser` (audits `user_created` / `user_changed`; create and reset set `must_change_password`; disable, role change and reset end the user's sessions and audit `sessions_ended`); `Owners::assertNotLast()` refuses disabling or demoting the last active Owner ("At least one active owner is required."). Commands `zb:create-owner`, `zb:reset-password {email}`, `zb:reset-two-factor {email}`, each audited as `server_command` with no user and the target user id in `new_values`. "Users" added to the Settings menu.
+
+Choices and questions:
+- **`server_command` rows store `{command, user_id}`**, not the e-mail, to keep personal data out of `new_values` (the auditable already points at the user).
+- **`zb:create-owner` sets no e-mail verification** (BR-USR-06: there is none) and refuses with "An Owner already exists. Add more users on the Users page." (wording mine).
+- **The temporary password from `zb:reset-password` is `Str::password(16)`** (letters, numbers, symbols), so it passes the production rule.
+- **A small `App\Domain\Companies\SystemCompany` class** finds the seeded company, so the "system data is missing" test can replace it instead of deleting the company (deleting it would mean bypassing the delete trigger).
+- **The production-password test checks the form request rules directly** with `app()['env'] = 'production'`: a full HTTP request in production mode is redirected before validation, so it could not show the error.
+- **The owner may reset their own password or change their own role on this page** (with the last-owner rule); the spec does not forbid it.
+- Words not in the glossary: "Users", "Add user", "E-mail", "Role", "Owner", "Accountant", "Status", "Active", "Disabled", "Two-step login", "On", "Off", "Last login", "Temporary password", "Reset password", "Disable", "Enable", "User … added.", "Saved.", the reset dialog sentence, and the command messages.
+- Tests: the card's twelve (last owner; no delete route; production password without a symbol; disabled login refused; sessions end on disable, role change and reset with `must_change_password`; create-owner creates, refuses with an owner, refuses without system data, is audited; reset-password prints once and forces a change; reset-two-factor clears it; unknown e-mail fails) plus page props and 403, add user, enable.
+- Checks: build, check, types, Pint, Larastan, guard pass; **458 PHP tests pass**.

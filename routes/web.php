@@ -18,6 +18,7 @@ use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TransferController;
+use App\Http\Controllers\UserController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
@@ -120,6 +121,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance');
 
     // Page 47: Opening balances (T2.6).
+    // Page 43: users (T5.2). No delete route: users are only disabled (BR-USR-03).
+    Route::get('settings/users', [UserController::class, 'index'])->name('users.index');
+    Route::post('settings/users', [UserController::class, 'store'])->name('users.store');
+    Route::put('settings/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
+    Route::put('settings/users/{user}/password', [UserController::class, 'resetPassword'])->name('users.password');
+    Route::post('settings/users/{user}/disable', [UserController::class, 'disable'])->name('users.disable');
+    Route::post('settings/users/{user}/enable', [UserController::class, 'enable'])->name('users.enable');
+
     // Page 42: company settings (T5.1). `/settings` was the starter kit's redirect to the profile page.
     Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company-settings.edit');
     Route::put('settings', [CompanySettingsController::class, 'update'])->name('company-settings.update');

@@ -8,6 +8,8 @@ use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Parties\Enums\PartyStatus;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\PartyBalance;
+use App\Domain\Payments\Models\Payment;
+use App\Domain\Purchases\Models\Purchase;
 use App\Support\Decimal;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
@@ -96,12 +98,14 @@ class Party extends Model
     }
 
     /**
-     * True once the party has any entry (BR-PTY-04, BR-PTY-05): a journal line, or a
-     * purchase or sale (extended in T2.7 and T3.4).
+     * True once the party has any entry (BR-PTY-04, BR-PTY-05): a journal line, a
+     * purchase or a payment (also one awaiting approval). Sales are added in T3.4.
      */
     public function hasEntries(): bool
     {
-        return LedgerBalance::partyHasLines($this->id);
+        return LedgerBalance::partyHasLines($this->id)
+            || Purchase::query()->where('party_id', $this->id)->exists()
+            || Payment::query()->where('party_id', $this->id)->exists();
     }
 
     /** The balance in words from the party's control account (spec §8.2). */

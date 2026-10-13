@@ -6,6 +6,7 @@ namespace App\Domain\Items\Models;
 
 use App\Domain\Items\Enums\ItemType;
 use App\Domain\Ledger\Models\LedgerAccount;
+use App\Domain\Purchases\Models\Purchase;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -70,12 +71,12 @@ class Item extends Model
     }
 
     /**
-     * True once any purchase or sale uses this item (BR-ITM-02). Purchases (T2.7)
-     * and sales (T3.4) extend this check.
+     * True once any purchase or sale uses this item, cancelled ones included
+     * (BR-ITM-02). Sales are added in T3.4.
      */
     public function hasEntries(): bool
     {
-        return false;
+        return Purchase::query()->where('item_id', $this->id)->exists();
     }
 
     /**

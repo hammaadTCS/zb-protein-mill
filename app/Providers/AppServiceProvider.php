@@ -7,7 +7,9 @@ use App\Domain\Items\Models\Item;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Payments\Models\Payment;
 use App\Domain\Periods\Models\Period;
+use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Settings\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -54,7 +56,9 @@ class AppServiceProvider extends ServiceProvider
             'money_account' => MoneyAccount::class,
             'opening_balance' => OpeningBalance::class,
             'party' => Party::class,
+            'payment' => Payment::class,
             'period' => Period::class,
+            'purchase' => Purchase::class,
             'setting' => Setting::class,
             'user' => User::class,
         ]);

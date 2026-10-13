@@ -8,6 +8,8 @@ use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Payments\Models\Payment;
+use App\Domain\Purchases\Models\Purchase;
 use InvalidArgumentException;
 use LogicException;
 
@@ -27,9 +29,20 @@ final class PostingRules
      * Debit: Item purchase account (I).
      * Credit: 2000 Suppliers (P).
      */
-    public static function pr01PurchaseFixedRate(): PostingRequest
+    public static function pr01PurchaseFixedRate(Purchase $purchase, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-01');
+        $amount = $purchase->amount ?? throw new InvalidArgumentException('PR-01 needs a fixed rate.');
+
+        return new PostingRequest(
+            postingDate: $postingDate ?? $purchase->entry_date, // BR-LED-07, BR-LED-08
+            sourceType: 'purchase',
+            sourceId: $purchase->id,
+            description: "Purchase {$purchase->voucher_no}",
+            lines: [
+                PostingLine::debit($purchase->item->ledgerAccountId(), $amount, itemId: $purchase->item_id),
+                PostingLine::credit('2000', $amount, $purchase->party_id),
+            ],
+        );
     }
 
     /**
@@ -37,9 +50,18 @@ final class PostingRules
      * Debit: 2000 Suppliers (P).
      * Credit: M.
      */
-    public static function pr02PaymentToSupplier(): PostingRequest
+    public static function pr02PaymentToSupplier(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-02');
+        return new PostingRequest(
+            postingDate: $postingDate ?? $payment->entry_date,
+            sourceType: 'payment',
+            sourceId: $payment->id,
+            description: "Payment {$payment->voucher_no}",
+            lines: [
+                PostingLine::debit('2000', $payment->amount, $payment->party_id),
+                PostingLine::credit($payment->moneyAccount->ledger_account_id, $payment->amount),
+            ],
+        );
     }
 
     /**

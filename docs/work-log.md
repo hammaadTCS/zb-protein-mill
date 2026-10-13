@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.6 |
-| Next task | T2.7 Purchases with fixed rate |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.7 |
+| Next task | T2.8 Purchase pages and attachments |
 
 ---
 
@@ -518,3 +518,20 @@ Choices and questions:
 - Messages not in the glossary: "Opening balances are marked complete and cannot change.", "Opening Balance Equity is Rs X. Confirm that figure.", "Select an active account.", "Select an active party.", "Select a side for this party."; page words "Date", "Accounts", "Parties", "Balance", "Invested" (partner side).
 - Tests: the card's eight (PR-17 to PR-22 exact lines, AT-1 openings → 3900 = 0.00 loaded from `at1.json`, replace reverses, wrong confirmation refused), plus amount 0 removes, side must fit the type, refused after completion, BR-GEN-07, page 47 permission and save.
 - Checks: build, check, types, Pint, Larastan, guard pass; **259 PHP tests pass**.
+
+### T2.7 Purchases with fixed rate, payments table, "paid now"
+
+Built as the card lists: tables `purchases` and `payments` with every spec §9.3 column plus the §9.1 transaction columns (unique voucher and idempotency key per company, the §9.7 indexes, checks for kg > 0, "pending ⇔ rate and amount empty", status values, delete trigger; `payments.sale_id` gets its foreign key with the sales table in T3.4), models `Purchase` and `Payment`, enums `RateStatus`, `PaymentDirection`, `ApprovalStatus` (plus `App\Support\EntryStatus` active/cancelled for every transaction table), PR-01 and PR-02, `CreatePurchase` in the conventions §2 order (setup check, date check, idempotency, rules, voucher, save, PR-01, audit, then the "paid now" payment with PAY voucher and PR-02 in the same transaction), `Item::hasEntries()` and `Party::hasEntries()` now see purchases, `POST /purchases` with `StorePurchaseRequest` (UUID `idempotency_key` required), `PurchasePolicy`.
+
+Also added:
+- `App\Domain\Payments\Actions\RecordPayment`: saves one payment and its journal inside the caller's transaction. "Paid now", "Received now" (T3.4) and New payment (T3.6) all use it, so the payment rules live in one place. It is an Action because the architecture rule lets only Actions call PostingService.
+- `App\Support\EntryChecks`: the field rules every entry shares (active party of the right type, bought/sold item, kg and rate decimals from settings, amount > 0, active money account, "Handled by" employee).
+- Test helper `acceptanceWorld()`: creates the accounts, parties and openings of an acceptance file through the real Actions (runner step 2 of `docs/acceptance/README.md`).
+
+Choices and questions:
+- **`Party::hasEntries()` also counts payments**, including ones awaiting approval (they have no journal line yet). The card names purchases only; without this a party with only a pending payment could still change type.
+- **The "paid now" payment reuses the purchase's idempotency key** (different table, so no clash); a repeated save returns the same purchase and creates no second payment.
+- **After saving, `POST /purchases` returns to the previous page** until the purchase pages exist (T2.8).
+- Messages not in the glossary: "Select an active supplier.", "Select an active raw material or fuel item.", "Kg must be greater than 0.", "Kg can have at most N decimals.", "Rate is required" (card wording), "Rate must be greater than 0.", "Rate can have at most N decimals.", "Amount must be greater than 0.", "Select an active account.", "Handled by must be an active employee.".
+- Tests: the card's ten (AT-1 #1 and #2 with exact journals, read from `at1.json`; supplier and item checks; kg 0 and 4 decimals; browser amount ignored; failed save keeps the voucher number free; setup incomplete; paid now above total → "Advance 500.00"; T-18 double submit) plus rate rules, amount rounding (812.5 × 52.5 = 42656.25), future and pre-start dates, paid-now account and "Handled by" checks, permissions.
+- Checks: Pint, Larastan, guard pass; **274 PHP tests pass**.

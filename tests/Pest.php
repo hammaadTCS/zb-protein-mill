@@ -2,6 +2,10 @@
 
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Ledger\PostingService;
+use App\Domain\MoneyAccounts\Actions\CreateMoneyAccount;
+use App\Domain\MoneyAccounts\Models\MoneyAccount;
+use App\Domain\OpeningBalances\Actions\SetOpeningBalance;
+use App\Domain\Parties\Actions\CreateParty;
 use App\Domain\Parties\Models\Party;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
@@ -128,4 +132,33 @@ function acceptance(string $file): array
     $data = json_decode((string) file_get_contents(base_path("docs/acceptance/{$file}.json")), true, flags: JSON_THROW_ON_ERROR);
 
     return $data;
+}
+
+/**
+ * The money accounts, parties and opening balances of an acceptance file, created
+ * through the real Actions (docs/acceptance/README.md, runner step 2).
+ *
+ * @param  array<string, mixed>  $data
+ * @return array{accounts: array<string, MoneyAccount>, parties: array<string, Party>}
+ */
+function acceptanceWorld(array $data, User $owner): array
+{
+    $accounts = [];
+    $parties = [];
+
+    foreach ($data['money_accounts'] ?? [] as $account) {
+        $accounts[$account['key']] = app(CreateMoneyAccount::class)->handle($owner, $account);
+    }
+
+    foreach ($data['parties'] ?? [] as $party) {
+        $parties[$party['key']] = app(CreateParty::class)->handle($owner, $party);
+    }
+
+    foreach ($data['opening_balances'] ?? [] as $opening) {
+        app(SetOpeningBalance::class)->handle($owner, isset($opening['money_account'])
+            ? ['money_account_id' => $accounts[$opening['money_account']]->id, 'amount' => $opening['amount']]
+            : ['party_id' => $parties[$opening['party']]->id, 'side' => $opening['side'] ?? null, 'amount' => $opening['amount']]);
+    }
+
+    return ['accounts' => $accounts, 'parties' => $parties];
 }

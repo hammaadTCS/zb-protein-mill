@@ -4,6 +4,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyController;
+use App\Http\Controllers\PurchaseController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,9 @@ Route::get('/', RedirectController::class)
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    // Purchases (T2.7; pages in T2.8).
+    Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
 
     // Pages 17 and 18: parties (T2.5). No delete route exists (BR-PTY-05).
     Route::get('parties', [PartyController::class, 'index'])->name('parties.index');

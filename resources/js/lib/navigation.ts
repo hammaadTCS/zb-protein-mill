@@ -17,11 +17,13 @@ import {
     LayoutGrid,
     Package,
     Receipt,
+    Settings2,
     ShoppingCart,
     Users,
     Wallet,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { edit as companySettings } from '@/routes/company-settings';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
@@ -152,6 +154,14 @@ export const navigation: NavEntry[] = [
         permission: 'report.view',
         mobileFirst: false,
         icon: FileSpreadsheet,
+    },
+    {
+        group: 'Settings',
+        label: 'Company settings',
+        href: companySettings(),
+        permission: 'settings.manage',
+        mobileFirst: false,
+        icon: Settings2,
     },
     {
         group: 'Settings',

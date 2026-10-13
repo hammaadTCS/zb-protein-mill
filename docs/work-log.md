@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8 |
-| Next task | T5.1 Company settings page (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 |
+| Next task | T5.2 Users page and account safety commands (T2.10 client review is yours) |
 
 ---
 
@@ -805,3 +805,17 @@ Choices and questions:
 - Checks: **`bash scripts/check-all.sh` → ALL CHECKS PASSED** (435 PHP tests with AT-1 and AT-2, Pint, Larastan, build, lint, types, front-end tests, guard, secret scan, package audits).
 
 **M4 built. From here AT-1 and AT-2 run in every task.**
+
+### T5.1 Company settings page
+
+Built as the card lists: page 42 `/settings` (`settings.manage`) with every key of spec §9.6 except `opening_balances_completed`, in the card's groups (Company, Limits, Formats, Weight, Alerts, Security); each field shows its OPEN item ID in small grey text; a "Setup checklist" box (missing required settings, opening balances status, at least one active cash account); saving goes through `UpdateCompanySettings` → `Settings::set()` (audited, one transaction for the whole form); `system_start_date` is read-only once any journal exists; `kg_decimals`, `rate_decimals` and `amount_rounding` are read-only once any purchase or sale exists (also refused on the server). Turning on "Owner two-step login required" while the Owner has none shows a confirmation that they will be sent to set it up. "Company settings" added to the Settings menu.
+
+Choices and questions:
+- **`/settings` used to redirect to the profile page** (starter kit). Spec §11.1 gives `/settings` to page 42, so the redirect is gone; the profile, security and appearance pages keep their own addresses (user menu → Settings still opens the profile).
+- **The page lives at `pages/company-settings/index.tsx`**, so it uses the normal app layout, not the personal settings layout.
+- **A locked key that is sent with the same value is not an error**, so the whole form can still be saved; a changed locked key refuses the whole save (nothing is half-saved).
+- **An empty field is left as it is**: a saved value cannot be cleared from this page (BR-GEN-07 would then block every entry).
+- `company_name` and `insights_period_months` are not OPEN items, so they show no ID.
+- Words not in the glossary: "Company settings", "Setup checklist", "All required settings are filled.", "Missing:", "Opening balances: complete / not complete", "Cash account: present / add at least one", "Not set", "Locked after the first journal.", "Locked after the first purchase or sale.", "Settings saved.", "Two-step login for owners", the confirmation sentence, and the choice labels ("Whole rupee", "Two decimals", "Lakh (1,00,000)", "International (100,000)").
+- Tests: the card's four (accountant 403 on view and save; start date locked after the first journal; rounding settings locked after the first purchase; every change audited with old and new values) plus the page props and a wrong value refused.
+- Checks: build, check, types, Pint, Larastan, guard pass; **441 PHP tests pass** (AT-1, AT-2 included).

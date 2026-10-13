@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
@@ -119,6 +120,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'show'])->name('reports.trial-balance');
 
     // Page 47: Opening balances (T2.6).
+    // Page 42: company settings (T5.1). `/settings` was the starter kit's redirect to the profile page.
+    Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company-settings.edit');
+    Route::put('settings', [CompanySettingsController::class, 'update'])->name('company-settings.update');
+
     Route::get('settings/opening-balances', [OpeningBalanceController::class, 'index'])->name('opening-balances.index');
     Route::post('settings/opening-balances', [OpeningBalanceController::class, 'store'])->name('opening-balances.store');
     Route::post('settings/opening-balances/complete', [OpeningBalanceController::class, 'complete'])->name('opening-balances.complete');

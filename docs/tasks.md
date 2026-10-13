@@ -73,7 +73,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 ## M5: Controls and settings  ·  card file `docs/cards/M5.md`
 
-- [ ] **T5.1** Company settings page. *Done when:* tests pass.
+- [x] **T5.1** Company settings page. *Done when:* tests pass.
 - [ ] **T5.2** Users page and account safety commands. *Done when:* tests pass.
 - [ ] **T5.3** Permission tests across every route. *Done when:* T-09 passes and covers every route.
 - [ ] **T5.4** Party review and bank-change alerts. *Done when:* tests pass.

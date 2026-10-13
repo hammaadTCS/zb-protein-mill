@@ -1119,3 +1119,17 @@ Choices and questions:
 - **The tests save and restore `storage/app/zb-verify.json`**, so a local run's file is not lost; the file is git-ignored.
 - **Checked on the dev data**: all five checks OK.
 - Tests (T-20): after AT-1 every check OK and the file says ok; each planted fault fails exactly its check — two unbalanced journals (totals still agree), a voucher gap (PUR-number missing), a control-account line without a party, an active purchase pointing to another purchase's journal, a cancelled purchase without a reversal; `--db-name` checks the named database in a separate process (OK on the test database, exit 1 on a missing one, exit 1 on a bad name) and writes no file; the schedule entry (20:30 UTC, without overlapping).
+
+### T8.1 Security checklist
+
+Built as the card lists: `docs/release-checks.md` section "Security" with one row for each of BR-SEC-01 to BR-SEC-18 (and the Inertia devtools routes), and section "Operations" for BR-OPS-01 to BR-OPS-10: where each rule is enforced, the test or check that proves it, and the result. Rows that need a real server say **verify on staging** (for T8.3); rows that need the go-live (key holders, rebuild drill) say so.
+
+Found and fixed in application code:
+- **BR-SEC-04**: `config/session.php` fell back to the kit's 120 minutes when `SESSION_LIFETIME` is missing; the default is now 60.
+- **Missing proofs** added as tests (`tests/Feature/Security/ReleaseChecksTest.php`): bcrypt (BR-SEC-02), 60-minute idle in the shipped settings (BR-SEC-04), the CSRF middleware on the `web` group (BR-SEC-07), Secure/HttpOnly/SameSite=Lax cookies and encrypted sessions in `.env.production.example` (BR-SEC-15), no debug in production and strict models elsewhere (BR-SEC-16), daily logs kept 14 days in production (BR-SEC-17), CSP on in production (BR-SEC-14), and the Inertia devtools never on in production.
+
+Choices and questions:
+- **Inertia devtools routes** (`_inertia/devtools/*`): the Inertia package registers them only when `APP_ENV=local` (unless `INERTIA_DEVTOOLS_ENABLED` is set, which production does not). Locally they exist and record requests to `storage/inertia-devtools`; on servers they do not. Check once on staging with `php artisan route:list`.
+- **This cloud container's own `.env`** (not in git) has `SESSION_LIFETIME=120` from an older copy; your laptop's `.env` comes from `.env.example` (60). The test now checks the shipped files, not a developer's `.env`.
+- Nothing in protected files needed to change for T8.1.
+- Tests: the eight new checklist tests pass with the existing security tests (26 in `tests/Feature/Security`).

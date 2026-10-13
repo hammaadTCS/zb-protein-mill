@@ -32,7 +32,7 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => (int) env('SESSION_LIFETIME', 60), // BR-SEC-04: 60 minutes idle, also when the variable is missing
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

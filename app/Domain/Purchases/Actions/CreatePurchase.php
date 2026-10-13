@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Purchases\Actions;
 
+use App\Domain\Attachments\Actions\StoreAttachment;
+use App\Domain\Attachments\Enums\AttachmentKind;
 use App\Domain\Audit\AuditActions;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Ledger\PostingRules;
@@ -21,6 +23,7 @@ use App\Support\Decimal;
 use App\Support\EntryChecks;
 use App\Support\Idempotency;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -97,6 +100,10 @@ final class CreatePurchase
         $purchase->update(['journal_entry_id' => $journal->id]);
 
         AuditLogger::log(AuditActions::CREATED, $purchase, [], self::audited($purchase), by: $by);
+
+        if (($data['slip_photo'] ?? null) instanceof UploadedFile) {
+            app(StoreAttachment::class)->handle($by, $purchase, $data['slip_photo'], AttachmentKind::SlipPhoto, 'slip_photo'); // BR-PUR-07
+        }
 
         if ($paidNow !== null) {
             // BR-PUR-10: a separate payment linked to the purchase; any extra is an advance.

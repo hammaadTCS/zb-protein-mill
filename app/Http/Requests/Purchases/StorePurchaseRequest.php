@@ -28,6 +28,8 @@ class StorePurchaseRequest extends FormRequest
             'slip_no' => ['nullable', 'string', 'max:50'],
             'our_weight_kg' => ['nullable', 'max:20'],
             'note' => ['nullable', 'string', 'max:2000'],
+            'slip_photo' => ['nullable', 'file'], // type and size checked by StoreAttachment (BR-SEC-06)
+            'add_another' => ['sometimes', 'boolean'],
             'idempotency_key' => ['required', 'uuid'], // BR-GEN-11
             'paid_now' => ['nullable', 'array'],
             'paid_now.amount' => ['required_with:paid_now', 'max:20'],
@@ -44,7 +46,7 @@ class StorePurchaseRequest extends FormRequest
      */
     public function entryData(): array
     {
-        return $this->safe()->except('confirmed_warnings');
+        return $this->safe()->except(['confirmed_warnings', 'add_another']);
     }
 
     /**

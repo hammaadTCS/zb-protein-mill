@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.7 |
-| Next task | T2.8 Purchase pages and attachments |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.8 |
+| Next task | T2.9 Party profile with khata, trial balance page |
 
 ---
 
@@ -535,3 +535,18 @@ Choices and questions:
 - Messages not in the glossary: "Select an active supplier.", "Select an active raw material or fuel item.", "Kg must be greater than 0.", "Kg can have at most N decimals.", "Rate is required" (card wording), "Rate must be greater than 0.", "Rate can have at most N decimals.", "Amount must be greater than 0.", "Select an active account.", "Handled by must be an active employee.".
 - Tests: the card's ten (AT-1 #1 and #2 with exact journals, read from `at1.json`; supplier and item checks; kg 0 and 4 decimals; browser amount ignored; failed save keeps the voucher number free; setup incomplete; paid now above total → "Advance 500.00"; T-18 double submit) plus rate rules, amount rounding (812.5 × 52.5 = 42656.25), future and pre-start dates, paid-now account and "Handled by" checks, permissions.
 - Checks: Pint, Larastan, guard pass; **274 PHP tests pass**.
+
+### T2.8 Purchase pages and attachments
+
+Built as the card lists: table `attachments` (spec §9.5 plus common columns, delete trigger), private disk `attachments` (`storage/app/private/attachments`, not served, 0640/0750), `StoreAttachment` (5 MB, type read from the content, JPG/PNG/WEBP re-encoded with GD so location data is dropped, PDF kept, UUID file name, `replaced_by_id` instead of delete), `GET /attachments/{id}` (checks the user may view the parent entry; `inline` and `nosniff`), `lib/image.ts` (resize to 2000 px, JPEG 0.85; size calculation unit-tested), page 4 `/purchases/create` (mobile-first, fields in spec §11.4 order, one-time key, live total or "Rate pending", "Paid now" section, camera slip photo, "Our weight" only when `plant_has_scale`, "Save" and "Save and add another"), page 3 `/purchases` (spec §11.2 filters, search, totals of active entries, 50 per page, newest first), page 5 `/purchases/{id}` (read-only detail with linked payment and slip photo). Menu: Purchases under Daily entries; "New purchase" in the phone bottom bar.
+
+Choices and questions:
+- **The slip photo is sent with the purchase form** and stored inside the same save; no separate upload step.
+- **`lib/uuid.ts` falls back to `crypto.getRandomValues()`** when `crypto.randomUUID()` is missing. Browsers give `randomUUID` only on HTTPS or localhost, so testing from a phone on your laptop's network address over plain HTTP would otherwise break every create form. The server still requires a valid UUID.
+- **PHP upload limits:** PHP's default `upload_max_filesize` is 2 MB. The browser shrinks photos well below that, but a PDF between 2 and 5 MB would fail before our check. The server PHP settings are in `infra/` (protected). Please check `upload_max_filesize` / `post_max_size` are at least 6 MB there.
+- **Attachments are not audited separately**; the purchase's own `created` row covers the save. `attachment` is not in the conventions §7 morph alias list, so it cannot be an audit subject.
+- **"Our weight" is shown** in the test settings (`plant_has_scale` = true).
+- Words not in the glossary: "Total", "Slip photo", "Reference number", "Select supplier", "Select item", "Select account", "Select employee", "All suppliers", "Voucher or party", "No entries.", "Created by", "Reason", "Kg", "Rate", "Amount", "Item", "Date".
+- Tests: the card's six (6 MB refused; .exe refused; .exe renamed .jpg refused; Exif removed from a GD-made JPEG with an inserted APP1 Exif block; download needs `purchase.view`; totals of active entries only), plus PDF kept as received, slip photo sent with a new purchase, list filters and search, page 4 and 5 props, "Save and add another" redirect, page permissions. Front end: resize size calculation, UUID shape.
+- Checked by me at 375 px (page 4 filled in, live total Rs 42,656.25, paid now, saved with toast "Saved. PUR-000001", detail page) and at 1280 px (list with totals). No console errors.
+- Checks: build, `npm test` (26), check, types, Pint, Larastan, guard pass; **286 PHP tests pass**.

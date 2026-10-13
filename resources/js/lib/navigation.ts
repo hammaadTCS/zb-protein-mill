@@ -4,12 +4,20 @@
  */
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { BookOpen, Landmark, LayoutGrid, Package, Users } from 'lucide-react';
+import {
+    BookOpen,
+    Landmark,
+    LayoutGrid,
+    Package,
+    ShoppingCart,
+    Users,
+} from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
+import { create as newPurchase, index as purchases } from '@/routes/purchases';
 
 /** Sidebar groups in the order of spec §15.1. */
 export const NAV_GROUPS = [
@@ -46,6 +54,14 @@ export const navigation: NavEntry[] = [
         permission: null,
         mobileFirst: true,
         icon: LayoutGrid,
+    },
+    {
+        group: 'Daily entries',
+        label: 'Purchases',
+        href: purchases(),
+        permission: 'purchase.view',
+        mobileFirst: false,
+        icon: ShoppingCart,
     },
     {
         group: 'People',
@@ -85,7 +101,16 @@ export const navigation: NavEntry[] = [
  * Phone bottom bar (spec §15.1): New purchase, New sale, New payment, Quick expense.
  * Added by the tasks that build those pages.
  */
-export const bottomBar: NavEntry[] = [];
+export const bottomBar: NavEntry[] = [
+    {
+        group: 'Daily entries',
+        label: 'New purchase',
+        href: newPurchase(),
+        permission: 'purchase.create',
+        mobileFirst: true,
+        icon: ShoppingCart,
+    },
+];
 
 /** The groups that have at least one entry the user may see, in menu order. */
 export function visibleGroups(

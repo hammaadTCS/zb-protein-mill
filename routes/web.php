@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
@@ -17,8 +18,14 @@ Route::get('/', RedirectController::class)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
-    // Purchases (T2.7; pages in T2.8).
+    // Pages 3, 4 and 5: purchases (T2.7, T2.8).
+    Route::get('purchases', [PurchaseController::class, 'index'])->name('purchases.index');
+    Route::get('purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
     Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
+    Route::get('purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
+
+    // Slip and receipt photos, only through a permission check (BR-SEC-06, T2.8).
+    Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
 
     // Pages 17 and 18: parties (T2.5). No delete route exists (BR-PTY-05).
     Route::get('parties', [PartyController::class, 'index'])->name('parties.index');

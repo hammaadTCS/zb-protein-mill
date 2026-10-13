@@ -262,3 +262,13 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - New tests (`tests/Feature/Auth/RemovedKitFeaturesTest.php`): BR-USR-06 registration route does not exist; BR-USR-06 password reset routes do not exist; BR-USR-03 there is no delete account route; BR-SEC-03 login is throttled after 5 failures; the home page sends guests to login.
 - `scripts/guard.sh` now passes (the kit's `$user->delete()` is gone).
 - Checks: ALL CHECKS PASSED (26 PHP tests).
+
+### T0.3 Architecture tests and guard script in CI
+
+- Larastan: `phpstan.neon` level 7, no baseline file. Kit code passes; nothing changed.
+- `tests/Arch/ArchitectureTest.php` copied from `docs/templates/ArchitectureTest.php`, byte for byte (`cmp` checked). It is now protected.
+- `tsconfig.json` already has `"strict": true`.
+- `bash scripts/guard.sh` passes (T0.2 removed the only kit line it flagged).
+- **Added (not in the card): an `Arch` test suite in `phpunit.xml`.** The kit's `phpunit.xml` runs only `tests/Unit` and `tests/Feature`, so without it `php artisan test` (and CI) would never run the architecture tests.
+- **Reported as the card asks: one rule fails only because its namespace does not exist yet.** `conventions §2: actions are classes with a handle method` uses `expect('App\Domain\*\Actions')`; with no Actions folder Pest stops with "The app/Domain/*/Actions directory does not exist". I proved with a temporary class (deleted afterwards) that the rule passes as soon as one `App\Domain\<Module>\Actions` class exists. The first real Actions come in T2.2, so **from T0.3 to T2.1 this single test fails** for that reason only; I check after every task that it is the only failure. Possible `[spec-change]` if you want it green earlier: none needed in the test; it fixes itself in T2.2.
+- Checks: all pass except that one architecture rule (35 of 36 PHP tests).

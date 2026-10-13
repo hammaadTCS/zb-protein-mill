@@ -38,6 +38,7 @@ type Profile = {
     type: PartyType;
     status: 'active' | 'inactive';
     needs_review: boolean;
+    merged_into: { id: number; code: string; name: string } | null;
     balance: { words: string; amount: string; pending_kg: string };
     partner: { invested: string; withdrawn: string; net: string } | null;
     name: string;
@@ -175,6 +176,18 @@ export default function PartyProfile({
                     </Badge>
                     {party.status === 'inactive' && (
                         <Badge variant="outline">Inactive</Badge>
+                    )}
+                    {party.merged_into && (
+                        <span className="text-sm">
+                            Merged into{' '}
+                            <Link
+                                href={show(party.merged_into.id)}
+                                className="font-medium underline underline-offset-4"
+                            >
+                                {party.merged_into.name} (
+                                {party.merged_into.code})
+                            </Link>
+                        </span>
                     )}
                     {party.needs_review && (
                         <StatusBadge status="needs_review" />

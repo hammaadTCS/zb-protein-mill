@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 to M6 done (except your tasks T2.10); M7 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10 |
-| Next task | T7.1 Month-end close (backend) (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.4 |
+| Next task | T7.5 Business insights (T2.10 client review is yours) |
 
 ---
 
@@ -1056,3 +1056,16 @@ Choices and questions:
 - **The lock is checked before "marked complete"**, so the message names the closed month when both apply.
 - **Reopening every closed month unlocks the openings again** (unless they are marked complete). BR-MEC-09 says they lock "when the first month is closed"; it does not say what a reopen does. Tell me if a reopen should keep them locked.
 - Tests: the card's (change after the first close refused, through the Action and the page route, balance unchanged, page shows `locked_by` January 2026) plus: after reopening, openings can change again.
+
+### T7.4 Merge duplicate parties
+
+Built as the card lists: `MergeParties` (Owner; same type, both active, two different parties; if the source has a balance, one journal moves it to the target: source `party_merge`, source id = the target, dated today; the source becomes inactive with `merged_into_id`; audit `merged` on both), page 20 `/parties/merge` (`party.merge`, linked from the parties list) with two party pickers, both balances, the balance after the merge and a confirmation, and the khata rows: the target shows "Balance moved from {source name} ({code})" linking to the source's profile, the source shows "Balance moved to {target name} ({code})"; the source profile shows "Merged into {target}". The acceptance runner can now run the `merge` step and check `merged_into`, `purchase_<ref>_party` and `merge_journal`.
+
+Choices and questions:
+- **Document conflict (please decide):** CLAUDE.md rule 2 says "Posting rules PR-01 to PR-27 are the only postings", but spec BR-PTY-08 and card T7.4 require the merge journal, and spec §8.3 has no PR number for it. I built it as `PostingRules::partyMerge()` in the same place as the others, with a doc comment saying it has no PR number. Proposed spec change (yours, `[spec-change]`): add to §8.3 "PR-28 | Party merge (balance moved) | Source party's control account (P) when it has a credit balance, else target's | the other one | A" and allow PR-28 in CLAUDE.md rule 2.
+- **A source with rate-pending entries or payments awaiting approval cannot be merged** ("{name} has rate-pending entries or payments awaiting approval. Finish them first."). Otherwise a rate added or a payment approved later would post to the inactive source and leave it with a balance again.
+- **Partners**: both 3000 and 3100 are moved, each on its own pair of lines, in the one journal.
+- **A settled source merges without a journal** (nothing to move).
+- **The merge is posted today**, so it needs today's month open (it always is) and shows on the target's khata on that date.
+- Words not in the glossary: "Merge parties" (spec page name), "Duplicate profile (will be inactive)", "Merge into", "After the merge, …", "… keeps its entries and becomes inactive, marked "Merged into …".", "Merge", "This cannot be undone.", "Merged into", "Balance moved from … / to …", messages "Pick two different parties.", "Only parties of the same type can be merged.", "Both parties must be active.", "{source} merged into {target}.".
+- Tests: AT-6 from `controls.json` through the runner (Aslam we owe 15000.00, the duplicate settled, inactive, merged into Aslam, its purchase still its own, the merge journal dated 2026-01-31 with 2000 debit duplicate 10000.00 / credit Aslam 10000.00); T-15 (the source's journal lines are byte-for-byte the same after the merge, plus one new line); a supplier into a buyer is refused; same party, inactive party and pending rate refused; a settled duplicate merges with no journal; page 20 preview and merge (accountant 403), both khata rows with their links, and "Merged into" on the source profile.

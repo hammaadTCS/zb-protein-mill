@@ -18,6 +18,7 @@ use App\Http\Controllers\MonthEndController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartnerTransactionController;
 use App\Http\Controllers\PartyController;
+use App\Http\Controllers\PartyMergeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RateCorrectionController;
@@ -125,6 +126,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('parties', [PartyController::class, 'index'])->name('parties.index')->can('party.view');
     Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create')->can('party.create');
     Route::get('parties/search', [PartyController::class, 'lookup'])->name('parties.search')->can('party.view');
+    // Page 20: merge duplicate parties (T7.4); before parties/{party}.
+    Route::get('parties/merge', [PartyMergeController::class, 'create'])->name('parties.merge')->can('party.merge');
+    Route::post('parties/merge', [PartyMergeController::class, 'store'])->name('parties.merge.store')->can('party.merge');
     Route::post('parties', [PartyController::class, 'store'])->name('parties.store')->can('party.create');
     Route::get('parties/{party}', [PartyController::class, 'show'])->name('parties.show')->can('party.view');
     Route::get('parties/{party}/statement.pdf', [DocumentController::class, 'statement'])->name('parties.statement')->can('party.view');

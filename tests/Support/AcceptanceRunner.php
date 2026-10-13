@@ -17,6 +17,7 @@ use App\Domain\OpeningBalances\Actions\MarkOpeningBalancesComplete;
 use App\Domain\OpeningBalances\Actions\SetOpeningBalance;
 use App\Domain\OpeningBalances\OpeningBalances;
 use App\Domain\Parties\Actions\CreateParty;
+use App\Domain\Parties\Actions\MergeParties;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Partners\Actions\CreatePartnerTransaction;
 use App\Domain\Payments\Actions\ApprovePayment;
@@ -199,6 +200,7 @@ final class AcceptanceRunner
             'cash_count' => app(CreateCashCount::class)->handle($by, $this->accounts[$entry['money_account']], $entry['date'], $entry['counted_amount']),
             'cash_shortage' => $this->cashShortage($by, $entry),
             'close_month' => $this->closeMonth($by, $entry),
+            'merge' => app(MergeParties::class)->handle($by, $this->parties[$entry['source']], $this->parties[$entry['target']]),
             'attempt' => $this->attempt($entry),
             default => throw new LogicException("Acceptance entry type {$entry['type']} is not built yet."),
         };
@@ -287,6 +289,17 @@ final class AcceptanceRunner
                 ->toBe($expected['cash_shortage_journal'], 'cash_shortage_journal');
         }
 
+        foreach ($expected as $key => $value) {
+            // `purchase_<ref>_party`: the party a purchase still belongs to.
+            if (preg_match('/^purchase_(\w+)_party$/', (string) $key, $m) === 1) {
+                expect($this->refs[$m[1]]->refresh()->getAttribute('party_id'))->toBe($this->parties[$value]->id, (string) $key);
+            }
+        }
+
+        if (isset($expected['merge_journal'])) {
+            $this->assertJournal(JournalEntry::query()->where('source_type', 'party_merge')->sole(), $expected['merge_journal'], 'merge_journal');
+        }
+
         foreach ($expected as $key => $status) {
             if (preg_match('/^period_(\d{4})_(\d{2})$/', (string) $key, $m) === 1) {
                 expect(Month::of("{$m[1]}-{$m[2]}")->isClosed() ? 'closed' : 'open')->toBe($status, (string) $key);
@@ -320,6 +333,10 @@ final class AcceptanceRunner
 
         if (isset($party['status'])) {
             expect($model->status->value)->toBe($party['status'], "parties.{$key}.status");
+        }
+
+        if (isset($party['merged_into'])) {
+            expect($model->merged_into_id)->toBe($this->parties[$party['merged_into']]->id, "parties.{$key}.merged_into");
         }
     }
 
@@ -544,6 +561,29 @@ final class AcceptanceRunner
         }
 
         throw new LogicException("Ref {$entry['target']} is not a ".implode(' or ', $types).'.');
+    }
+
+    /**
+     * A journal's posting date, source type and lines (account, party key, debit, credit).
+     *
+     * @param  array<string, mixed>  $expected
+     */
+    private function assertJournal(JournalEntry $journal, array $expected, string $label): void
+    {
+        $partyKeys = array_flip(array_map(fn (Party $party): int => $party->id, $this->parties));
+        $lines = array_map(fn (array $line): array => [
+            'account' => $line[0],
+            'party' => $line[3] === null ? null : $partyKeys[Party::query()->where('code', $line[3])->sole()->id],
+            'debit' => $line[1],
+            'credit' => $line[2],
+        ], journalLines($journal->id));
+
+        expect($journal->posting_date)->toBe($expected['posting_date'], "{$label}.posting_date")
+            ->and($lines)->toBe($expected['lines'], "{$label}.lines");
+
+        if (isset($expected['source_type'])) {
+            expect($journal->source_type)->toBe($expected['source_type'], "{$label}.source_type");
+        }
     }
 
     /**

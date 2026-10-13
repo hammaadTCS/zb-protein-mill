@@ -123,6 +123,8 @@ class PartyController extends Controller
                 'type' => $party->type->value,
                 'status' => $party->status->value,
                 'needs_review' => $party->needs_review || $party->bank_change_needs_review,
+                // BR-PTY-08: "Merged into {target}" on the source profile.
+                'merged_into' => $party->mergedInto === null ? null : ['id' => $party->mergedInto->id, 'code' => $party->mergedInto->code, 'name' => $party->mergedInto->name],
                 'balance' => $balance->toArray(),
                 'partner' => $balance->invested === null ? null : ['invested' => $balance->invested, 'withdrawn' => $balance->withdrawn, 'net' => $balance->net],
                 ...array_map(fn ($value) => $value instanceof \BackedEnum ? $value->value : $value, $party->only(Party::FORM_FIELDS)),

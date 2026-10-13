@@ -51,6 +51,7 @@ final class PartyKhata
             ]);
 
         $sources = EntrySources::describe(array_values($lines->map(fn (object $l): array => [(string) $l->source_type, (int) $l->source_id])->all()));
+        $merges = self::mergeRows($party, array_values($lines->where('source_type', 'party_merge')->map(fn (object $l): int => (int) $l->journal_id)->all()));
         $increaseIsDebit = in_array($party->type, [PartyType::Buyer, PartyType::Employee], true);
         $net = $opening;
         $rows = [];
@@ -59,7 +60,7 @@ final class PartyKhata
             $debit = (string) $line->debit;
             $credit = (string) $line->credit;
             $net = Decimal::add($net, Decimal::sub($debit, $credit));
-            $source = $sources["{$line->source_type}:{$line->source_id}"] ?? null;
+            $source = $merges[(int) $line->journal_id] ?? $sources["{$line->source_type}:{$line->source_id}"] ?? null;
             $moved = Decimal::isPositive($debit) ? $debit : $credit;
             $isIncrease = Decimal::isPositive($debit) === $increaseIsDebit;
 
@@ -178,6 +179,39 @@ final class PartyKhata
                 route: $source['route'] ?? null,
                 awaitingApproval: true,
             )]);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * BR-PTY-08: a merge row says where the balance came from or went, and links to
+     * the other profile (its history stays there).
+     *
+     * @param  list<int>  $journalIds
+     * @return array<int, array{voucher: null, description: string, route: string}> by journal id
+     */
+    private static function mergeRows(Party $party, array $journalIds): array
+    {
+        if ($journalIds === []) {
+            return [];
+        }
+
+        $others = JournalLine::query()
+            ->toBase()
+            ->join('parties', 'parties.id', '=', 'journal_lines.party_id')
+            ->whereIn('journal_lines.journal_entry_id', $journalIds)
+            ->where('journal_lines.party_id', '!=', $party->id)
+            ->get(['journal_lines.journal_entry_id', 'parties.id', 'parties.name', 'parties.code']);
+        $rows = [];
+
+        foreach ($others as $other) {
+            $into = $party->merged_into_id === (int) $other->id;
+            $rows[(int) $other->journal_entry_id] = [
+                'voucher' => null,
+                'description' => ($into ? 'Balance moved to ' : 'Balance moved from ')."{$other->name} ({$other->code})",
+                'route' => route('parties.show', (int) $other->id, false),
+            ];
         }
 
         return $rows;

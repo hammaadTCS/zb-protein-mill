@@ -25,7 +25,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useCan } from '@/hooks/use-can';
-import { create, index, show } from '@/routes/parties';
+import { create, index, merge, show } from '@/routes/parties';
 import { PARTY_TYPE_LABELS, PARTY_TYPES } from './types';
 
 type PartyRow = {
@@ -73,6 +73,11 @@ export default function Parties({
             <Head title="Parties" />
             <div className="flex flex-col gap-4 p-4">
                 <PageHeader title="Parties">
+                    {can('party.merge') && (
+                        <Button variant="outline" asChild>
+                            <Link href={merge()}>Merge parties</Link>
+                        </Button>
+                    )}
                     {can('party.create') && (
                         <Button asChild>
                             <Link href={create()}>New party</Link>

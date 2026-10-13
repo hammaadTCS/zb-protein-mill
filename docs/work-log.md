@@ -407,3 +407,11 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-S1JHeCxp0a
 (The second JSON block is Inertia's developer-tools data, present only outside production.)
 
 - Checks: Pint, Larastan, guard, build, lint, TypeScript, audits pass; tests pass except the known T0.3 Actions rule.
+
+### T1.13 Idempotency helper
+
+- `App\Support\Idempotency`: `existing()` (same key, same user, same company), `isDuplicateKeyViolation()` (SQLSTATE 23505 on an index whose name ends with `_idempotency_key_unique`), `alreadySavedMessage()` (glossary "Already saved. {voucher}", through `__()`; T2.1/T2.7 show it as a flash).
+- Tests (throwaway table and model inside the test): found for the same user; not returned for another user; a concurrent duplicate insert is recognised; **added:** a different unique violation (duplicate voucher number) is not mistaken for a duplicate submit; message text.
+- Checks: Pint, Larastan, guard pass.
+
+**M1 complete.** All 13 accounting-core tasks done.

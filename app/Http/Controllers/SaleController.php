@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Domain\Items\Models\Item;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Enums\RateStatus;
+use App\Domain\Reports\Queries\ChangeHistory;
+use App\Domain\Reports\Queries\EntryJournals;
 use App\Domain\Sales\Actions\AddSaleRate;
 use App\Domain\Sales\Actions\CancelSale;
 use App\Domain\Sales\Actions\CreateSale;
@@ -149,6 +151,8 @@ class SaleController extends Controller
             ],
             'today' => Today::date(),
             'attachments' => $this->attachmentsOf($sale),
+            'history' => ChangeHistory::for($sale),
+            ...(request()->user()?->can('audit.view') ? ['journal' => EntryJournals::for($sale)] : []), // owner only
             'payments' => $sale->payments->map(fn (Payment $payment): array => [
                 'id' => $payment->id,
                 'voucher_no' => $payment->voucher_no,

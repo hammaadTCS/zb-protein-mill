@@ -2,6 +2,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { BalanceInWords } from '@/components/app/BalanceInWords';
+import type { HistoryRow } from '@/components/app/ChangeHistory';
+import { ChangeHistory } from '@/components/app/ChangeHistory';
 import type { KhataLine, Words } from '@/components/app/KhataTable';
 import { KhataTable } from '@/components/app/KhataTable';
 import { MoneyText } from '@/components/app/MoneyText';
@@ -54,15 +56,17 @@ type Khata = {
     rows: KhataLine[];
 };
 
-const TABS = ['Details', 'Khata'] as const;
+const TABS = ['Details', 'Khata', 'Change history'] as const;
 
 /** Page 19 (spec §11.11): header with balance in words; tabs Details and Khata. */
 export default function PartyProfile({
     party,
     khata,
+    history,
 }: {
     party: Profile;
     khata: Khata;
+    history: HistoryRow[];
 }) {
     const can = useCan();
     const [tab, setTab] = useState<(typeof TABS)[number]>(
@@ -224,6 +228,8 @@ export default function PartyProfile({
                         <Detail label="Notes">{party.notes}</Detail>
                     </dl>
                 )}
+
+                {tab === 'Change history' && <ChangeHistory rows={history} />}
 
                 {tab === 'Khata' && (
                     <div className="grid gap-3">

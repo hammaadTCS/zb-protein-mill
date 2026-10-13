@@ -11,6 +11,8 @@ use App\Domain\Purchases\Actions\CreatePurchase;
 use App\Domain\Purchases\Actions\UpdatePurchase;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Reports\Queries\ChangeHistory;
+use App\Domain\Reports\Queries\EntryJournals;
 use App\Domain\Settings\SettingKeys;
 use App\Domain\Settings\Settings;
 use App\Http\Controllers\Concerns\ListsEntries;
@@ -154,6 +156,8 @@ class PurchaseController extends Controller
             ],
             'today' => Today::date(),
             'attachments' => $this->attachmentsOf($purchase),
+            'history' => ChangeHistory::for($purchase),
+            ...(request()->user()?->can('audit.view') ? ['journal' => EntryJournals::for($purchase)] : []), // owner only
             'payments' => $purchase->payments->map(fn (Payment $payment): array => [
                 'id' => $payment->id,
                 'voucher_no' => $payment->voucher_no,

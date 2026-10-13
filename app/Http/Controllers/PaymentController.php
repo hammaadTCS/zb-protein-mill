@@ -12,6 +12,8 @@ use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\PaymentApproval;
 use App\Domain\Payments\PaymentBalance;
 use App\Domain\Payments\PaymentInput;
+use App\Domain\Reports\Queries\ChangeHistory;
+use App\Domain\Reports\Queries\EntryJournals;
 use App\Http\Controllers\Concerns\ListsEntries;
 use App\Http\Controllers\Concerns\PresentsEntries;
 use App\Http\Requests\CancelEntryRequest;
@@ -150,6 +152,8 @@ class PaymentController extends Controller
                 },
             ],
             'attachments' => $this->attachmentsOf($payment),
+            'history' => ChangeHistory::for($payment),
+            ...(request()->user()?->can('audit.view') ? ['journal' => EntryJournals::for($payment)] : []), // owner only
         ]);
     }
 

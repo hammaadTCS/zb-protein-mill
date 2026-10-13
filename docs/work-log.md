@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.8 |
-| Next task | T3.9 Change history and journal lines (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9 |
+| Next task | T4.1 (M4) (T2.10 client review is yours) |
 
 ---
 
@@ -688,3 +688,16 @@ Choices and questions:
 - **Two T2.7 tests confirm the new warning in their input**: their test cash account starts empty, so "paid now" from it now warns. Their assertions did not change.
 - Tests: the card's three (5,000 from 3,000 warns, confirmed saves; banks never warn; an edit counts only the difference) plus paying exactly the balance does not warn.
 - Checks: Pint, Larastan, guard pass; **372 PHP tests pass**.
+
+### T3.9 Change history and journal lines on detail pages
+
+Built as the card lists: `ChangeHistory` (query in Reports and React component) on the purchase, sale and payment detail pages and as the third tab of the party profile: date and time, user, action, each changed field "old → new" (party, item and account ids shown by name), and the reason; rate history comes from `rate_changes`. "Journal lines" section (journal number, posting date, account code and name, party, debit, credit, "reverses JV-…") on the three detail pages, **sent by the server only to users with `audit.view`**.
+
+Choices and questions:
+- **Rate rows come from `rate_changes` only**; the matching `rate_added` / `rate_changed` audit rows are left out of the list so each rate change appears once.
+- **Newest first; within one save, the audit row comes before its rate row.** Tests freeze the clock, so they move it forward between saves.
+- Words not in the glossary: "Change history" (spec §11.11 tab name), "Journal lines", "Edited", "Created", "Rate added", "Rate changed", "Marked reviewed", "Bank details changed", "Warning confirmed", "No changes.", "Reason:", "Posting date", "Journal", "reverses".
+- Tests: the card's two (the accountant gets no `journal` prop, the owner gets the exact lines; history shows old and new values after an edit) plus a party's bank detail change in its history.
+- Checks: build, check, types, Pint, Larastan, guard pass; **375 PHP tests pass**.
+
+**M3 built.**

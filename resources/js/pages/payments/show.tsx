@@ -2,6 +2,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { ConfirmWithReason } from '@/components/app/ConfirmWithReason';
+import type { HistoryRow } from '@/components/app/ChangeHistory';
+import { ChangeHistory } from '@/components/app/ChangeHistory';
+import type { JournalLineRow } from '@/components/app/JournalLines';
+import { JournalLines } from '@/components/app/JournalLines';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
 import { StatusBadge } from '@/components/app/StatusBadge';
@@ -45,9 +49,13 @@ type Attachment = { id: number; name: string; mime_type: string; url: string };
 export default function ShowPayment({
     payment,
     attachments,
+    history,
+    journal,
 }: {
     payment: Payment;
     attachments: Attachment[];
+    history: HistoryRow[];
+    journal?: JournalLineRow[];
 }) {
     const can = useCan();
     const formats = useFormats();
@@ -181,6 +189,17 @@ export default function ShowPayment({
                         </div>
                     </section>
                 )}
+                {journal && (
+                    <section className="grid gap-2">
+                        <h2 className="font-semibold">Journal lines</h2>
+                        <JournalLines rows={journal} />
+                    </section>
+                )}
+
+                <section className="grid gap-2">
+                    <h2 className="font-semibold">Change history</h2>
+                    <ChangeHistory rows={history} />
+                </section>
             </div>
             <ConfirmWithReason
                 open={cancelling}

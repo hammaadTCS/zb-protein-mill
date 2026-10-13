@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { AddRateDialog } from '@/components/app/AddRateDialog';
 import { ConfirmWithReason } from '@/components/app/ConfirmWithReason';
 import { KgText } from '@/components/app/KgText';
+import type { HistoryRow } from '@/components/app/ChangeHistory';
+import { ChangeHistory } from '@/components/app/ChangeHistory';
+import type { JournalLineRow } from '@/components/app/JournalLines';
+import { JournalLines } from '@/components/app/JournalLines';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
 import { StatusBadge } from '@/components/app/StatusBadge';
@@ -58,11 +62,15 @@ export default function ShowPurchase({
     attachments,
     payments,
     today,
+    history,
+    journal,
 }: {
     purchase: Purchase;
     attachments: Attachment[];
     payments: LinkedPayment[];
     today: string;
+    history: HistoryRow[];
+    journal?: JournalLineRow[];
 }) {
     const formats = useFormats();
     const can = useCan();
@@ -224,6 +232,17 @@ export default function ShowPurchase({
                 >
                     Purchases
                 </Link>
+                {journal && (
+                    <section className="grid gap-2">
+                        <h2 className="font-semibold">Journal lines</h2>
+                        <JournalLines rows={journal} />
+                    </section>
+                )}
+
+                <section className="grid gap-2">
+                    <h2 className="font-semibold">Change history</h2>
+                    <ChangeHistory rows={history} />
+                </section>
             </div>
             <ConfirmWithReason
                 open={cancelling}

@@ -11,6 +11,7 @@ use App\Domain\Parties\Enums\PartyStatus;
 use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Parties\PartyBalance;
+use App\Domain\Reports\Queries\ChangeHistory;
 use App\Domain\Reports\Queries\KhataRow;
 use App\Domain\Reports\Queries\PartyKhata;
 use App\Http\Requests\Parties\StorePartyRequest;
@@ -116,6 +117,7 @@ class PartyController extends Controller
                 'partner' => $balance->invested === null ? null : ['invested' => $balance->invested, 'withdrawn' => $balance->withdrawn, 'net' => $balance->net],
                 ...array_map(fn ($value) => $value instanceof \BackedEnum ? $value->value : $value, $party->only(Party::FORM_FIELDS)),
             ],
+            'history' => ChangeHistory::for($party),
             'khata' => [
                 'from' => $khata->from,
                 'to' => $khata->to,

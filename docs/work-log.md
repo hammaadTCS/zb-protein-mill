@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.3 |
-| Next task | T6.4 Pending balances report (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.4 |
+| Next task | T6.5 Accounts list and account statement (T2.10 client review is yours) |
 
 ---
 
@@ -928,3 +928,14 @@ How it works (worth checking):
 - Words not in the glossary: "Overdue buyers", "Aged advances" (spec §11.3 wording).
 - Tests: T-12 (ABC 15-day terms: overdue 15000.00 and average 19.00 days; Bashir advance age 34 days and flagged at the 30-day limit; no terms → 0.00) plus a cancelled sale drops out.
 - Checks: Pint, Larastan, guard pass; **481 PHP tests pass**.
+
+### T6.4 Pending balances report
+
+Built as the card lists: page 33 `/reports/pending-balances` (`report.view`): as-of date and party type filter; sections "Owes us", "We owe", "Advances"; per party code, name, balance in words and amount, rate-pending kg, oldest advance age (Advances) and overdue amount (buyers who owe us); totals per section. Balances come from each party's control account up to the as-of date; partners are left out (they have no dues).
+
+Choices and questions:
+- **Settled parties are left out**, even with rate-pending kg (the card lists Karim as absent). Tell me if a settled supplier with pending kg should show under "We owe".
+- **As-of balances use posting dates**: a rate added later to an entry in an open month posts on the entry date (BR-LED-08), so it counts on that date too. Rate-pending kg counts entries dated up to the as-of date that are still pending now.
+- Words not in the glossary: "Pending balances" (spec page name), "Advances", "Advance age (days)", "Overdue", "Rate pending" column, "All parties", "Suppliers", "Buyers", "Employees", "Others", "Total", "Code", "Party", "Amount".
+- Tests: the card's R-02 after AT-1 (We owe Aslam 52000.00 and Bashir 7000.00, total 59000.00; Owes us ABC 23000.00; Advances Rehman 30000.00, 25 days; Karim absent) plus an earlier as-of date and the type filter.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.

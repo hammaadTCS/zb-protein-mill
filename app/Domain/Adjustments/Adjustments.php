@@ -6,6 +6,7 @@ namespace App\Domain\Adjustments;
 
 use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Purchases\RateCorrections;
 use App\Domain\Sales\Models\Sale;
 use App\Support\Decimal;
 use App\Support\EntryStatus;
@@ -35,6 +36,12 @@ final class Adjustments
             ->exists();
     }
 
+    /** The amount adjustments are taken from: the entry's amount after rate corrections. */
+    public static function base(Purchase|Sale $entry): string
+    {
+        return (string) RateCorrections::effective($entry)['amount'];
+    }
+
     /** BR-ADJ-03: the most that may still be adjusted; null when no adjustment is allowed. */
     public static function maximum(Purchase|Sale $entry): ?string
     {
@@ -42,7 +49,7 @@ final class Adjustments
             return null;
         }
 
-        $remaining = Decimal::sub($entry->amount, self::activeTotal($entry));
+        $remaining = Decimal::sub(self::base($entry), self::activeTotal($entry));
 
         return Decimal::isPositive($remaining) ? $remaining : null;
     }

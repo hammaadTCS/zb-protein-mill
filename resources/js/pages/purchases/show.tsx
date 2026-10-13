@@ -5,6 +5,7 @@ import { AddRateDialog } from '@/components/app/AddRateDialog';
 import { AdjustmentDialog } from '@/components/app/AdjustmentDialog';
 import type { AdjustmentRow } from '@/components/app/AdjustmentList';
 import { AdjustmentList } from '@/components/app/AdjustmentList';
+import { RateCorrectionDialog } from '@/components/app/RateCorrectionDialog';
 import { ConfirmWithReason } from '@/components/app/ConfirmWithReason';
 import { KgText } from '@/components/app/KgText';
 import type { HistoryRow } from '@/components/app/ChangeHistory';
@@ -22,6 +23,17 @@ import { useFormats } from '@/hooks/use-formats';
 import { formatDate, formatRate } from '@/lib/format';
 import { cancel, edit, index, rate } from '@/routes/purchases';
 import { store as storeAdjustment } from '@/routes/purchases/adjustments';
+import { rateCorrection } from '@/routes/purchases';
+
+type RateCorrectionRow = {
+    id: number;
+    voucher_no: string;
+    correction_date: string;
+    old_rate: string;
+    new_rate: string;
+    difference: string;
+    reason: string;
+};
 
 type Purchase = {
     id: number;
@@ -70,6 +82,9 @@ export default function ShowPurchase({
     journal,
     adjustments,
     adjustment_max,
+    rate_corrections,
+    effective,
+    month_closed,
 }: {
     purchase: Purchase;
     attachments: Attachment[];
@@ -79,11 +94,23 @@ export default function ShowPurchase({
     journal?: JournalLineRow[];
     adjustments: AdjustmentRow[];
     adjustment_max: string | null;
+    rate_corrections: RateCorrectionRow[];
+    effective: { rate: string | null; amount: string | null };
+    month_closed: boolean;
 }) {
     const formats = useFormats();
     const can = useCan();
     const [addingRate, setAddingRate] = useState(false);
     const [adjusting, setAdjusting] = useState(false);
+    const [correcting, setCorrecting] = useState(false);
+    // BR-PUR-14: in a closed month only "Correct rate" is offered.
+    const editable = purchase.is_active && !month_closed;
+    const canCorrect =
+        purchase.is_active &&
+        month_closed &&
+        purchase.rate_status === 'fixed' &&
+        effective.rate !== null &&
+        effective.amount !== null;
     const [cancelling, setCancelling] = useState(false);
     const [cancelPayment, setCancelPayment] = useState(false);
     const [cancelError, setCancelError] = useState<string | undefined>();
@@ -102,12 +129,12 @@ export default function ShowPurchase({
                         purchase.rate_status === 'pending' && (
                             <StatusBadge status="rate_pending" />
                         )}
-                    {purchase.is_active && can('purchase.update') && (
+                    {editable && can('purchase.update') && (
                         <Button variant="outline" asChild>
                             <Link href={edit(purchase.id)}>Edit</Link>
                         </Button>
                     )}
-                    {purchase.is_active && can('purchase.cancel') && (
+                    {editable && can('purchase.cancel') && (
                         <Button
                             variant="outline"
                             onClick={() => setCancelling(true)}
@@ -118,6 +145,14 @@ export default function ShowPurchase({
                     {purchase.can_add_rate && can('purchase.update') && (
                         <Button onClick={() => setAddingRate(true)}>
                             Add rate
+                        </Button>
+                    )}
+                    {canCorrect && can('purchase.update') && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setCorrecting(true)}
+                        >
+                            Correct rate
                         </Button>
                     )}
                     {adjustment_max !== null && can('adjustment.create') && (
@@ -249,6 +284,43 @@ export default function ShowPurchase({
                 >
                     Purchases
                 </Link>
+                {rate_corrections.length > 0 && (
+                    <section className="grid gap-2">
+                        <h2 className="font-semibold">Rate corrections</h2>
+                        {rate_corrections.map((row) => (
+                            <div
+                                key={row.id}
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-4 py-3 text-sm"
+                            >
+                                <span>
+                                    <span className="tabular-nums">
+                                        {row.voucher_no} ·{' '}
+                                        {formatDate(
+                                            row.correction_date,
+                                            formats.dateFormat,
+                                        )}
+                                    </span>{' '}
+                                    · Rate{' '}
+                                    {formatRate(
+                                        row.old_rate,
+                                        formats.rateDecimals,
+                                        formats.numberFormat,
+                                    )}{' '}
+                                    →{' '}
+                                    {formatRate(
+                                        row.new_rate,
+                                        formats.rateDecimals,
+                                        formats.numberFormat,
+                                    )}
+                                    <span className="block text-muted-foreground">
+                                        {row.reason}
+                                    </span>
+                                </span>
+                                <MoneyText value={row.difference} />
+                            </div>
+                        ))}
+                    </section>
+                )}
                 {adjustments.length > 0 && (
                     <section className="grid gap-2">
                         <h2 className="font-semibold">Agreed adjustments</h2>
@@ -302,6 +374,18 @@ export default function ShowPurchase({
                     </div>
                 )}
             </ConfirmWithReason>
+            {canCorrect && (
+                <RateCorrectionDialog
+                    open={correcting}
+                    title={purchase.voucher_no}
+                    kg={purchase.kg}
+                    currentRate={effective.rate ?? ''}
+                    currentAmount={effective.amount ?? ''}
+                    url={rateCorrection.url(purchase.id)}
+                    today={today}
+                    onClose={() => setCorrecting(false)}
+                />
+            )}
             {adjustment_max !== null && (
                 <AdjustmentDialog
                     open={adjusting}

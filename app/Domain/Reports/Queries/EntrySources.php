@@ -12,6 +12,7 @@ use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Purchases\Models\RateCorrection;
 use App\Domain\Sales\Models\Sale;
 use App\Support\NumberFormat;
 
@@ -96,6 +97,12 @@ final class EntrySources
                     'voucher' => $a->voucher_no,
                     'description' => 'Agreed adjustment – '.$a->reason->value,
                     'route' => $a->target_type === 'purchase' ? route('purchases.show', $a->purchase_id, false) : route('sales.show', $a->sale_id, false),
+                ]])->all(),
+            'rate_correction' => RateCorrection::query()->with(['purchase', 'sale'])->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (RateCorrection $c) => [$c->id => [
+                    'voucher' => $c->voucher_no,
+                    'description' => 'Rate correction '.$c->target()->voucher_no.' – '.NumberFormat::plain($c->old_rate).' → '.NumberFormat::plain($c->new_rate),
+                    'route' => $c->target_type === 'purchase' ? route('purchases.show', $c->purchase_id, false) : route('sales.show', $c->sale_id, false),
                 ]])->all(),
             'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (OpeningBalance $o) => [$o->id => [

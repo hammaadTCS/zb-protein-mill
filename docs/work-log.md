@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.6 |
-| Next task | T4.7 Rate corrections for closed months (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.7 |
+| Next task | T4.8 Acceptance runner, AT-1 and AT-2 (T2.10 client review is yours) |
 
 ---
 
@@ -778,3 +778,17 @@ Choices and questions:
 - Words not in the glossary: "Add agreed adjustment", "Agreed adjustments", "What was agreed", "Maximum", "Select reason", "Quality", "Weight", "Freight", "Other", "Only an active entry with a fixed rate can be adjusted.", "The date cannot be before the entry date.", "The most that can be adjusted is Rs …", "Choose quality, weight, freight or other.", "Write what was agreed.", "Cancel the agreed adjustments first." (card text).
 - Tests: the card's six (AT-2 #7 journal, ABC "Owes us" from `at2.json`, sale row still 63,000.00; PR-08 journal; above the remaining refused; rate pending refused; sale with an adjustment cannot be cancelled; same key twice) plus purchase cancel refused, reason/note/date rules, edit guard, detail page props, khata text, 403 without permission.
 - Checks: build, check, types, Pint, Larastan, guard pass; **427 PHP tests pass**.
+
+### T4.7 Rate corrections for closed months
+
+Built as the card lists: table `rate_corrections` (spec §9.3 columns plus company, users and times; difference ≠ 0 and exactly one of purchase or sale checked in the database; delete trigger), PR-26 (purchase: increase Dr item account / Cr 2000; decrease the other way) and PR-27 (sale: increase Dr 1200 / Cr item sales account; decrease the other way), `CreateRateCorrection(User, Purchase|Sale, newRate, date, reason)`: only for an active, fixed-rate entry in a closed month; date in an open month and not before the entry; difference = new amount − effective amount (original plus earlier corrections); posts only the difference on the correction date; never edits the original row; voucher `RCO-`; writes `rate_changes` (with the reason) and audit. On the detail page of an entry in a closed month, Edit and Cancel entry are replaced by **Correct rate**; a "Rate corrections" section lists them. Khata row: "Rate correction PUR-000001 – 50 → 48".
+
+Choices and questions:
+- **The action lives in `App\Domain\Purchases\Actions`** (with the sales case in the same class): the architecture test lets only listed domains call `PostingService`, and a new `RateCorrections` domain is not on the list (tests/Arch is protected). Rate history (`rate_changes`) already lives there.
+- **A correction's reason needs at least 5 characters**, like a cancel reason (the spec says "required").
+- **A correction that gives the same amount is refused** ("The new rate gives the same amount."). This also stops a double click from posting twice, since the card asks for no idempotency key on this table.
+- **Corrections cannot be cancelled** (the spec gives them no status). A wrong correction is fixed by another correction.
+- **Agreed adjustments use the corrected amount** as their base (BR-ADJ-03 "linked amount" read as the amount after corrections).
+- Words not in the glossary: "Correct rate", "Rate corrections", "New rate", "New amount", "Only an active entry with a fixed rate can be corrected.", "This entry is in an open month. Edit it instead.", "The new rate gives the same amount.".
+- Tests: the card's five (AT-5 read from `controls.json` step by step with `closeMonthForTest`, the cash count step skipped until T5.1; PR-26 increase; PR-27 sale decrease; second correction uses the corrected base; open-month entry refused) plus the detail page props, khata text, the reason rule and 403.
+- Checks: build, check, types, Pint, Larastan, guard pass; **433 PHP tests pass**.

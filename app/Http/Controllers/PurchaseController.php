@@ -7,12 +7,15 @@ use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Items\Models\Item;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\PaymentApproval;
+use App\Domain\Periods\Periods;
 use App\Domain\Purchases\Actions\AddPurchaseRate;
 use App\Domain\Purchases\Actions\CancelPurchase;
 use App\Domain\Purchases\Actions\CreatePurchase;
 use App\Domain\Purchases\Actions\UpdatePurchase;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Purchases\Models\RateCorrection;
+use App\Domain\Purchases\RateCorrections;
 use App\Domain\Reports\Queries\ChangeHistory;
 use App\Domain\Reports\Queries\EntryJournals;
 use App\Domain\Settings\SettingKeys;
@@ -159,6 +162,10 @@ class PurchaseController extends Controller
             'today' => Today::date(),
             'attachments' => $this->attachmentsOf($purchase),
             'adjustments' => self::adjustmentRows($purchase),
+            'rate_corrections' => self::rateCorrectionRows($purchase),
+            'effective' => RateCorrections::effective($purchase),
+            // BR-PUR-14: in a closed month Edit and Cancel entry give way to "Correct rate".
+            'month_closed' => Periods::isClosed($purchase->entry_date),
             'adjustment_max' => $purchase->rate_status === RateStatus::Fixed ? Adjustments::maximum($purchase) : null, // BR-ADJ-01, BR-ADJ-03
             'history' => ChangeHistory::for($purchase),
             ...(request()->user()?->can('audit.view') ? ['journal' => EntryJournals::for($purchase)] : []), // owner only
@@ -282,6 +289,24 @@ class PurchaseController extends Controller
             'note' => $a->note,
             'status' => $a->status->value,
             'cancel_reason' => $a->cancel_reason,
+        ])->all());
+    }
+
+    /**
+     * Rate corrections of an entry in a closed month (BR-LED-09).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function rateCorrectionRows(Purchase $purchase): array
+    {
+        return array_values(RateCorrection::query()->where('purchase_id', $purchase->id)->orderBy('id')->get()->map(fn (RateCorrection $c): array => [
+            'id' => $c->id,
+            'voucher_no' => $c->voucher_no,
+            'correction_date' => $c->correction_date,
+            'old_rate' => $c->old_rate,
+            'new_rate' => $c->new_rate,
+            'difference' => $c->difference,
+            'reason' => $c->reason,
         ])->all());
     }
 }

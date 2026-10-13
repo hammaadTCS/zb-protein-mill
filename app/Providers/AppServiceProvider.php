@@ -14,6 +14,7 @@ use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Periods\Models\Period;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Purchases\Models\RateCorrection;
 use App\Domain\Sales\Models\Sale;
 use App\Domain\Settings\Models\Setting;
 use App\Domain\Transfers\Models\Transfer;
@@ -69,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
             'payment' => Payment::class,
             'period' => Period::class,
             'purchase' => Purchase::class,
+            'rate_correction' => RateCorrection::class,
             'sale' => Sale::class,
             'setting' => Setting::class,
             'transfer' => Transfer::class,

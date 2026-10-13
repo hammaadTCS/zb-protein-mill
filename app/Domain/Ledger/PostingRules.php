@@ -13,8 +13,10 @@ use App\Domain\Parties\Models\Party;
 use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Purchases\Models\RateCorrection;
 use App\Domain\Sales\Models\Sale;
 use App\Domain\Transfers\Models\Transfer;
+use App\Support\Decimal;
 use InvalidArgumentException;
 use LogicException;
 
@@ -356,9 +358,15 @@ final class PostingRules
      * Debit: Increase: item purchase account / Decrease: 2000 (P).
      * Credit: Increase: 2000 (P) / Decrease: item purchase account.
      */
-    public static function pr26RateCorrectionPurchase(): PostingRequest
+    public static function pr26RateCorrectionPurchase(RateCorrection $correction, Purchase $purchase): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-26');
+        $amount = Decimal::abs($correction->difference);
+        $item = PostingLine::debit($purchase->item->ledgerAccountId(), $amount, itemId: $purchase->item_id);
+        $supplier = PostingLine::credit('2000', $amount, $purchase->party_id);
+
+        return self::rateCorrection($correction, Decimal::isPositive($correction->difference)
+            ? [$item, $supplier]
+            : [PostingLine::debit('2000', $amount, $purchase->party_id), PostingLine::credit($purchase->item->ledgerAccountId(), $amount, itemId: $purchase->item_id)]);
     }
 
     /**
@@ -366,9 +374,13 @@ final class PostingRules
      * Debit: Increase: 1200 (P) / Decrease: item sales account.
      * Credit: Increase: item sales account / Decrease: 1200 (P).
      */
-    public static function pr27RateCorrectionSale(): PostingRequest
+    public static function pr27RateCorrectionSale(RateCorrection $correction, Sale $sale): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-27');
+        $amount = Decimal::abs($correction->difference);
+
+        return self::rateCorrection($correction, Decimal::isPositive($correction->difference)
+            ? [PostingLine::debit('1200', $amount, $sale->party_id), PostingLine::credit($sale->item->ledgerAccountId(), $amount, itemId: $sale->item_id)]
+            : [PostingLine::debit($sale->item->ledgerAccountId(), $amount, itemId: $sale->item_id), PostingLine::credit('1200', $amount, $sale->party_id)]);
     }
 
     /** Spec §8.3: supplier 2000, buyer 1200, employee 1300, other 2100. */
@@ -421,6 +433,22 @@ final class PostingRules
                 PostingLine::debit($debit, $payment->amount, is_string($debit) ? $payment->party_id : null),
                 PostingLine::credit($credit, $payment->amount, is_string($credit) ? $payment->party_id : null),
             ],
+        );
+    }
+
+    /**
+     * A rate correction, posted on its own date in an open month (BR-LED-09).
+     *
+     * @param  list<PostingLine>  $lines
+     */
+    private static function rateCorrection(RateCorrection $correction, array $lines): PostingRequest
+    {
+        return new PostingRequest(
+            postingDate: $correction->correction_date,
+            sourceType: 'rate_correction',
+            sourceId: $correction->id,
+            description: "Rate correction {$correction->voucher_no}",
+            lines: $lines,
         );
     }
 

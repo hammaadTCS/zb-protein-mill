@@ -68,7 +68,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T4.4** Partner money. *Done when:* tests pass.
 - [x] **T4.5** Transfers. *Done when:* tests pass.
 - [x] **T4.6** Agreed adjustments. *Done when:* tests pass.
-- [ ] **T4.7** Rate corrections for closed months. *Done when:* tests pass.
+- [x] **T4.7** Rate corrections for closed months. *Done when:* tests pass.
 - [ ] **T4.8** Acceptance runner, AT-1 and AT-2. *Done when:* both pass in CI.
 
 ## M5: Controls and settings  ·  card file `docs/cards/M5.md`

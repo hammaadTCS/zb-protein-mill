@@ -66,7 +66,7 @@ final class CreateAdjustment
                 }
 
                 $amount = EntryChecks::amount((string) ($data['amount'] ?? '')); // BR-ADJ-03
-                $maximum = Decimal::sub($target->amount, Adjustments::activeTotal($target));
+                $maximum = Decimal::sub(Adjustments::base($target), Adjustments::activeTotal($target));
 
                 if (Decimal::compare($amount, $maximum) > 0) {
                     throw ValidationException::withMessages(['amount' => __('The most that can be adjusted is :max.', ['max' => NumberFormat::money($maximum)])]); // BR-ADJ-03

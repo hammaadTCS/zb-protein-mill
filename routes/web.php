@@ -12,6 +12,7 @@ use App\Http\Controllers\PartnerTransactionController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\RateCorrectionController;
 use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
@@ -39,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
     Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
     Route::post('purchases/{purchase}/adjustments', [AdjustmentController::class, 'storeForPurchase'])->name('purchases.adjustments.store');
+    Route::post('purchases/{purchase}/rate-correction', [RateCorrectionController::class, 'storeForPurchase'])->name('purchases.rate-correction');
 
     // Pages 12, 13 and 14: expenses (T4.2, T4.3).
     Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -88,6 +90,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
     Route::post('sales/{sale}/rate', [SaleController::class, 'addRate'])->name('sales.rate');
     Route::post('sales/{sale}/adjustments', [AdjustmentController::class, 'storeForSale'])->name('sales.adjustments.store');
+    Route::post('sales/{sale}/rate-correction', [RateCorrectionController::class, 'storeForSale'])->name('sales.rate-correction');
     Route::post('adjustments/{adjustment}/cancel', [AdjustmentController::class, 'cancel'])->name('adjustments.cancel');
 
     // Page 27: approvals (T3.7).

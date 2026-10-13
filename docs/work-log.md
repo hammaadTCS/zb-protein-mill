@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.7 |
-| Next task | T4.8 Acceptance runner, AT-1 and AT-2 (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8 |
+| Next task | T5.1 Company settings page (T2.10 client review is yours) |
 
 ---
 
@@ -792,3 +792,16 @@ Choices and questions:
 - Words not in the glossary: "Correct rate", "Rate corrections", "New rate", "New amount", "Only an active entry with a fixed rate can be corrected.", "This entry is in an open month. Edit it instead.", "The new rate gives the same amount.".
 - Tests: the card's five (AT-5 read from `controls.json` step by step with `closeMonthForTest`, the cash count step skipped until T5.1; PR-26 increase; PR-27 sale decrease; second correction uses the corrected base; open-month entry refused) plus the detail page props, khata text, the reason rule and 403.
 - Checks: build, check, types, Pint, Larastan, guard pass; **433 PHP tests pass**.
+
+### T4.8 Acceptance runner, AT-1 and AT-2
+
+Built as the card lists: `tests/Support/AcceptanceRunner.php` per `docs/acceptance/README.md` (freezes today; creates users, accounts, parties and openings and marks them complete; runs every entry through the real Actions as the owner or the accountant; keeps records by `ref` and `no`; never confirms a warning; asserts every expected key: money accounts, parties with words, amount and pending kg, partners, ledger accounts with `money:` and `category:` keys, both trial balance totals, income vs spending, kg by item, vouchers including `.paid_now` / `.received_now`, audit rows, reversal journals, rate changes). `tests/Acceptance/AT1Test.php` and `AT2Test.php` only load, run and assert.
+
+Choices and questions:
+- **Income vs spending is checked from ledger account types** (income = Σ credit − debit over income accounts; spending = Σ debit − credit over expense accounts; result = income − spending; pending kg = active rate-pending kg in the range), as the card says. The R-08 report check and the `insights` key are listed in the runner's `SKIPPED` constant ("enabled in T6.7" / "enabled in T7.5"). I put the skips in the runner, not in `tests/Acceptance/`, because files there become protected once they exist; T6.7 and T7.5 can then switch them on without a `[spec-change]`.
+- **`phpunit.xml` gets an `Acceptance` test suite and `tests/Pest.php` applies the feature-test setup to `tests/Acceptance`**; without this `php artisan test` (and CI) would not run AT-1 and AT-2.
+- **Partner figures are read for the system start date to today.**
+- Checked that the runner fails when one entry is left out (AT-1 failed on `money_accounts.cash`), then removed that change.
+- Checks: **`bash scripts/check-all.sh` → ALL CHECKS PASSED** (435 PHP tests with AT-1 and AT-2, Pint, Larastan, build, lint, types, front-end tests, guard, secret scan, package audits).
+
+**M4 built. From here AT-1 and AT-2 run in every task.**

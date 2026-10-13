@@ -25,7 +25,7 @@ pest()->extend(TestCase::class)
         $this->seed(SystemDataSeeder::class);
         $this->seed(TestSettingsSeeder::class);
     })
-    ->in('Feature');
+    ->in('Feature', 'Acceptance');
 
 /** A user with the Owner role in the seeded company (spec §7). */
 function owner(): User

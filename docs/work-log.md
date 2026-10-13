@@ -1047,3 +1047,12 @@ Choices and questions:
 - Words not in the glossary: "Months" (menu and page title; spec page name is "Months list"), "Done", "Not done", "Rate pending" step text ("No rate-pending entries in this month."), "Approvals" step text, "Bank statement balance", "System balance", "Counted", "Difference", "Statement balance", "Counted amount", "Post shortage", "Post excess", "Close with pending rates" (spec §10 BR-MEC-02 words), "After closing, nothing dated in {Month} can be added, edited or cancelled.", "Every month up to now is closed.", "Open", "Closed", "Closed by", "Closed on", "Previous months", messages "Bank statement balance saved.", "Cash count saved.", "{Month} is closed.", "{Month} is open again.", "The month cannot close yet. Fix the steps marked Not done.", "Only the latest closed month ({Month}) can be reopened.", "No month is closed.".
 - Tests: the card's three (only the latest closed month can be reopened; reopen requires a reason and logs it with event and audit; the accountant cannot reopen, close, or open either page) plus page 30 walked through its routes from blocked to closed (statement, count, refused close, cash difference with voucher CSH-000001, close, months list).
 - Checked by eye: screenshots of page 30 (desktop and phone) and page 31.
+
+### T7.3 Opening balances lock
+
+Built as the card lists: `SetOpeningBalance` is refused once any month is closed (BR-MEC-09) with "Opening balances are locked because {Month Year} is closed." (the earliest closed month), and the opening balances page becomes read-only with the same text.
+
+Choices and questions:
+- **The lock is checked before "marked complete"**, so the message names the closed month when both apply.
+- **Reopening every closed month unlocks the openings again** (unless they are marked complete). BR-MEC-09 says they lock "when the first month is closed"; it does not say what a reopen does. Tell me if a reopen should keep them locked.
+- Tests: the card's (change after the first close refused, through the Action and the page route, balance unchanged, page shows `locked_by` January 2026) plus: after reopening, openings can change again.

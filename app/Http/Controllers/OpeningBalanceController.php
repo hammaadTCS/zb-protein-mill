@@ -37,6 +37,7 @@ class OpeningBalanceController extends Controller
         return Inertia::render('opening-balances/index', [
             'start_date' => Settings::get(SettingKeys::SYSTEM_START_DATE),
             'completed' => OpeningBalances::completed(),
+            'locked_by' => OpeningBalances::lockedBy(), // BR-MEC-09
             'equity' => OpeningBalances::equity(),
             'money_accounts' => MoneyAccount::query()->active()->orderBy('type')->orderBy('name')->get()
                 ->map(fn (MoneyAccount $account): array => [

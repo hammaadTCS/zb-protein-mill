@@ -8,10 +8,10 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Item | Status |
 | --- | --- |
 | Current task | T0.1 Laravel app, React starter kit, Pest, PostgreSQL, CI |
-| State | **Stopped at card step 2. Waiting for your decision** (see "Decision needed" below) |
-| Branch | `claude/lucid-ptolemy-w3fhsy` (holds only this log; no app code yet) |
+| State | **Waiting for you:** apply the G-30 `[spec-change]` (steps in "Your steps" below), merge it, then tell me "merged" |
+| Branch | `claude/lucid-ptolemy-w3fhsy`, pull request [hammaadTCS/zb-protein-mill#1](https://github.com/hammaadTCS/zb-protein-mill/pull/1). Holds this log and the proposed patch; no app code yet. **Do not merge it yet** |
 | Tasks ticked in `docs/tasks.md` | none |
-| Next task | T0.1 again, after your decision. T0.2 only after T0.1 is merged into `main` |
+| Next task | T0.1 continues in this session after G-30 is merged. T0.2 only after T0.1 is merged into `main` |
 
 ---
 
@@ -95,3 +95,70 @@ Document and section: `docs/cards/M0.md` T0.1 step 2 ("If Composer cannot downlo
 | C. Wait for the platform | Report it to Anthropic support and ask that public-repository zip downloads be allowed through the GitHub proxy | Nothing in the project | Unknown waiting time. No work can happen in the cloud meanwhile |
 
 Second, smaller question (for when T0.1 resumes): the kit now includes `laravel/pao`, which `docs/stack-baseline.md` does not list. Keep it (it comes with the kit; T0.1 says install no package the card does not name, and this one is not installed by me), or remove it? It is a dev-only tool that changes how test results are printed for AI agents.
+
+### Your decision (13 October 2026)
+
+- **Option B:** keep cloud sessions and fix how PHP packages are installed there.
+- **`laravel/pao`: keep.** Note: in Claude sessions it prints test results as JSON (made for AI agents); on your laptop the output looks normal.
+
+### Option B: what I prepared and tested
+
+The fix touches protected files, so I cannot make it. I wrote it in a scratch copy of `main` (outside the repository), tested it, and saved it as one patch file: `docs/proposals/G-30-cloud-composer.patch`. The real protected files are unchanged.
+
+How the fix works, in plain words:
+- The cloud GitHub proxy blocks GitHub zip downloads but allows `git`.
+- A new script, `scripts/cloud-composer-cache.sh`, reads `composer.lock`, fetches each package's exact commit with `git`, and builds the zip with `git archive` (the same way GitHub builds its zips). It puts each zip where Composer looks for downloads it already has.
+- Composer then installs normally and never asks GitHub for a zip. `composer.lock` is not changed. Laptop and CI are not affected.
+
+What the patch changes (7 files):
+
+| File | Change |
+| --- | --- |
+| `scripts/cloud-composer-cache.sh` | New. The script above |
+| `scripts/cloud-session-start.sh` | Cloud part only: runs the new script before `composer install`, and sets `COMPOSER_ALLOW_SUPERUSER=1` so Composer plugins (Pest's) stay on |
+| `docs/cards/M0.md` | T0.1 steps 2 and 4: a "cloud session" block next to the unchanged laptop commands |
+| `docs/stack-baseline.md` | New row "GitHub proxy and Composer" (the fact and the fix); `laravel/pao`, `.npmrc`, `pnpm-workspace.yaml` recorded as kit facts |
+| `docs/README.md` | The new script listed under Tooling |
+| `docs/requirements-audit.md` | New gap row G-30 |
+| `docs/spec.md` | §20.4 change log row "1.0 (update 7)" |
+
+Tests I ran (all in scratch folders, each starting from an **empty** Composer cache, like a fresh cloud session):
+
+| Test | Result |
+| --- | --- |
+| New script on the kit's `composer.lock` | 139 zips built in 33 seconds |
+| `composer install` using only those zips | exit 0; 139 of 139 "from cache", 0 downloads, 0 errors; no duplicate-class warning (unlike the plain git install) |
+| Card step 2, cloud block, run word for word | exit 0; kit commit `717b8f55`; 139 packages from cache; kit scripts ran; kit's `.git` removed |
+| Card step 3 (unchanged) | `chisel.php`, `chisel-paths.php`, `InstallFeaturesCommand.php` gone; `install:features` no longer in `composer.json` |
+| Card step 4, cloud block, run word for word | exit 0; Pest 4.7.8 and pest-plugin-laravel 4.1.0 (same as baseline); Pest's plugin active |
+| Patched `cloud-session-start.sh`, fresh-session simulation (app present, no `vendor/`) | 151 packages installed in 39 seconds; `vendor/bin/phpstan` and `vendor/bin/pest` present |
+| `shellcheck -S warning -x scripts/*.sh` (what the Infra check runs) | passed (shellcheck 0.11.0) |
+| `bash infra/tests/test-guardrails.sh` | 97 passed, 0 failed |
+| `bash scripts/secret-scan.sh` | passed |
+| `scripts/check-protected.sh` | fails without approval and passes with `[spec-change]`, as it should |
+| Patch applied to a clean copy of `main` | applies cleanly; result identical to the tested copy |
+
+Two things the protection hook stopped (I did not try another way for either):
+- Marking the new script as executable in the scratch copy: the hook read the path as the protected file in the real repository. It does not matter: the script is always run as `bash scripts/cloud-composer-cache.sh`.
+- Writing your steps into this log with a shell command, because the text contained the human-only approval option of `check-all.sh`. I left that command out of your steps; CI checks the `[spec-change]` approval anyway.
+
+Known limit (also written in the baseline row): the fix relies on how Composer names its cached files (checked in Composer 2.8.12's own code). If a future Composer changes that, cloud installs fail again with the same 403 and the start script prints a warning. The laptop and CI are never affected.
+
+### Your steps (on the laptop, about 10 minutes plus CI)
+
+```bash
+cd ~/Projects/zb-protein-mill
+git checkout main && git pull
+git checkout -b spec/G-30-cloud-composer
+git fetch origin claude/lucid-ptolemy-w3fhsy
+git show origin/claude/lucid-ptolemy-w3fhsy:docs/proposals/G-30-cloud-composer.patch | git apply --index
+git diff --cached --stat        # must list the 7 files above
+git commit -m "G-30: cloud sessions install PHP packages through git-built zips"
+git push -u origin spec/G-30-cloud-composer
+gh pr create --title "[spec-change] G-30 cloud sessions: PHP packages through git" --body "Fixes the T0.1 blocker found in hammaadTCS/zb-protein-mill#1: the cloud GitHub proxy refuses Composer's GitHub zip downloads. Prepared and tested as described in docs/work-log.md on branch claude/lucid-ptolemy-w3fhsy."
+```
+
+Then on GitHub: read the diff, wait until **CI and Infra** are both green (Infra runs because `scripts/` changed), and merge. Then tell me "merged" in this session. I will then:
+1. merge `main` into this branch;
+2. delete `docs/proposals/G-30-cloud-composer.patch` (it will be on `main` by then);
+3. continue T0.1 from step 2 with the new cloud block.

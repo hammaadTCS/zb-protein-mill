@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Alerts;
 
+use App\Domain\Alerts\Providers\AgedAdvances;
 use App\Domain\Alerts\Providers\BankChangesToReview;
 use App\Domain\Alerts\Providers\BuyersOverCreditLimit;
 use App\Domain\Alerts\Providers\MissingCashCount;
 use App\Domain\Alerts\Providers\NegativeCashBalance;
 use App\Domain\Alerts\Providers\NewPartiesToReview;
+use App\Domain\Alerts\Providers\OverdueBuyers;
 use App\Domain\Alerts\Providers\PaymentsAwaitingApproval;
 use App\Domain\Alerts\Providers\RatePendingAged;
 use App\Domain\Alerts\Providers\TrialBalanceError;
@@ -24,7 +26,9 @@ final class Alerts
         PaymentsAwaitingApproval::class,
         NewPartiesToReview::class,
         BankChangesToReview::class,
+        OverdueBuyers::class,
         BuyersOverCreditLimit::class,
+        AgedAdvances::class,
         MissingCashCount::class,
         NegativeCashBalance::class,
         TrialBalanceError::class,

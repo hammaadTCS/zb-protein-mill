@@ -5,15 +5,19 @@ namespace App\Http\Controllers;
 use App\Domain\Items\Models\Item;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Actions\AddPurchaseRate;
+use App\Domain\Purchases\Actions\CancelPurchase;
 use App\Domain\Purchases\Actions\CreatePurchase;
+use App\Domain\Purchases\Actions\UpdatePurchase;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Settings\SettingKeys;
 use App\Domain\Settings\Settings;
 use App\Http\Controllers\Concerns\ListsEntries;
 use App\Http\Controllers\Concerns\PresentsEntries;
+use App\Http\Requests\CancelEntryRequest;
 use App\Http\Requests\Purchases\AddRateRequest;
 use App\Http\Requests\Purchases\StorePurchaseRequest;
+use App\Http\Requests\Purchases\UpdatePurchaseRequest;
 use App\Support\EntryStatus;
 use App\Support\Flash;
 use App\Support\Today;
@@ -78,15 +82,25 @@ class PurchaseController extends Controller
         $party = $this->partyOption($request->integer('party_id') ?: null);
 
         return Inertia::render('purchases/create', [
-            'today' => Today::date(),
+            ...$this->formProps(),
             'party' => $party !== null && $party['type'] === 'supplier' ? $party : null,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formProps(): array
+    {
+        return [
+            'today' => Today::date(),
             'items' => Item::query()->active()->orderBy('id')->get()
                 ->filter(fn (Item $item): bool => $item->type->isBought())
                 ->map(fn (Item $item): array => ['id' => $item->id, 'name' => $item->name])
                 ->values(),
             'money_accounts' => $this->moneyAccountOptions(),
             'plant_has_scale' => Settings::get(SettingKeys::PLANT_HAS_SCALE) === true,
-        ]);
+        ];
     }
 
     public function store(StorePurchaseRequest $request, CreatePurchase $action): RedirectResponse
@@ -126,6 +140,7 @@ class PurchaseController extends Controller
                 'status' => $purchase->status->value,
                 'cancel_reason' => $purchase->cancel_reason,
                 'can_add_rate' => $purchase->status === EntryStatus::Active && $purchase->rate_status === RateStatus::Pending,
+                'is_active' => $purchase->status === EntryStatus::Active,
                 'created_by' => $purchase->creator?->name,
                 'created_at' => $purchase->created_at?->toIso8601String(),
             ],
@@ -140,6 +155,53 @@ class PurchaseController extends Controller
                 'approval_status' => $payment->approval_status->value,
             ])->values(),
         ]);
+    }
+
+    /** Edit (BR-PUR-11): the create form with the saved values and `version` (BR-GEN-09). */
+    public function edit(Purchase $purchase): Response
+    {
+        $this->authorize('update', $purchase);
+
+        $purchase->load(['party']);
+
+        return Inertia::render('purchases/edit', [
+            ...$this->formProps(),
+            'party' => $this->partyOption($purchase->party_id),
+            'purchase' => [
+                'id' => $purchase->id,
+                'voucher_no' => $purchase->voucher_no,
+                'version' => $purchase->updated_at?->toIso8601String(),
+                'date' => $purchase->entry_date,
+                'party_id' => $purchase->party_id,
+                'item_id' => $purchase->item_id,
+                'kg' => $purchase->kg,
+                'rate' => $purchase->rate,
+                'slip_no' => $purchase->slip_no,
+                'our_weight_kg' => $purchase->our_weight_kg,
+                'note' => $purchase->note,
+            ],
+        ]);
+    }
+
+    public function update(UpdatePurchaseRequest $request, Purchase $purchase, UpdatePurchase $action): RedirectResponse
+    {
+        $this->authorize('update', $purchase);
+
+        $action->handle($this->actor($request), $purchase, $request->entryData(), $request->confirmedWarnings());
+        Flash::saved($purchase->voucher_no);
+
+        return to_route('purchases.show', $purchase);
+    }
+
+    /** "Cancel entry" with a reason; optionally the linked payment too (BR-PUR-12). */
+    public function cancel(CancelEntryRequest $request, Purchase $purchase, CancelPurchase $action): RedirectResponse
+    {
+        $this->authorize('cancel', $purchase);
+
+        $action->handle($this->actor($request), $purchase, (string) $request->validated('reason'), $request->boolean('cancel_linked_payment'));
+        Flash::saved($purchase->voucher_no);
+
+        return to_route('purchases.show', $purchase);
     }
 
     /** "Add rate" on page 5 and on the rate-pending list (BR-PUR-04). */

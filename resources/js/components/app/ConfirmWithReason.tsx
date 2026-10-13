@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ export function ConfirmWithReason({
     processing = false,
     onConfirm,
     onClose,
+    children,
 }: {
     open: boolean;
     title: string;
@@ -31,6 +33,8 @@ export function ConfirmWithReason({
     processing?: boolean;
     onConfirm: (reason: string) => void;
     onClose: () => void;
+    /** Extra choices under the reason, for example "Also cancel the linked payment". */
+    children?: ReactNode;
 }) {
     const [reason, setReason] = useState('');
     const tooShort = reason.trim().length < 5;
@@ -60,6 +64,7 @@ export function ConfirmWithReason({
                         />
                         <InputError message={error} />
                     </div>
+                    {children}
                     <DialogFooter>
                         <Button
                             type="button"

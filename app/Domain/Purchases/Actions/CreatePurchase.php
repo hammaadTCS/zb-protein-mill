@@ -11,12 +11,12 @@ use App\Domain\Audit\AuditLogger;
 use App\Domain\Ledger\PostingRules;
 use App\Domain\Ledger\PostingService;
 use App\Domain\Numbering\VoucherNumberService;
-use App\Domain\Parties\Enums\PartyType;
 use App\Domain\Payments\Actions\RecordPayment;
 use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Periods\Periods;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
+use App\Domain\Purchases\PurchaseInput;
 use App\Domain\Settings\Settings;
 use App\Models\User;
 use App\Support\Decimal;
@@ -69,34 +69,29 @@ final class CreatePurchase
             return $existing;
         }
 
-        // BR-PUR-01
-        $party = EntryChecks::party(self::id($data, 'party_id'), [PartyType::Supplier], 'party_id', __('Select an active supplier.'));
-        $item = EntryChecks::item(self::id($data, 'item_id'), true, 'item_id', __('Select an active raw material or fuel item.'));
-        $kg = EntryChecks::kg((string) $data['kg']); // BR-PUR-02
-        $rate = self::rate($data); // BR-PUR-03
-        $ourWeight = self::filled($data, 'our_weight_kg') ? EntryChecks::kg((string) $data['our_weight_kg'], 'our_weight_kg') : null;
+        $input = PurchaseInput::from($data); // BR-PUR-01 to BR-PUR-03
         $paidNow = self::paidNow($data);
 
         $purchase = Purchase::query()->create([
             'company_id' => $by->company_id,
             'voucher_no' => VoucherNumberService::next('purchase'), // BR-GEN-05
             'entry_date' => $date,
-            'party_id' => $party->id,
-            'item_id' => $item->id,
-            'kg' => $kg,
-            'rate' => $rate,
-            'amount' => $rate === null ? null : Decimal::amount($kg, $rate), // BR-GEN-06
-            'rate_status' => $rate === null ? RateStatus::Pending : RateStatus::Fixed,
-            'rate_fixed_at' => $rate === null ? null : now(),
-            'slip_no' => self::filled($data, 'slip_no') ? (string) $data['slip_no'] : null,
-            'our_weight_kg' => $ourWeight,
-            'note' => self::filled($data, 'note') ? (string) $data['note'] : null,
+            'party_id' => $input->party->id,
+            'item_id' => $input->item->id,
+            'kg' => $input->kg,
+            'rate' => $input->rate,
+            'amount' => $input->rate === null ? null : Decimal::amount($input->kg, $input->rate), // BR-GEN-06
+            'rate_status' => $input->rate === null ? RateStatus::Pending : RateStatus::Fixed,
+            'rate_fixed_at' => $input->rate === null ? null : now(),
+            'slip_no' => $input->slipNo,
+            'our_weight_kg' => $input->ourWeightKg,
+            'note' => $input->note,
             'idempotency_key' => $key,
             'created_by' => $by->id,
         ]);
-        $purchase->setRelation('item', $item);
+        $purchase->setRelation('item', $input->item);
 
-        if ($rate !== null) {
+        if ($input->rate !== null) {
             $journal = PostingService::post(PostingRules::pr01PurchaseFixedRate($purchase), $by); // PR-01
             $purchase->update(['journal_entry_id' => $journal->id]);
         } // BR-PUR-04, BR-LED-06: a rate-pending purchase has no journal yet.
@@ -113,7 +108,7 @@ final class CreatePurchase
                 ...$paidNow,
                 'entry_date' => $date,
                 'direction' => PaymentDirection::Paid,
-                'party_id' => $party->id,
+                'party_id' => $input->party->id,
                 'purchase_id' => $purchase->id,
                 'idempotency_key' => $key,
             ]);
@@ -143,16 +138,6 @@ final class CreatePurchase
     }
 
     /**
-     * BR-PUR-03: the rate is optional; empty means "Rate pending".
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private static function rate(array $data): ?string
-    {
-        return self::filled($data, 'rate') ? EntryChecks::rate((string) $data['rate']) : null;
-    }
-
-    /**
      * BR-PUR-10: amount above 0, an active money account, optional reference and
      * "Handled by" employee.
      *
@@ -167,30 +152,14 @@ final class CreatePurchase
             return null;
         }
 
-        $account = EntryChecks::moneyAccount(self::id($paid, 'money_account_id'), 'paid_now.money_account_id');
-        $handledBy = EntryChecks::handledBy(self::id($paid, 'handled_by_party_id'), 'paid_now.handled_by_party_id');
+        $account = EntryChecks::moneyAccount(PurchaseInput::id($paid, 'money_account_id'), 'paid_now.money_account_id');
+        $handledBy = EntryChecks::handledBy(PurchaseInput::id($paid, 'handled_by_party_id'), 'paid_now.handled_by_party_id');
 
         return [
             'amount' => EntryChecks::amount((string) ($paid['amount'] ?? ''), 'paid_now.amount'),
             'money_account_id' => $account->id,
-            'reference_no' => self::filled($paid, 'reference_no') ? (string) $paid['reference_no'] : null,
+            'reference_no' => PurchaseInput::filled($paid, 'reference_no') ? (string) $paid['reference_no'] : null,
             'handled_by_party_id' => $handledBy?->id,
         ];
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $data
-     */
-    private static function filled(array $data, string $key): bool
-    {
-        return isset($data[$key]) && $data[$key] !== '';
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $data
-     */
-    private static function id(array $data, string $key): ?int
-    {
-        return self::filled($data, $key) && is_numeric($data[$key]) ? (int) $data[$key] : null;
     }
 }

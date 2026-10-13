@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 |
-| Next task | T3.2 Edit and cancel purchases (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1, T3.2 |
+| Next task | T3.3 Purchase warnings and weight-slip settings (T2.10 client review is yours) |
 
 ---
 
@@ -590,3 +590,21 @@ Choices and questions:
 - Message not in the glossary: "Only an active rate-pending entry can get a rate."; page words "Days", "Party".
 - Tests: the card's five (T-05 no journal; T-05 PR-01 and `rate_changes`; AT-1 #4 and #12 → "We owe 38400.00"; BR-LED-08 closed January posts on 05 Feb; BR-CHK-05 8 days flagged, 7 not), plus refused for a fixed entry, paid now on a pending purchase → advance, khata pending row, add-rate route permission and save.
 - Checks: build, check, types, Pint, Larastan, guard pass; **303 PHP tests pass**.
+
+### T3.2 Edit and cancel purchases
+
+Built as the card lists: `UpdatePurchase` (every field except the voucher number; party stays a supplier; a posted purchase is reversed on its original posting date and posted again on its new date; a rate-pending one changes without a journal; a changed fixed rate writes `rate_changes` and audit `rate_changed`; audit `updated` with the old and new value of each changed field), optimistic lock (`version` = `updated_at`, mismatch → glossary "Concurrent edit" text, HTTP 409), `CancelPurchase` (reason ≥ 5 characters, journal reversed, row kept with reason, user and time; "Also cancel the linked payment?" cancels the "paid now" payment the same way), both refused in a closed month with the glossary "Closed month" text, routes `GET /purchases/{id}/edit`, `PUT /purchases/{id}`, `POST /purchases/{id}/cancel`, the edit page reusing the New purchase form, and "Edit" / "Cancel entry" on page 5 with `ConfirmWithReason` and the checkbox.
+
+Also added:
+- `CancelPayment` (Payments module): reverses and cancels one payment; used here for the linked payment and later by the payment pages (T3.6).
+- `App\Support\CancelReason` (BR-GEN-04), `App\Support\ConcurrentEdit` (BR-GEN-09, renders 409 JSON), `App\Domain\Ledger\Journals::postingDate()`.
+- `App\Domain\Purchases\PurchaseInput`: the purchase field checks, shared by create and edit (and the model for sales in T3.4).
+- The purchase form is now `components/app/PurchaseForm.tsx`, used by `purchases/create` and `purchases/edit`.
+
+Choices and questions:
+- **A fixed rate cannot be removed by editing** ("A fixed rate cannot be removed. Enter the correct rate."). `rate_changes.new_rate` cannot be empty (spec §9.5), so going back to "Rate pending" could not be recorded. A pending entry can get its rate by editing too; that writes `rate_changes` with an empty old rate and audit `rate_added`.
+- **Editing has no "Paid now" and no photo**: the payment is its own record (edited on the payment pages, T3.6); replacing a slip photo is not in this card.
+- **Cancel reverses on the original posting date** (that month must be open).
+- Messages not in the glossary: "A cancelled entry cannot be edited.", "This entry is already cancelled.", "Give a reason of at least 5 characters.".
+- Tests: the card's seven (edit kg: exact original, reversal and new journals; cancel reverses and keeps the row; cancel without the payment → "Advance 40000.00"; 4-character reason refused; stale version refused, also as HTTP 409; closed month refuses edit and cancel; fixed rate change → `rate_changes`), plus cancel with the payment, pending edit without journal, party must stay a supplier, route permissions.
+- Checks: build, check, types, Pint, Larastan, guard pass; **314 PHP tests pass**.

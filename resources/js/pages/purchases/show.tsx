@@ -1,16 +1,19 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { AddRateDialog } from '@/components/app/AddRateDialog';
+import { ConfirmWithReason } from '@/components/app/ConfirmWithReason';
 import { KgText } from '@/components/app/KgText';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
 import { StatusBadge } from '@/components/app/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { useCan } from '@/hooks/use-can';
 import { useFormats } from '@/hooks/use-formats';
 import { formatDate, formatRate } from '@/lib/format';
-import { index, rate } from '@/routes/purchases';
+import { cancel, edit, index, rate } from '@/routes/purchases';
 
 type Purchase = {
     id: number;
@@ -28,6 +31,7 @@ type Purchase = {
     status: 'active' | 'cancelled';
     cancel_reason: string | null;
     can_add_rate: boolean;
+    is_active: boolean;
     created_by: string | null;
     created_at: string | null;
 };
@@ -63,6 +67,11 @@ export default function ShowPurchase({
     const formats = useFormats();
     const can = useCan();
     const [addingRate, setAddingRate] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
+    const [cancelPayment, setCancelPayment] = useState(false);
+    const [cancelError, setCancelError] = useState<string | undefined>();
+    const [cancelProcessing, setCancelProcessing] = useState(false);
+    const hasActivePayment = payments.some((p) => p.status === 'active');
 
     return (
         <>
@@ -76,6 +85,19 @@ export default function ShowPurchase({
                         purchase.rate_status === 'pending' && (
                             <StatusBadge status="rate_pending" />
                         )}
+                    {purchase.is_active && can('purchase.update') && (
+                        <Button variant="outline" asChild>
+                            <Link href={edit(purchase.id)}>Edit</Link>
+                        </Button>
+                    )}
+                    {purchase.is_active && can('purchase.cancel') && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setCancelling(true)}
+                        >
+                            Cancel entry
+                        </Button>
+                    )}
                     {purchase.can_add_rate && can('purchase.update') && (
                         <Button onClick={() => setAddingRate(true)}>
                             Add rate
@@ -203,6 +225,41 @@ export default function ShowPurchase({
                     Purchases
                 </Link>
             </div>
+            <ConfirmWithReason
+                open={cancelling}
+                title={`Cancel entry ${purchase.voucher_no}`}
+                error={cancelError}
+                processing={cancelProcessing}
+                onClose={() => setCancelling(false)}
+                onConfirm={(reason) =>
+                    router.post(
+                        cancel.url(purchase.id),
+                        { reason, cancel_linked_payment: cancelPayment },
+                        {
+                            onStart: () => setCancelProcessing(true),
+                            onFinish: () => setCancelProcessing(false),
+                            onError: (errors) =>
+                                setCancelError(errors.reason ?? errors.date),
+                            onSuccess: () => setCancelling(false),
+                        },
+                    )
+                }
+            >
+                {hasActivePayment && (
+                    <div className="flex items-center gap-2">
+                        <Checkbox
+                            id="cancel_payment"
+                            checked={cancelPayment}
+                            onCheckedChange={(checked) =>
+                                setCancelPayment(checked === true)
+                            }
+                        />
+                        <Label htmlFor="cancel_payment">
+                            Also cancel the linked payment?
+                        </Label>
+                    </div>
+                )}
+            </ConfirmWithReason>
             <AddRateDialog
                 open={addingRate}
                 title={purchase.voucher_no}

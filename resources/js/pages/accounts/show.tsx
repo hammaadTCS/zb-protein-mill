@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -54,6 +55,11 @@ export default function AccountStatementPage({
         <>
             <Head title={account.name} />
             <div className="flex flex-col gap-4 p-4">
+                <PrintHeader
+                    title={account.name}
+                    from={filters.from}
+                    to={filters.to}
+                />
                 <PageHeader title={account.name}>
                     <Input
                         type="date"

@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import type { PartyOption } from '@/components/app/PartyPicker';
 import type { ReportFilterValues } from '@/components/app/ReportFilters';
 import { ReportFilters } from '@/components/app/ReportFilters';
@@ -21,6 +22,11 @@ export default function WeightDifferenceReport({
         <>
             <Head title="Weight difference" />
             <div className="flex flex-col gap-6 p-4">
+                <PrintHeader
+                    title="Weight difference"
+                    from={filters.from}
+                    to={filters.to}
+                />
                 <PageHeader title="Weight difference" />
                 <ReportFilters
                     url={(query) => weightDifference.url({ query })}

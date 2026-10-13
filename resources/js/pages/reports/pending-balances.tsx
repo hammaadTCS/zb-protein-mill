@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { KgText } from '@/components/app/KgText';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -68,6 +69,7 @@ export default function PendingBalances({
         <>
             <Head title="Pending balances" />
             <div className="flex flex-col gap-6 p-4">
+                <PrintHeader title="Pending balances" asOf={filters.as_of} />
                 <PageHeader title="Pending balances">
                     <Input
                         type="date"

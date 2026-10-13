@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.8 |
-| Next task | T6.9 Reports home and printing (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.9 |
+| Next task | T6.10 Statement and entry slip PDFs (T2.10 client review is yours) |
 
 ---
 
@@ -985,4 +985,16 @@ Choices and questions:
 - Shared React pieces: `ReportFilters`, `RateHistory`, `WeightDifferences` (used by the reports and the party profile).
 - Words not in the glossary: "Rate report", "Weight difference", "Adjustments report" (spec page names), "Rate history", "Weight differences" (spec §11.11 tab names), "Weighted average", "Their kg", "Our kg", "Difference", "Count", "%", "All items", "All reasons", "Purchases", "Sales".
 - Tests: T-13 (Aslam 800 @ 50 and 1000 @ 52 → 51.11; purchases 1000/960 and 500/500 → 40.000 kg, 2.74%; sale 300/295 → 5.000 kg, 1.67%; AT-2 ABC quality 2000.00, 1 adjustment, 3.17% of 63000.00) plus the profile tab and the three pages.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.9 Reports home and printing
+
+Built as the card lists: page 32 `/reports` (`report.view`) linking every report the user can open (each checked against its own permission: Partner statement needs `partner.view`, Accounts `account.view`); print stylesheet (`@media print` in `resources/css/app.css`) hiding the sidebar, top bar, bottom bar, buttons, inputs, select boxes and toasts; a `PrintHeader` on every report page, shown only on paper, with the company name (from settings, shared with every page), the report title, the filters used and "Printed on {date time} by {user}". The menu's Reports group now opens the reports home.
+
+Choices and questions:
+- **Business insights (page 40) is not listed yet**; T7.5 builds it and adds it to the list.
+- **The menu shows one "Reports" entry** (the home page) instead of each report.
+- **Printed samples checked**: I printed the trial balance and the pending balances to PDF from the browser (A4, print media). Each shows the company name, title, "As of …", "Printed on … by …", and the tables; no sidebar, buttons or filters. I fixed one thing found there: the trial balance printed its filter labels without the inputs, now hidden on paper. You should still print them from your own browser once.
+- Words not in the glossary: "Reports", the one-line description of each report, "Printed on … by …", "From … to …", "As of …".
+- Tests: the card's (reports home lists only permitted reports: the accountant does not see Partner statement; 403 without `report.view`) plus the shared company name.
 - Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.

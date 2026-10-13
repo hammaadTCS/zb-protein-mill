@@ -42,7 +42,7 @@ import { create as newPayment, index as payments } from '@/routes/payments';
 import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
-import { dailySummary, trialBalance } from '@/routes/reports';
+import { dailySummary, index as reportsHome } from '@/routes/reports';
 import { index as transfers } from '@/routes/transfers';
 import { index as users } from '@/routes/users';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
@@ -181,8 +181,8 @@ export const navigation: NavEntry[] = [
     },
     {
         group: 'Reports',
-        label: 'Trial balance',
-        href: trialBalance(),
+        label: 'Reports',
+        href: reportsHome(),
         permission: 'report.view',
         mobileFirst: false,
         icon: FileSpreadsheet,

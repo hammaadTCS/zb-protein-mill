@@ -53,6 +53,8 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
                 ] : null,
             ],
+            // Printed reports show the company name (card T6.9).
+            'company_name' => $user instanceof User ? Settings::get(SettingKeys::COMPANY_NAME) : null,
             'settings' => [
                 'formats' => $user instanceof User ? self::formats() : null,
             ],

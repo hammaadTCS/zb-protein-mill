@@ -24,6 +24,7 @@ use App\Http\Controllers\Reports\ExpenseReportController;
 use App\Http\Controllers\Reports\IncomeVsSpendingController;
 use App\Http\Controllers\Reports\PendingBalancesController;
 use App\Http\Controllers\Reports\RateWeightReportsController;
+use App\Http\Controllers\Reports\ReportsHomeController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TransferController;
@@ -129,6 +130,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Page 36: Trial balance (T2.9).
     Route::get('daily-summary', [DailySummaryController::class, 'show'])->name('reports.daily-summary')->can('report.view');
+    Route::get('reports', [ReportsHomeController::class, 'index'])->name('reports.index')->can('report.view');
     Route::get('reports/pending-balances', [PendingBalancesController::class, 'show'])->name('reports.pending-balances')->can('report.view');
     Route::get('reports/expenses', [ExpenseReportController::class, 'show'])->name('reports.expenses')->can('report.view');
     Route::get('reports/income-vs-spending', [IncomeVsSpendingController::class, 'show'])->name('reports.income-vs-spending')->can('report.view');

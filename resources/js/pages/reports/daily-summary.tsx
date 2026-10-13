@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { KgText } from '@/components/app/KgText';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Input } from '@/components/ui/input';
 import { dailySummary } from '@/routes/reports';
 
@@ -24,6 +25,7 @@ export default function DailySummary({ summary }: { summary: Summary }) {
         <>
             <Head title="Daily summary" />
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
+                <PrintHeader title="Daily summary" asOf={summary.date} />
                 <PageHeader title="Daily summary">
                     <Input
                         type="date"

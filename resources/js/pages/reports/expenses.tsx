@@ -3,6 +3,7 @@ import { MoneyText } from '@/components/app/MoneyText';
 import type { PartyOption } from '@/components/app/PartyPicker';
 import { PartyPicker } from '@/components/app/PartyPicker';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -78,6 +79,11 @@ export default function ExpenseReportPage({
         <>
             <Head title="Expense report" />
             <div className="flex flex-col gap-6 p-4">
+                <PrintHeader
+                    title="Expense report"
+                    from={filters.from}
+                    to={filters.to}
+                />
                 <PageHeader title="Expense report" />
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <Input

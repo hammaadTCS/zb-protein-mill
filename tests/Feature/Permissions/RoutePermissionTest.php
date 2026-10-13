@@ -92,6 +92,7 @@ const ROUTE_PERMISSIONS = [
     'sales.cancel' => 'sale.cancel',
     'sales.adjustments.store' => 'adjustment.create',
     'reports.trial-balance' => 'report.view',
+    'reports.index' => 'report.view',
     'reports.daily-summary' => 'report.view',
     'reports.expenses' => 'report.view',
     'reports.income-vs-spending' => 'report.view',

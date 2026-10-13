@@ -147,3 +147,51 @@
         @apply bg-background text-foreground;
     }
 }
+
+/*
+ * Card T6.9: printed reports show only the report. The sidebar, the top bar, the
+ * phone bottom bar, buttons, filters and toasts are hidden; the print header
+ * (company, report, filters, printed on/by) is shown instead.
+ */
+@media print {
+    [data-slot='sidebar'],
+    [data-slot='sidebar-gap'],
+    [data-slot='sidebar-rail'],
+    [data-slot='sidebar-inset'] > header,
+    nav,
+    button,
+    input,
+    [data-slot='select-trigger'],
+    [data-print='hide'],
+    [data-sonner-toaster] {
+        display: none !important;
+    }
+
+    [data-slot='sidebar-inset'] {
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
+
+    [data-print='only'] {
+        display: block !important;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    a {
+        text-decoration: none !important;
+        color: inherit !important;
+    }
+
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+}

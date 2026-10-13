@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { KgText } from '@/components/app/KgText';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,6 +54,11 @@ export default function IncomeVsSpendingPage({
         <>
             <Head title="Income vs Spending" />
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
+                <PrintHeader
+                    title="Income vs Spending"
+                    from={report.from}
+                    to={report.to}
+                />
                 <PageHeader title="Income vs Spending">
                     <Input
                         type="date"

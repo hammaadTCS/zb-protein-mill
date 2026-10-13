@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { PageHeader } from '@/components/app/PageHeader';
+import { PrintHeader } from '@/components/app/PrintHeader';
 import type { PartyOption } from '@/components/app/PartyPicker';
 import type { ReportFilterValues } from '@/components/app/ReportFilters';
 import { ReportFilters } from '@/components/app/ReportFilters';
@@ -32,6 +33,11 @@ export default function RatesReport({
         <>
             <Head title="Rate report" />
             <div className="flex flex-col gap-6 p-4">
+                <PrintHeader
+                    title="Rate report"
+                    from={filters.from}
+                    to={filters.to}
+                />
                 <PageHeader title="Rate report" />
                 <ReportFilters
                     url={(query) => rates.url({ query })}

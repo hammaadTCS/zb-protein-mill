@@ -315,3 +315,13 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - `AccountCodeAllocator::next()` with the five ranges; lowest free code; throws when full or for an unknown range.
 - Tests: §8.1 seeded exactly (full table), BR-OPS-11 no duplicates, BR-LED-01 (six kinds of change), allocator (gaps, range end, every range), unknown range.
 - Checks: Pint, Larastan pass; tests pass except the known T0.3 Actions rule.
+
+### T1.5 Journal tables and database protections
+
+- Migration `create_journal_tables`: `journal_entries` (no `updated_at`/`updated_by`) and `journal_lines` per the card; check `journal_lines_one_side`; function `prevent_change()` with triggers on both tables; function `check_journal_balance()` with the deferred constraint trigger `journal_balance_check` (refuses fewer than 2 lines or debit ≠ credit); indexes per spec §9.7.
+- **Small additions (safety, no behaviour change for correct code):** `reversal_of_id` is UNIQUE, so the database itself allows a journal to be reversed only once (BR-LED-05); `(journal_entry_id, line_no)` is UNIQUE.
+- Models `JournalEntry`, `JournalLine` (`BelongsToCompany`): `creating` throws unless `PostingService::isPosting()`; `updating`/`deleting` throw as well.
+- `PostingService` stub with a **private** posting flag. There is deliberately no public way to switch it on; tests flip it through reflection (`withPostingFlag()` in `tests/Pest.php`), so no app code can bypass the rule.
+- Fits the protected production grants (`infra/files/postgres/30-app-grants.sql`): both tables are on its append-only list.
+- Tests: T-02 unbalanced refused, one-line refused, balanced accepted; T-03 update/delete refused on both tables (4 cases); BR-LED-02 both sides / neither / negative refused; models refuse creation outside PostingService.
+- Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.

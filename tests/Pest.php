@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Ledger\PostingService;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SystemDataSeeder;
@@ -26,4 +27,25 @@ function owner(): User
 function accountant(): User
 {
     return User::factory()->create()->assignRole(RolesAndPermissionsSeeder::ACCOUNTANT);
+}
+
+/**
+ * Runs the callback with PostingService's private posting flag set, so a test can
+ * write journal rows the way only PostingService may (T1.5 database tests).
+ *
+ * @template T
+ *
+ * @param  Closure(): T  $callback
+ * @return T
+ */
+function withPostingFlag(Closure $callback): mixed
+{
+    $flag = new ReflectionProperty(PostingService::class, 'posting');
+    $flag->setValue(null, true);
+
+    try {
+        return $callback();
+    } finally {
+        $flag->setValue(null, false);
+    }
 }

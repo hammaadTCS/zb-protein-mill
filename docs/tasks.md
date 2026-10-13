@@ -25,7 +25,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T1.2** Settings, setup gate, test settings. *Done when:* tests pass; no production default exists for any OPEN value.
 - [x] **T1.3** Roles and permissions. *Done when:* tests pass.
 - [x] **T1.4** Ledger accounts. *Done when:* tests pass.
-- [ ] **T1.5** Journal tables and database protections. *Done when:* tests pass.
+- [x] **T1.5** Journal tables and database protections. *Done when:* tests pass.
 - [ ] **T1.6** Voucher numbering. *Done when:* tests pass.
 - [ ] **T1.7** Posting Service. *Done when:* tests pass; arch test confirms only the Ledger module touches journal models.
 - [ ] **T1.8** Audit log. *Done when:* tests pass.

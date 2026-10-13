@@ -8,6 +8,7 @@ import {
     ArrowLeftRight,
     BookOpen,
     CalendarDays,
+    CalendarRange,
     CheckCheck,
     Coins,
     Clock,
@@ -18,6 +19,7 @@ import {
     Banknote,
     Landmark,
     LayoutGrid,
+    Lock,
     Package,
     Receipt,
     Settings2,
@@ -33,6 +35,8 @@ import { index as auditLog } from '@/routes/audit-log';
 import { edit as companySettings } from '@/routes/company-settings';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
+import { show as monthEnd } from '@/routes/month-end';
+import { index as months } from '@/routes/months';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
 import { index as partners } from '@/routes/partners';
@@ -178,6 +182,22 @@ export const navigation: NavEntry[] = [
         permission: 'report.view',
         mobileFirst: false,
         icon: CalendarDays,
+    },
+    {
+        group: 'Month-end',
+        label: 'Month-end close',
+        href: monthEnd(),
+        permission: 'period.close',
+        mobileFirst: false,
+        icon: Lock,
+    },
+    {
+        group: 'Month-end',
+        label: 'Months',
+        href: months(),
+        permission: 'period.close',
+        mobileFirst: false,
+        icon: CalendarRange,
     },
     {
         group: 'Reports',

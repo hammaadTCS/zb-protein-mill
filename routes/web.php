@@ -13,6 +13,8 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
+use App\Http\Controllers\MonthController;
+use App\Http\Controllers\MonthEndController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartnerTransactionController;
 use App\Http\Controllers\PartyController;
@@ -145,6 +147,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Page 47: Opening balances (T2.6).
     // Page 28: daily cash check (T6.1).
+    // Pages 30 and 31: month-end close and the months list (T7.2).
+    Route::get('month-end', [MonthEndController::class, 'show'])->name('month-end.show')->can('period.close');
+    Route::post('month-end/bank-statement', [MonthEndController::class, 'bankStatement'])->name('month-end.bank-statement')->can('period.close');
+    Route::post('month-end/cash-count', [MonthEndController::class, 'cashCount'])->name('month-end.cash-count')->can('period.close');
+    Route::post('month-end/cash-difference', [MonthEndController::class, 'cashDifference'])->name('month-end.cash-difference')->can('period.close');
+    Route::post('month-end/close', [MonthEndController::class, 'close'])->name('month-end.close')->can('period.close');
+    Route::get('months', [MonthController::class, 'index'])->name('months.index')->can('period.close');
+    Route::post('months/{period}/reopen', [MonthController::class, 'reopen'])->name('months.reopen')->can('period.reopen')->where('period', '\\d{4}-\\d{2}');
     Route::get('cash-counts', [CashCountController::class, 'index'])->name('cash-counts.index')->can('cashcount.create');
     Route::get('cash-counts/system-amount', [CashCountController::class, 'systemAmount'])->name('cash-counts.system-amount')->can('cashcount.create');
     Route::post('cash-counts', [CashCountController::class, 'store'])->name('cash-counts.store')->can('cashcount.create');

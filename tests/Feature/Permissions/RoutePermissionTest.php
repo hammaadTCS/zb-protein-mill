@@ -48,6 +48,13 @@ const ROUTE_PERMISSIONS = [
     'parties.search' => 'party.view',
     'parties.show' => 'party.view',
     'parties.statement' => 'party.view',
+    'month-end.show' => 'period.close',
+    'month-end.bank-statement' => 'period.close',
+    'month-end.cash-count' => 'period.close',
+    'month-end.cash-difference' => 'period.close',
+    'month-end.close' => 'period.close',
+    'months.index' => 'period.close',
+    'months.reopen' => 'period.reopen',
     'parties.create' => 'party.create',
     'parties.store' => 'party.create',
     'parties.edit' => 'party.update',
@@ -180,6 +187,7 @@ function routeParameters(User $owner): array
         'party' => $world['parties']['aslam']->id, 'moneyAccount' => $cash, 'category' => $category->id,
         'item' => (int) $item('WOOD'), 'user' => User::factory()->create()->assignRole(RolesAndPermissionsSeeder::ACCOUNTANT)->id,
         'attachment' => 999999, // none exists: the attachment check is the record's own (404 for both users)
+        'period' => '2026-01', // a month (T7.2 reopen)
     ];
 }
 

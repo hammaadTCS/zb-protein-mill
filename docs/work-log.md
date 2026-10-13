@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.6 |
-| Next task | T6.7 Income vs Spending (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.7 |
+| Next task | T6.8 Rate, weight difference and adjustments reports (T2.10 client review is yours) |
 
 ---
 
@@ -963,3 +963,14 @@ Choices and questions:
 - Words not in the glossary: "Expense report" (spec page name), "By category", "All categories", "All parties", "Payment mode", "Total".
 - Tests: the card's R-05 (Wages 8000.00, Food 4500.00, Tea 600.00, Electricity 15000.00, Vehicle Fuel 5000.00, total 33100.00, #20 once at 2000.00) plus the category filter and the page.
 - Checks: build, check, types, Pint, Larastan, guard pass; **486 PHP tests pass**.
+
+### T6.7 Income vs Spending
+
+Built as the card lists: `IncomeVsSpending::for(from, to)` by posting date (income = Σ credit − debit over income accounts; spending = Σ debit − credit over expense accounts; result = income − spending; pending kg of active rate-pending entries dated in the range; a line per account), page 35 `/reports/income-vs-spending` titled "Income vs Spending" with the glossary §4 banner always visible and the pending-kg line under the result. **The acceptance runner now checks R-08 with this query** (the T4.8 skip is removed; `insights` stays skipped until T7.5).
+
+Choices and questions:
+- **The banner text is sent by the server** from one constant (exact glossary text), so the page cannot drift from it.
+- **The result is shown with its sign** (it can be below zero, as in AT-1).
+- Words not in the glossary: "Income", "Spending", "Account", "Total", "Income − Spending", "Rate pending (not in the amounts above)".
+- Tests: the card's (AT-1 104000.00 / 200500.00 / −96500.00 and AT-2 91000.00 / 80800.00 / 10200.00 with 400.000 kg pending, read from the JSON files; banner present; "profit" appears only in the banner: not in any other prop and not in the page source); AT-1 and AT-2 pass with the report check on.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.

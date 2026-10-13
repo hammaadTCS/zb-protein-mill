@@ -26,6 +26,7 @@ use App\Domain\Purchases\Actions\CreateRateCorrection;
 use App\Domain\Purchases\Actions\UpdatePurchase;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Purchases\Models\RateChange;
+use App\Domain\Reports\Queries\IncomeVsSpending;
 use App\Domain\Reports\Queries\PartnerStatement;
 use App\Domain\Reports\Queries\TrialBalance;
 use App\Domain\Sales\Actions\AddSaleRate;
@@ -56,7 +57,6 @@ final class AcceptanceRunner
      * builds the runner"). Each names the task that removes it from this list.
      */
     private const SKIPPED = [
-        'income_vs_spending.report' => 'enabled in T6.7', // until then income and spending come from ledger account types
         'insights' => 'enabled in T7.5',
     ];
 
@@ -295,26 +295,15 @@ final class AcceptanceRunner
     }
 
     /**
-     * R-08 from ledger account types (card T4.8); the report itself is checked from T6.7.
+     * R-08 from the report itself (switched on in T6.7).
      *
      * @param  array<string, string>  $expected
      */
     private function assertIncomeVsSpending(array $expected): void
     {
-        $sum = fn (string $type, string $sign) => (string) DB::table('journal_lines')
-            ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
-            ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
-            ->where('ledger_accounts.type', $type)
-            ->whereBetween('journal_entries.posting_date', [$expected['from'], $expected['to']])
-            ->selectRaw("COALESCE(SUM({$sign}), 0)::numeric(16,2)::text AS total")
-            ->value('total');
+        $report = IncomeVsSpending::for($expected['from'], $expected['to']);
 
-        $income = $sum('income', 'journal_lines.credit - journal_lines.debit');
-        $spending = $sum('expense', 'journal_lines.debit - journal_lines.credit');
-        $result = (string) DB::selectOne('SELECT (?::numeric - ?::numeric)::numeric(16,2)::text AS result', [$income, $spending])->result;
-        $pendingKg = $this->pendingKg(fn ($q) => $q->whereBetween('entry_date', [$expected['from'], $expected['to']]));
-
-        expect(['income' => $income, 'spending' => $spending, 'result' => $result, 'pending_kg' => $pendingKg])
+        expect(['income' => $report['income'], 'spending' => $report['spending'], 'result' => $report['result'], 'pending_kg' => $report['pending_kg']])
             ->toBe(array_intersect_key($expected, ['income' => 0, 'spending' => 0, 'result' => 0, 'pending_kg' => 0]), 'income_vs_spending');
     }
 

@@ -8,6 +8,7 @@ use App\Domain\Ledger\Models\JournalEntry;
 use App\Domain\Ledger\Models\JournalLine;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Numbering\VoucherNumberService;
+use App\Domain\Periods\Periods;
 use App\Models\User;
 use App\Support\Decimal;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,7 @@ final class PostingService
     public static function post(PostingRequest $request, User $by): JournalEntry
     {
         self::assertInTransaction();
+        Periods::assertDateOpen($request->postingDate); // BR-LED-07
 
         $lines = self::resolve($request->lines, $by);
 
@@ -66,6 +68,7 @@ final class PostingService
     public static function reverse(JournalEntry $original, string $postingDate, string $description, User $by): JournalEntry
     {
         self::assertInTransaction();
+        Periods::assertDateOpen($postingDate); // BR-LED-07
 
         $alreadyReversed = JournalEntry::query()
             ->withoutGlobalScope('company')

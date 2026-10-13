@@ -353,3 +353,13 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - conventions §7 morph map started in `AppServiceProvider` (`Relation::enforceMorphMap`) with `setting` and `user`; each later module adds its model.
 - Tests: BR-AUD-02 database refuses update/delete; model refuses change and direct creation; BR-USR-05 login, failed login and logout rows; unknown e-mail logged without a user; IP and device recorded; setting change old/new; unchanged setting writes nothing; unknown action refused.
 - Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.
+
+### T1.9 Periods and date rules
+
+- Migration `create_periods_tables`: `periods` (unique company/year/month; status check; month 1–12) and `period_events` (event check; `prevent_change()` trigger).
+- `App\Support\Today::date()` (Asia/Karachi), `App\Support\Dates` (`display()` in the `date_format` setting, `monthName()` like "January 2026"). Model `Period`.
+- `Periods` service: `isClosed`, `assertDateOpen` (glossary "Closed month" text on field `date`), `assertValidEntryDate` (future, before start date, closed month; card messages).
+- `PostingService::post()` **and `reverse()`** call `Periods::assertDateOpen()` (BR-LED-07 says every journal's posting date is in an open month; the card names only `post()`).
+- Test helpers `freezeToday()` and `closeMonthForTest()` in `tests/Pest.php`; morph alias `period`.
+- Tests: Karachi date at 20:30 UTC; BR-GEN-02 future and before start (message shows 01-01-2026); BR-MEC-07 closed month; valid dates accepted; error on field `date`; BR-LED-07 PostingService refuses a closed month.
+- Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.

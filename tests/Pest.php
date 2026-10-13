@@ -2,10 +2,14 @@
 
 use App\Domain\Ledger\PostingService;
 use App\Models\User;
+use App\Support\Tenancy\CurrentCompany;
+use App\Support\Today;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SystemDataSeeder;
 use Database\Seeders\TestSettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -48,4 +52,27 @@ function withPostingFlag(Closure $callback): mixed
     } finally {
         $flag->setValue(null, false);
     }
+}
+
+/** conventions §11: freeze "today" (Asia/Karachi) at noon of the given date. */
+function freezeToday(string $ymd): void
+{
+    CarbonImmutable::setTestNow(CarbonImmutable::parse($ymd.' 12:00:00', Today::TIMEZONE));
+    Carbon\Carbon::setTestNow(Carbon\Carbon::parse($ymd.' 12:00:00', Today::TIMEZONE));
+}
+
+/** T1.9: mark a month (YYYY-MM) as closed directly, until month-end close exists (T7.1). */
+function closeMonthForTest(string $yyyymm): void
+{
+    [$year, $month] = array_map('intval', explode('-', $yyyymm));
+
+    DB::table('periods')->insert([
+        'company_id' => CurrentCompany::id(),
+        'year' => $year,
+        'month' => $month,
+        'status' => 'closed',
+        'closed_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 }

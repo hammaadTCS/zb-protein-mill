@@ -20,6 +20,10 @@ class DatabaseSeeder extends Seeder
 
         $this->call(SystemDataSeeder::class);
 
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(TestSettingsSeeder::class);
+        }
+
         if (! User::query()->where('email', 'test@example.com')->exists()) {
             User::factory()->create([
                 'company_id' => Company::query()->orderBy('id')->value('id'),

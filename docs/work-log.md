@@ -283,3 +283,17 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
 - Tests: BR-GEN-01 (other company invisible; company filled on create; cannot create for another company), BR-USR-03 (disabled cannot log in; active can; wrong password does not reveal disabled), BR-OPS-11 (seeder twice, production refusal), local test user.
 - The production-refusal test calls the seeder class directly, because `db:seed` itself asks "are you sure?" in production.
 - Checks: tests pass except the known T0.3 Actions rule; Larastan reports "trait used zero times" until T1.2 adds the first model that uses it.
+
+### T1.2 Settings, setup gate, test settings
+
+- Migration `create_settings_table` (spec §9.2) plus a check that `value_type` is one of the six types.
+- `App\Domain\Settings\SettingKeys` (every §9.6 key: type, choices, limits, required), `Settings` service (`get` typed, `set` validated, `missingRequired`, `assertComplete` with the glossary "Setup incomplete" text), `Models\Setting` (uses `BelongsToCompany`).
+- `App\Support\Tenancy\CurrentCompany::id()`: the logged-in user's company, else the first company (console, seeders, tests).
+- `SettingsDefinitionSeeder` (in `SystemDataSeeder`): every missing key for every company; OPEN values NULL; `company_name` = the company's name; `insights_period_months` 3; `opening_balances_completed` false; never overwrites. `TestSettingsSeeder`: conventions §11 test values; refuses production; used by tests (`tests/Pest.php`) and by `DatabaseSeeder` in local/testing.
+- Decimals are validated and normalised as text (no float): up to 14 whole digits, at most 2 decimals, stored with exactly 2.
+- **Questions (choices I made where the spec is silent):**
+  1. `date_format` allowed choices: `d-m-Y` and `d M Y`, the two examples in O-18 ("05-10-2026 or 05 Oct 2026").
+  2. Lower limits: `unusual_rate_lookback` and `insights_period_months` at least 1; `rate_pending_age_days` and `advance_age_days` at least 0. The spec gives no limits.
+  3. `company_name`: at most 150 characters (same as `companies.name`).
+- Tests: T-10 (one case per required key, and the passing case), wrong types (11 cases), typed reads, valid write, BR-OPS-11 never overwrites, no production default for any OPEN value (checked on a fresh second company).
+- Checks: Pint and Larastan pass; tests pass except the known T0.3 Actions rule.

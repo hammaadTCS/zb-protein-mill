@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Audit\AuthenticationAuditor;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\Expenses\Models\ExpenseCategory;
@@ -57,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureMorphMap(): void
     {
         Relation::enforceMorphMap([
+            'adjustment' => Adjustment::class,
             'expense' => Expense::class,
             'expense_category' => ExpenseCategory::class,
             'item' => Item::class,

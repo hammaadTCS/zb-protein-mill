@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.5 |
-| Next task | T4.6 Agreed adjustments (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.6 |
+| Next task | T4.7 Rate corrections for closed months (T2.10 client review is yours) |
 
 ---
 
@@ -766,3 +766,15 @@ Choices and questions:
 - Words not in the glossary: "Choose two different accounts.", "New transfer" (spec page name), "From account", "To account", "All accounts", "Voucher or reference".
 - Tests: the card's four (AT-1 #17 exact journal; same account refused; only asset accounts touched, so no income or expense; same key twice) plus negative cash warning, edit and cancel with balances, pages for the accountant and 403 without permission.
 - Checks: build, check, types, Pint, Larastan, guard pass; **417 PHP tests pass**.
+
+### T4.6 Agreed adjustments
+
+Built as the card lists: table `adjustments` (spec §9.3, transaction columns; database checks: amount > 0, reason in the four values, exactly one of purchase or sale matching `target_type`; delete trigger), PR-07 (Dr 4900 / Cr 1200 with the buyer), PR-08 (Dr 2000 with the supplier / Cr 5900), `CreateAdjustment` (active entry with a fixed rate, party copied, amount ≤ amount − other active adjustments, reason and note required, date on or after the entry date and in an open month; the entry row is locked so two saves at once cannot pass the maximum), `CancelAdjustment` (reason; no edit action), `CancelPurchase` / `CancelSale` refuse with "Cancel the agreed adjustments first.", voucher `ADJ-`, idempotency key. UI: "Add agreed adjustment" dialog on purchase and sale detail pages with the maximum shown; "Agreed adjustments" section listing them with Cancel entry; khata rows "Agreed adjustment – quality" (linking to the purchase or sale).
+
+Choices and questions:
+- **Editing a purchase or sale that has active adjustments**: the spec says nothing. I refuse the edit ("Cancel the agreed adjustments first.") only when it would change the party (BR-ADJ-02 would break) or bring the amount below the adjustments (BR-ADJ-03 would break). Other edits (date, note, a higher amount) still work. Tell me if every edit should be refused instead.
+- **The reason is shown in lower case in khata rows** ("Agreed adjustment – quality"), exactly as the card writes it.
+- **"Cancel entry" stays visible on a purchase or sale with adjustments**; pressing it shows the refusal. Hiding it would hide why it cannot be cancelled.
+- Words not in the glossary: "Add agreed adjustment", "Agreed adjustments", "What was agreed", "Maximum", "Select reason", "Quality", "Weight", "Freight", "Other", "Only an active entry with a fixed rate can be adjusted.", "The date cannot be before the entry date.", "The most that can be adjusted is Rs …", "Choose quality, weight, freight or other.", "Write what was agreed.", "Cancel the agreed adjustments first." (card text).
+- Tests: the card's six (AT-2 #7 journal, ABC "Owes us" from `at2.json`, sale row still 63,000.00; PR-08 journal; above the remaining refused; rate pending refused; sale with an adjustment cannot be cancelled; same key twice) plus purchase cancel refused, reason/note/date rules, edit guard, detail page props, khata text, 403 without permission.
+- Checks: build, check, types, Pint, Larastan, guard pass; **427 PHP tests pass**.

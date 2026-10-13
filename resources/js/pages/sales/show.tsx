@@ -2,6 +2,9 @@ import { Head, Link, router } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { AddRateDialog } from '@/components/app/AddRateDialog';
+import { AdjustmentDialog } from '@/components/app/AdjustmentDialog';
+import type { AdjustmentRow } from '@/components/app/AdjustmentList';
+import { AdjustmentList } from '@/components/app/AdjustmentList';
 import { ConfirmWithReason } from '@/components/app/ConfirmWithReason';
 import { KgText } from '@/components/app/KgText';
 import type { HistoryRow } from '@/components/app/ChangeHistory';
@@ -18,6 +21,7 @@ import { useCan } from '@/hooks/use-can';
 import { useFormats } from '@/hooks/use-formats';
 import { formatDate, formatRate } from '@/lib/format';
 import { cancel, edit, index, rate } from '@/routes/sales';
+import { store as storeAdjustment } from '@/routes/sales/adjustments';
 
 type Sale = {
     id: number;
@@ -64,6 +68,8 @@ export default function ShowSale({
     today,
     history,
     journal,
+    adjustments,
+    adjustment_max,
 }: {
     sale: Sale;
     attachments: Attachment[];
@@ -71,10 +77,13 @@ export default function ShowSale({
     today: string;
     history: HistoryRow[];
     journal?: JournalLineRow[];
+    adjustments: AdjustmentRow[];
+    adjustment_max: string | null;
 }) {
     const formats = useFormats();
     const can = useCan();
     const [addingRate, setAddingRate] = useState(false);
+    const [adjusting, setAdjusting] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const [cancelPayment, setCancelPayment] = useState(false);
     const [cancelError, setCancelError] = useState<string | undefined>();
@@ -109,6 +118,14 @@ export default function ShowSale({
                     {sale.can_add_rate && can('sale.update') && (
                         <Button onClick={() => setAddingRate(true)}>
                             Add rate
+                        </Button>
+                    )}
+                    {adjustment_max !== null && can('adjustment.create') && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setAdjusting(true)}
+                        >
+                            Add agreed adjustment
                         </Button>
                     )}
                 </PageHeader>
@@ -232,6 +249,12 @@ export default function ShowSale({
                 >
                     Sales
                 </Link>
+                {adjustments.length > 0 && (
+                    <section className="grid gap-2">
+                        <h2 className="font-semibold">Agreed adjustments</h2>
+                        <AdjustmentList rows={adjustments} />
+                    </section>
+                )}
                 {journal && (
                     <section className="grid gap-2">
                         <h2 className="font-semibold">Journal lines</h2>
@@ -279,6 +302,17 @@ export default function ShowSale({
                     </div>
                 )}
             </ConfirmWithReason>
+            {adjustment_max !== null && (
+                <AdjustmentDialog
+                    open={adjusting}
+                    title={sale.voucher_no}
+                    maximum={adjustment_max}
+                    entryDate={sale.entry_date}
+                    url={storeAdjustment.url(sale.id)}
+                    today={today}
+                    onClose={() => setAdjusting(false)}
+                />
+            )}
             <AddRateDialog
                 open={addingRate}
                 title={sale.voucher_no}

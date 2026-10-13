@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Purchases\Models;
 
+use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Items\Models\Item;
 use App\Domain\Parties\Models\Party;
 use App\Domain\Payments\Models\Payment;
@@ -98,6 +99,16 @@ class Purchase extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Agreed adjustments on this entry (BR-ADJ-01).
+     *
+     * @return HasMany<Adjustment, $this>
+     */
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(Adjustment::class);
     }
 
     /**

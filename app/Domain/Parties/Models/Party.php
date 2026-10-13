@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Parties\Models;
 
+use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Parties\Enums\PartyStatus;
@@ -110,6 +111,7 @@ class Party extends Model
             || Purchase::query()->where('party_id', $this->id)->exists()
             || Sale::query()->where('party_id', $this->id)->exists()
             || Expense::query()->where('party_id', $this->id)->exists()
+            || Adjustment::query()->where('party_id', $this->id)->exists()
             || PartnerTransaction::query()->where('party_id', $this->id)->exists()
             || Payment::query()->where('party_id', $this->id)->exists();
     }

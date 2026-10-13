@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Adjustments\Adjustments;
+use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Items\Models\Item;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Enums\RateStatus;
@@ -151,6 +153,8 @@ class SaleController extends Controller
             ],
             'today' => Today::date(),
             'attachments' => $this->attachmentsOf($sale),
+            'adjustments' => self::adjustmentRows($sale),
+            'adjustment_max' => $sale->rate_status === RateStatus::Fixed ? Adjustments::maximum($sale) : null, // BR-ADJ-01, BR-ADJ-03
             'history' => ChangeHistory::for($sale),
             ...(request()->user()?->can('audit.view') ? ['journal' => EntryJournals::for($sale)] : []), // owner only
             'payments' => $sale->payments->map(fn (Payment $payment): array => [
@@ -255,5 +259,24 @@ class SaleController extends Controller
         $query->where(fn (Builder $q) => $q
             ->where('voucher_no', 'ilike', $like)
             ->orWhereHas('party', fn (Builder $party) => $party->where('name', 'ilike', $like)));
+    }
+
+    /**
+     * The agreed adjustments listed on the detail page (spec §11.6).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function adjustmentRows(Sale $sale): array
+    {
+        return array_values($sale->adjustments()->orderBy('id')->get()->map(fn (Adjustment $a): array => [
+            'id' => $a->id,
+            'voucher_no' => $a->voucher_no,
+            'entry_date' => $a->entry_date,
+            'amount' => $a->amount,
+            'reason' => $a->reason->value,
+            'note' => $a->note,
+            'status' => $a->status->value,
+            'cancel_reason' => $a->cancel_reason,
+        ])->all());
     }
 }

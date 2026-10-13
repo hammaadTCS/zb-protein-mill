@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Actions;
 
+use App\Domain\Adjustments\Adjustments;
 use App\Domain\Audit\AuditActions;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Ledger\Journals;
@@ -37,6 +38,10 @@ final class CancelSale
             }
 
             Periods::assertDateOpen($sale->entry_date); // BR-PUR-14
+
+            if (Adjustments::hasActive($sale)) {
+                throw ValidationException::withMessages(['reason' => __('Cancel the agreed adjustments first.')]); // BR-PUR-13
+            }
 
             if ($sale->journal_entry_id !== null) {
                 $postingDate = Journals::postingDate($sale->journal_entry_id);

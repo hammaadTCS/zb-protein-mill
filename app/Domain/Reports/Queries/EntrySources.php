@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports\Queries;
 
+use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Partners\Models\PartnerTransaction;
@@ -89,6 +90,12 @@ final class EntrySources
                     'voucher' => $t->voucher_no,
                     'description' => $t->type->label().' – '.$t->moneyAccount->name,
                     'route' => null,
+                ]])->all(),
+            'adjustment' => Adjustment::query()->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (Adjustment $a) => [$a->id => [
+                    'voucher' => $a->voucher_no,
+                    'description' => 'Agreed adjustment – '.$a->reason->value,
+                    'route' => $a->target_type === 'purchase' ? route('purchases.show', $a->purchase_id, false) : route('sales.show', $a->sale_id, false),
                 ]])->all(),
             'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (OpeningBalance $o) => [$o->id => [

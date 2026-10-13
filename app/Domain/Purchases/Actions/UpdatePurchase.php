@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Purchases\Actions;
 
+use App\Domain\Adjustments\Adjustments;
 use App\Domain\Audit\AuditActions;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Ledger\Journals;
@@ -90,6 +91,12 @@ final class UpdatePurchase
                 'note' => $input->note,
                 'updated_by' => $by->id,
             ]);
+
+            // BR-ADJ-02, BR-ADJ-03: active agreed adjustments must still fit the edited entry.
+            if ($purchase->isDirty(['party_id', 'amount']) && Adjustments::hasActive($purchase)
+                && ($purchase->isDirty('party_id') || Decimal::compare((string) $purchase->amount, Adjustments::activeTotal($purchase)) < 0)) {
+                throw ValidationException::withMessages(['kg' => __('Cancel the agreed adjustments first.')]);
+            }
 
             if (! $purchase->isDirty()) {
                 return $purchase;

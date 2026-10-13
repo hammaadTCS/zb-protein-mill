@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Ledger;
 
+use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
@@ -115,9 +116,9 @@ final class PostingRules
      * Debit: 4900 Sales Adjustments.
      * Credit: 1200 Buyers (P).
      */
-    public static function pr07SaleAdjustment(): PostingRequest
+    public static function pr07SaleAdjustment(Adjustment $adjustment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-07');
+        return self::adjustment($adjustment, $postingDate, PostingLine::debit('4900', $adjustment->amount), PostingLine::credit('1200', $adjustment->amount, $adjustment->party_id));
     }
 
     /**
@@ -125,9 +126,9 @@ final class PostingRules
      * Debit: 2000 Suppliers (P).
      * Credit: 5900 Purchase Adjustments.
      */
-    public static function pr08PurchaseAdjustment(): PostingRequest
+    public static function pr08PurchaseAdjustment(Adjustment $adjustment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-08');
+        return self::adjustment($adjustment, $postingDate, PostingLine::debit('2000', $adjustment->amount, $adjustment->party_id), PostingLine::credit('5900', $adjustment->amount));
     }
 
     /**
@@ -420,6 +421,18 @@ final class PostingRules
                 PostingLine::debit($debit, $payment->amount, is_string($debit) ? $payment->party_id : null),
                 PostingLine::credit($credit, $payment->amount, is_string($credit) ? $payment->party_id : null),
             ],
+        );
+    }
+
+    /** An agreed adjustment (BR-ADJ-02: on the linked entry's party). */
+    private static function adjustment(Adjustment $adjustment, ?string $postingDate, PostingLine $debit, PostingLine $credit): PostingRequest
+    {
+        return new PostingRequest(
+            postingDate: $postingDate ?? $adjustment->entry_date,
+            sourceType: 'adjustment',
+            sourceId: $adjustment->id,
+            description: "Agreed adjustment {$adjustment->voucher_no}",
+            lines: [$debit, $credit],
         );
     }
 

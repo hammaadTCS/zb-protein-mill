@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ExpenseCategoryController;
@@ -37,6 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('purchases/{purchase}', [PurchaseController::class, 'update'])->name('purchases.update');
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
     Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
+    Route::post('purchases/{purchase}/adjustments', [AdjustmentController::class, 'storeForPurchase'])->name('purchases.adjustments.store');
 
     // Pages 12, 13 and 14: expenses (T4.2, T4.3).
     Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -85,6 +87,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
     Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
     Route::post('sales/{sale}/rate', [SaleController::class, 'addRate'])->name('sales.rate');
+    Route::post('sales/{sale}/adjustments', [AdjustmentController::class, 'storeForSale'])->name('sales.adjustments.store');
+    Route::post('adjustments/{adjustment}/cancel', [AdjustmentController::class, 'cancel'])->name('adjustments.cancel');
 
     // Page 27: approvals (T3.7).
     Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');

@@ -57,6 +57,7 @@ If two documents disagree, the one higher in this order wins, and Claude must st
 | --- | --- |
 | `../scripts/setup-local.sh` | One-time laptop setup (Linux Mint 22/23): everything to pull, run and test |
 | `../scripts/cloud-session-start.sh` | Prepares each cloud session (PostgreSQL, test databases, packages, `.env`); on the laptop it only reports |
+| `../scripts/cloud-composer-cache.sh` | Cloud sessions only: builds the PHP package zips from git into Composer's cache, because the cloud GitHub proxy refuses GitHub zip downloads |
 | `../scripts/check-all.sh` | Every check, same order as CI, with a summary |
 | `../scripts/check-protected.sh`, `check-main-push.sh` | Protected files change only through a `[spec-change]` pull request; the main guard reports anything that reaches `main` without a merged pull request |
 | `../scripts/guard.sh`, `secret-scan.sh` | Project rules in code; no keys or passwords in the repository |

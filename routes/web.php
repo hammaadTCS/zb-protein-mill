@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
@@ -34,6 +35,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('purchases/{purchase}', [PurchaseController::class, 'update'])->name('purchases.update');
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
     Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
+
+    // Expenses (T4.2; pages in T4.3).
+    Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    Route::post('expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])->name('expenses.cancel');
 
     // Pages 9, 10 and 11: payments and receipts (T3.5, T3.6).
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');

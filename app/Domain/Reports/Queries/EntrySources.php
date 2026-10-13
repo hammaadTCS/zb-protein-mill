@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports\Queries;
 
+use App\Domain\Expenses\Models\Expense;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Payments\Enums\PaymentDirection;
 use App\Domain\Payments\Models\Payment;
@@ -75,6 +76,12 @@ final class EntrySources
                     'description' => ($p->direction === PaymentDirection::Paid ? 'Paid' : 'Received').' – '.$p->moneyAccount->name
                         .($p->reference_no !== null ? ' – '.$p->reference_no : ''),
                     'route' => route('payments.show', $p->id, false),
+                ]])->all(),
+            'expense' => Expense::query()->with('category')->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (Expense $e) => [$e->id => [
+                    'voucher' => $e->voucher_no,
+                    'description' => $e->category->name.' – '.$e->note,
+                    'route' => null,
                 ]])->all(),
             'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (OpeningBalance $o) => [$o->id => [

@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 |
-| Next task | T4.2 Expenses backend (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1, T4.2 |
+| Next task | T4.3 Expense pages (T2.10 client review is yours) |
 
 ---
 
@@ -712,3 +712,17 @@ Choices and questions:
 - Words not in the glossary: "New category", "Quick", "Order", "Quick button on Quick expense".
 - Tests: the card's two here (6000 then 6001; rename renames the account) plus inactive, the seeder list and quick buttons (twice, no duplicates), page 44 permission and unique names. "Inactive category cannot be used" is tested with expenses in T4.2.
 - Checks: build, check, types, Pint, Larastan, guard pass; **380 PHP tests pass**.
+
+### T4.2 Expenses (backend)
+
+Built as the card lists: table `expenses` (spec §9.3, transaction columns, checks: amount > 0, one link at most, delete trigger), PR-09 (Dr category / Cr money account), PR-10 (Dr category / Cr the party's control account with the party), PR-11 (Dr category / Cr 1300 Employees with the employee), `CreateExpense`, `UpdateExpense` (version check, reversal + repost, audit of changed fields only), `CancelExpense` (reason ≥ 5), shared `ExpenseInput` checks, `CashGuard` when paid from cash, voucher `EXP-`, idempotency key, receipt photo as attachment kind `receipt_photo`, `ExpensePolicy`, routes `POST /expenses`, `PUT /expenses/{expense}`, `POST /expenses/{expense}/cancel` (pages come in T4.3).
+
+Choices and questions:
+- **A party on a "Paid" expense must be a supplier, other party or employee** (the spec says "party optional" without types). A buyer or partner is refused. Tell me if a buyer should be allowed.
+- **"Unpaid" and "Paid by employee" refuse a money account** ("No account is used for this payment mode.") instead of ignoring it, so a wrong form never posts a hidden amount.
+- **The party limit (BR-EXP-03) is "amount ≥ limit"**, as the card writes; 9,999.99 under a 10,000 limit needs no party.
+- **Editing may change the payment mode** (it is a reversal and a new journal like any edit).
+- Words not in the glossary: "Write a note of at least 3 characters.", "Choose Paid, Unpaid or Paid by employee.", "A party is required for an expense of this amount.", "Select the party for this payment mode.", "Select an active employee.", "Select an active supplier, other party or employee.", "No account is used for this payment mode.", "Link the expense to one purchase or one sale, not both.", "Select an active purchase.", "Select an active sale.", "Select an active category.".
+- **The acceptance runner (`tests/Support/AcceptanceRunner.php`) is left for T4.8**, as the acceptance README says; these tests read the AT-1 and AT-2 entries directly, like T2.7 to T3.9.
+- Tests: the card's ten (AT-1 #7–#9, #19, #21 journals and category totals; AT-1 #20 edit with one reversal and the audit row from `at1.json`; AT-2 #8 unpaid transport linked to the sale; PR-11 employee owes 3,800; empty and 2-character notes; party at the limit; unpaid to a buyer; both links; same key twice) plus inactive category, paid by employee needs an employee, account rules per mode, negative cash warning, cancel.
+- Checks: Pint, Larastan, guard pass; **395 PHP tests pass**.

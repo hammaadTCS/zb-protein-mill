@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Ledger;
 
+use App\Domain\Expenses\Models\Expense;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Models\OpeningBalance;
 use App\Domain\Parties\Enums\PartyType;
@@ -132,9 +133,11 @@ final class PostingRules
      * Debit: Category account.
      * Credit: M.
      */
-    public static function pr09ExpensePaid(): PostingRequest
+    public static function pr09ExpensePaid(Expense $expense, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-09');
+        $account = $expense->moneyAccount ?? throw new InvalidArgumentException('PR-09 needs a money account.');
+
+        return self::expense($expense, $postingDate, PostingLine::credit($account->ledger_account_id, $expense->amount));
     }
 
     /**
@@ -142,9 +145,12 @@ final class PostingRules
      * Debit: Category account.
      * Credit: Party's control account (P).
      */
-    public static function pr10ExpenseUnpaid(): PostingRequest
+    public static function pr10ExpenseUnpaid(Expense $expense, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-10');
+        $party = $expense->party ?? throw new InvalidArgumentException('PR-10 needs a party.');
+        self::assertPartyType($party, [PartyType::Supplier, PartyType::Other, PartyType::Employee], 'PR-10');
+
+        return self::expense($expense, $postingDate, PostingLine::credit(self::controlAccount($party), $expense->amount, $party->id));
     }
 
     /**
@@ -152,9 +158,12 @@ final class PostingRules
      * Debit: Category account.
      * Credit: 1300 Employees (P).
      */
-    public static function pr11ExpensePaidByEmployee(): PostingRequest
+    public static function pr11ExpensePaidByEmployee(Expense $expense, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-11');
+        $party = $expense->party ?? throw new InvalidArgumentException('PR-11 needs an employee.');
+        self::assertPartyType($party, [PartyType::Employee], 'PR-11');
+
+        return self::expense($expense, $postingDate, PostingLine::credit('1300', $expense->amount, $party->id));
     }
 
     /**
@@ -399,6 +408,21 @@ final class PostingRules
             lines: [
                 PostingLine::debit($debit, $payment->amount, is_string($debit) ? $payment->party_id : null),
                 PostingLine::credit($credit, $payment->amount, is_string($credit) ? $payment->party_id : null),
+            ],
+        );
+    }
+
+    /** An expense: debit its category account, credit the given line. */
+    private static function expense(Expense $expense, ?string $postingDate, PostingLine $credit): PostingRequest
+    {
+        return new PostingRequest(
+            postingDate: $postingDate ?? $expense->entry_date,
+            sourceType: 'expense',
+            sourceId: $expense->id,
+            description: "Expense {$expense->voucher_no}",
+            lines: [
+                PostingLine::debit($expense->category->ledger_account_id, $expense->amount),
+                $credit,
             ],
         );
     }

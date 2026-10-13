@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Parties\Models;
 
+use App\Domain\Expenses\Models\Expense;
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Parties\Enums\PartyStatus;
 use App\Domain\Parties\Enums\PartyType;
@@ -100,13 +101,14 @@ class Party extends Model
 
     /**
      * True once the party has any entry (BR-PTY-04, BR-PTY-05): a journal line, a
-     * purchase, a sale or a payment (also one awaiting approval).
+     * purchase, a sale, a payment (also one awaiting approval) or an expense.
      */
     public function hasEntries(): bool
     {
         return LedgerBalance::partyHasLines($this->id)
             || Purchase::query()->where('party_id', $this->id)->exists()
             || Sale::query()->where('party_id', $this->id)->exists()
+            || Expense::query()->where('party_id', $this->id)->exists()
             || Payment::query()->where('party_id', $this->id)->exists();
     }
 

@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 |
-| Next task | T2.2 Money accounts |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1, T2.2 |
+| Next task | T2.3 Items |
 
 ---
 
@@ -436,3 +436,25 @@ Choices and questions:
 - Checked by me at 375 px and 1280 px, light and dark: login (logo on white tile, green button) and the empty dashboard (deep-green sidebar, gold marker, tab title "Dashboard – ZB Poultry Protein Mill"). No console errors.
 - Tests: the card's 10 format/money cases plus extra cases (international grouping, rounding, signed values, preview amount), navigation visibility (3), shared props (4). `npm test` 21 passed.
 - Checks: build, `npm test`, `npm run check`, `npm run types:check`, Pint, Larastan, guard pass; PHP tests pass except the known T0.3 Actions rule (fixed by T2.2).
+
+### T2.2 Money accounts
+
+Built as the card lists: table `money_accounts` (spec §9.2), model `MoneyAccount` with `balance(?asOf)` and an `active()` scope, enum `MoneyAccountType`, Actions `CreateMoneyAccount` (ledger account "Cash – {name}" / "Bank – {name}", codes from 1010 / 1100), `UpdateMoneyAccount` (name and bank fields; renames the ledger account), `DeactivateMoneyAccount` (BR-ACC-02 message with the amount in the company's number format), `MoneyAccountPolicy`, page 46 `/settings/accounts` (list plus a create/edit dialog) and its menu entry under Settings.
+
+Also added, because the card's work needs them:
+- `App\Domain\Ledger\LedgerBalance::account()`: the one place that sums journal lines for a balance. The architecture rule lets only Ledger, Reports and Insights read journal models, so `MoneyAccount::balance()` calls it.
+- `App\Support\NumberFormat`: money, kg and rate in server-made text (this message now; PDFs and warnings later), same grouping as `format.ts`, string maths only.
+- The base `Controller` now has Laravel's `AuthorizesRequests` (conventions §9 requires `$this->authorize()`; the kit's base class is empty) and an `actor()` helper that returns the logged-in user for Actions.
+- shadcn's `table` component (markup only, no package) and small `PageHeader` / `FormField` components.
+
+Choices and questions:
+- **Delete protection (spec §9.7, "block DELETE on every master and transaction table"):** no card builds it, but the spec does. A new migration adds the function `prevent_delete()` and a `BEFORE DELETE` trigger on companies, users, settings, ledger accounts and voucher sequences; each new master or transaction table adds its own trigger from now on. Models also use a `NeverDeleted` trait. Tell me if you want this removed.
+- **No "make active again":** the card lists only deactivate. A mistaken deactivation cannot be undone from the screen. Question: add `ActivateMoneyAccount`?
+- **The ledger account stays active** when the money account is made inactive. Otherwise an old entry from that account could no longer be edited or cancelled (the reversal posts to it). New entries cannot pick an inactive money account (BR-GEN-08, later tasks).
+- **Words not in the glossary:** buttons "New account" and "Make inactive", status "Active" / "Inactive". The spec uses "made inactive"; the glossary has no words for these. Please confirm or give the words.
+- **Name length 100 and no unique name:** the spec gives no length and no uniqueness rule for money account names.
+- **Packages named in `docs/frontend.md` but in no card** (TanStack Table, Recharts, and `cmdk` for the shadcn Command party picker): CLAUDE.md allows only the packages the cards name, so I add none. Tables are plain shadcn tables; the party picker (T2.5) will be built from the kit's own pieces. Question for you.
+- Tests: the card's three, plus: cash keeps no bank details; rename + audit; zero-balance deactivation; `balance()` up to a date; no delete (model and database); page 46 flow over HTTP; field validation; number format (lakh, international, whole rupee). 
+- The T0.3 architecture rule "actions are classes with a handle method" now passes: **all 212 PHP tests pass.**
+- Checked on desktop: list, create dialog, toast "Saved.". No console errors.
+- Checks: build, `npm test`, check, types, Pint, Larastan, guard pass.

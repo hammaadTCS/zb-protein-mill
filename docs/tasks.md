@@ -38,7 +38,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 ## M2: First complete slice  ·  card file `docs/cards/M2.md`
 
 - [x] **T2.1** App shell, brand, formatting helpers. *Done when:* `npm test`, `npm run check`, `npm run types:check` and PHP tests pass; login and the empty dashboard checked by you at phone width (375 px) and on desktop before you finish the task.
-- [ ] **T2.2** Money accounts. *Done when:* tests pass; page works on desktop.
+- [x] **T2.2** Money accounts. *Done when:* tests pass; page works on desktop.
 - [ ] **T2.3** Items. *Done when:* tests pass.
 - [ ] **T2.4** Parties backend. *Done when:* tests pass.
 - [ ] **T2.5** Parties UI. *Done when:* tests pass; add-party works on phone width.

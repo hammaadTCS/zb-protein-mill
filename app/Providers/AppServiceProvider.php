@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domain\Audit\AuthenticationAuditor;
+use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\Periods\Models\Period;
 use App\Domain\Settings\Models\Setting;
 use App\Models\User;
@@ -46,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureMorphMap(): void
     {
         Relation::enforceMorphMap([
+            'money_account' => MoneyAccount::class,
             'period' => Period::class,
             'setting' => Setting::class,
             'user' => User::class,

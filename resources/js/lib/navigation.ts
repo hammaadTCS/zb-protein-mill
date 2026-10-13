@@ -4,8 +4,9 @@
  */
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { LayoutGrid } from 'lucide-react';
+import { Landmark, LayoutGrid } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as moneyAccounts } from '@/routes/money-accounts';
 
 /** Sidebar groups in the order of spec §15.1. */
 export const NAV_GROUPS = [
@@ -42,6 +43,14 @@ export const navigation: NavEntry[] = [
         permission: null,
         mobileFirst: true,
         icon: LayoutGrid,
+    },
+    {
+        group: 'Settings',
+        label: 'Accounts setup',
+        href: moneyAccounts(),
+        permission: 'settings.manage',
+        mobileFirst: false,
+        icon: Landmark,
     },
 ];
 

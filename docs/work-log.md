@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.4 |
-| Next task | T4.5 Transfers (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.5 |
+| Next task | T4.6 Agreed adjustments (T2.10 client review is yours) |
 
 ---
 
@@ -755,3 +755,14 @@ Choices and questions:
 - Words not in the glossary: "Select an active partner.", "Choose Investment or Withdrawal.", "Investment", "Withdrawal" (glossary has "Partner investment" / "Partner withdrawal"), "New partner entry" (spec page name), "Partner statement" (spec page name), "Investments and withdrawals", "All partners", "Voucher or partner".
 - Tests: the card's five (AT-1 #15 and #16 exact journals; R-09 from `at1.json` expected partners; accountant 403 on create, save, statement and list; same key twice) plus party must be a partner, negative cash warning on a cash withdrawal, edit and cancel, the list totals.
 - Checks: build, check, types, front-end tests, Pint, Larastan, guard pass; **410 PHP tests pass**.
+
+### T4.5 Transfers
+
+Built as the card lists: table `transfers` (spec §9.3, transaction columns, from ≠ to and amount > 0 also checked in the database, delete trigger), PR-16 (Dr "to" account / Cr "from" account), `CreateTransfer`, `UpdateTransfer` (reversal + repost), `CancelTransfer`, both accounts active and different (BR-TRF-01), amount > 0 (BR-TRF-02), `CashGuard` when "from" is cash, voucher `TRF-`, idempotency key. Pages 15 `/transfers` (date range, account, status, search by voucher or reference; total of active transfers) and 16 `/transfers/create`; "Transfers" in Daily entries.
+
+Choices and questions:
+- **Same as partner money: no detail page exists** (spec §11.1), so Edit (page 16 filled in, `/transfers/{id}/edit`) and Cancel entry are on each row.
+- **The account filter matches either side** of the transfer.
+- Words not in the glossary: "Choose two different accounts.", "New transfer" (spec page name), "From account", "To account", "All accounts", "Voucher or reference".
+- Tests: the card's four (AT-1 #17 exact journal; same account refused; only asset accounts touched, so no income or expense; same key twice) plus negative cash warning, edit and cancel with balances, pages for the accountant and 403 without permission.
+- Checks: build, check, types, Pint, Larastan, guard pass; **417 PHP tests pass**.

@@ -5,6 +5,7 @@
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
+    ArrowLeftRight,
     BookOpen,
     CheckCheck,
     Clock,
@@ -33,6 +34,7 @@ import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
 import { create as newSale, index as sales } from '@/routes/sales';
 import { trialBalance } from '@/routes/reports';
+import { index as transfers } from '@/routes/transfers';
 import { create as newPurchase, index as purchases } from '@/routes/purchases';
 
 /** Sidebar groups in the order of spec §15.1. */
@@ -102,6 +104,14 @@ export const navigation: NavEntry[] = [
         permission: 'expense.view',
         mobileFirst: false,
         icon: Wallet,
+    },
+    {
+        group: 'Daily entries',
+        label: 'Transfers',
+        href: transfers(),
+        permission: 'transfer.view',
+        mobileFirst: false,
+        icon: ArrowLeftRight,
     },
     {
         group: 'People',

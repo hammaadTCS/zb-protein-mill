@@ -14,6 +14,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\TrialBalanceController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\TransferController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +47,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
     Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
     Route::post('expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])->name('expenses.cancel');
+
+    // Pages 15 and 16: transfers (T4.5).
+    Route::get('transfers', [TransferController::class, 'index'])->name('transfers.index');
+    Route::get('transfers/create', [TransferController::class, 'create'])->name('transfers.create');
+    Route::post('transfers', [TransferController::class, 'store'])->name('transfers.store');
+    Route::get('transfers/{transfer}/edit', [TransferController::class, 'edit'])->name('transfers.edit');
+    Route::put('transfers/{transfer}', [TransferController::class, 'update'])->name('transfers.update');
+    Route::post('transfers/{transfer}/cancel', [TransferController::class, 'cancel'])->name('transfers.cancel');
 
     // Pages 21, 22 and 23: partner money (T4.4).
     Route::get('partners', [PartnerTransactionController::class, 'index'])->name('partners.index');

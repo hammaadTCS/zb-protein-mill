@@ -13,6 +13,7 @@ use App\Domain\Partners\Models\PartnerTransaction;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
+use App\Domain\Transfers\Models\Transfer;
 use InvalidArgumentException;
 use LogicException;
 
@@ -216,9 +217,18 @@ final class PostingRules
      * Debit: M of "to" account.
      * Credit: M of "from" account.
      */
-    public static function pr16Transfer(): PostingRequest
+    public static function pr16Transfer(Transfer $transfer, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-16');
+        return new PostingRequest(
+            postingDate: $postingDate ?? $transfer->entry_date,
+            sourceType: 'transfer',
+            sourceId: $transfer->id,
+            description: "Transfer {$transfer->voucher_no}",
+            lines: [
+                PostingLine::debit($transfer->toAccount->ledger_account_id, $transfer->amount),
+                PostingLine::credit($transfer->fromAccount->ledger_account_id, $transfer->amount),
+            ],
+        );
     }
 
     /**

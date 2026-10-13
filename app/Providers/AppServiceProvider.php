@@ -15,6 +15,7 @@ use App\Domain\Periods\Models\Period;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
 use App\Domain\Settings\Models\Setting;
+use App\Domain\Transfers\Models\Transfer;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Failed;
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
             'purchase' => Purchase::class,
             'sale' => Sale::class,
             'setting' => Setting::class,
+            'transfer' => Transfer::class,
             'user' => User::class,
         ]);
     }

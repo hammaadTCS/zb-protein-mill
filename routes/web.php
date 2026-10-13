@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
+use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyController;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('parties/{party}', [PartyController::class, 'update'])->name('parties.update');
     Route::post('parties/{party}/deactivate', [PartyController::class, 'deactivate'])->name('parties.deactivate');
     Route::post('parties/{party}/activate', [PartyController::class, 'activate'])->name('parties.activate');
+
+    // Page 47: Opening balances (T2.6).
+    Route::get('settings/opening-balances', [OpeningBalanceController::class, 'index'])->name('opening-balances.index');
+    Route::post('settings/opening-balances', [OpeningBalanceController::class, 'store'])->name('opening-balances.store');
+    Route::post('settings/opening-balances/complete', [OpeningBalanceController::class, 'complete'])->name('opening-balances.complete');
 
     // Page 46: Accounts setup (T2.2).
     Route::get('settings/accounts', [MoneyAccountController::class, 'index'])->name('money-accounts.index');

@@ -96,3 +96,36 @@ function partyBalance(Party $party): array
 
     return ['words' => $balance->words, 'amount' => $balance->amount];
 }
+
+/**
+ * The lines of one journal as [account code, debit, credit, party code, item name],
+ * in line order: for exact journal assertions (CLAUDE.md "assert exact journal lines").
+ *
+ * @return list<array{string, string, string, string|null, string|null}>
+ */
+function journalLines(?int $journalEntryId): array
+{
+    return DB::table('journal_lines')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
+        ->leftJoin('parties', 'parties.id', '=', 'journal_lines.party_id')
+        ->leftJoin('items', 'items.id', '=', 'journal_lines.item_id')
+        ->where('journal_lines.journal_entry_id', $journalEntryId)
+        ->orderBy('journal_lines.line_no')
+        ->get(['ledger_accounts.code', 'journal_lines.debit', 'journal_lines.credit', 'parties.code as party', 'items.name as item'])
+        ->map(fn (object $l): array => [$l->code, $l->debit, $l->credit, $l->party, $l->item])
+        ->all();
+}
+
+/**
+ * The acceptance data of spec §17 (docs/acceptance). Tests read numbers from here;
+ * they never copy them (CLAUDE.md).
+ *
+ * @return array<string, mixed>
+ */
+function acceptance(string $file): array
+{
+    /** @var array<string, mixed> $data */
+    $data = json_decode((string) file_get_contents(base_path("docs/acceptance/{$file}.json")), true, flags: JSON_THROW_ON_ERROR);
+
+    return $data;
+}

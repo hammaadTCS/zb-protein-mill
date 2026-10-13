@@ -102,6 +102,22 @@ final class PostingService
     }
 
     /**
+     * PR-25 for a journal known by its id (business records keep journal_entry_id;
+     * only Ledger code reads journal models).
+     *
+     * @param  string  $postingDate  Y-m-d
+     */
+    public static function reverseId(int $journalEntryId, string $postingDate, string $description, User $by): JournalEntry
+    {
+        $original = JournalEntry::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $by->company_id)
+            ->findOrFail($journalEntryId);
+
+        return self::reverse($original, $postingDate, $description, $by);
+    }
+
+    /**
      * Checks every line and the balance, and finds each line's account.
      *
      * @param  list<PostingLine>  $lines

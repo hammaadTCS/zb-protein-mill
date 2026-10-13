@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.5 |
-| Next task | T2.6 Opening balances |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.6 |
+| Next task | T2.7 Purchases with fixed rate |
 
 ---
 
@@ -502,3 +502,19 @@ Choices and questions:
 - Tests: the card's two, plus Urdu name and code search, at most 20 results, `party.view` needed, list with balance words, filters and paging, the 422 duplicate warning over HTTP then saving when confirmed, accountant add/edit, no access without `party.create`. Front end: `readWarning()` unit tests.
 - Checked at 375 px: add party, list with toast "Saved. S-0001", and the duplicate warning dialog. No console errors except the expected 422.
 - Checks: build, `npm test` (23), check, types, Pint, Larastan, guard pass; **245 PHP tests pass**.
+
+### T2.6 Opening balances
+
+Built as the card lists: table `opening_balances` (spec §9.3 plus `voucher_no` and common columns; partial unique indexes per money account and per party; checks for one target, amount ≥ 0 and the side), enum `OpeningSide`, PR-17 to PR-22 in `PostingRules` (posting date = `system_start_date`, voucher OPB), `SetOpeningBalance` (create; replace = reverse the old journal on the start date and post the new one; amount 0 removes), `MarkOpeningBalancesComplete` (confirmed figure must equal 3900; sets `opening_balances_completed`; audit `opening_completed`), page 47 with one row per active account and party, side words from glossary §2, the Opening Balance Equity figure and the "Mark complete" confirmation.
+
+Also added:
+- `PostingService::reverseId()`: business Actions keep only `journal_entry_id`, and the architecture rule forbids them from reading journal models, so they reverse by id.
+- Test helpers `journalLines()` (exact lines with account code, debit, credit, party code, item name) and `acceptance()` (loads `docs/acceptance/*.json`).
+
+Choices and questions:
+- **The Opening Balance Equity figure is shown as a credit balance** (credit minus debit) with a minus sign when debits are larger. It is an equity account, not a party, so the "no minus sign" rule does not apply; "Credit"/"Debit" are words glossary §5 keeps off this page.
+- **Openings only for active accounts and parties** (BR-GEN-08).
+- **The opening record keeps its voucher number** when replaced; amount 0 keeps the row with amount 0 and no journal (nothing is deleted).
+- Messages not in the glossary: "Opening balances are marked complete and cannot change.", "Opening Balance Equity is Rs X. Confirm that figure.", "Select an active account.", "Select an active party.", "Select a side for this party."; page words "Date", "Accounts", "Parties", "Balance", "Invested" (partner side).
+- Tests: the card's eight (PR-17 to PR-22 exact lines, AT-1 openings → 3900 = 0.00 loaded from `at1.json`, replace reverses, wrong confirmation refused), plus amount 0 removes, side must fit the type, refused after completion, BR-GEN-07, page 47 permission and save.
+- Checks: build, check, types, Pint, Larastan, guard pass; **259 PHP tests pass**.

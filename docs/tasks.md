@@ -42,7 +42,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T2.3** Items. *Done when:* tests pass.
 - [x] **T2.4** Parties backend. *Done when:* tests pass.
 - [x] **T2.5** Parties UI. *Done when:* tests pass; add-party works on phone width.
-- [ ] **T2.6** Opening balances. *Done when:* tests pass.
+- [x] **T2.6** Opening balances. *Done when:* tests pass.
 - [ ] **T2.7** Purchases with fixed rate, payments table, "paid now". *Done when:* tests pass.
 - [ ] **T2.8** Purchase pages and attachments. *Done when:* tests pass; page 4 checked by you at 375 px and on desktop before you finish the task.
 - [ ] **T2.9** Party profile with khata, trial balance page. *Done when:* tests pass.

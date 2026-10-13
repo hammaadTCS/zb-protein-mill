@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Ledger;
 
+use App\Domain\MoneyAccounts\Models\MoneyAccount;
+use App\Domain\OpeningBalances\Models\OpeningBalance;
+use App\Domain\Parties\Enums\PartyType;
+use App\Domain\Parties\Models\Party;
+use InvalidArgumentException;
 use LogicException;
 
 /**
@@ -182,9 +187,12 @@ final class PostingRules
      * Debit: M.
      * Credit: 3900.
      */
-    public static function pr17OpeningMoneyAccount(): PostingRequest
+    public static function pr17OpeningMoneyAccount(OpeningBalance $opening, MoneyAccount $account): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-17');
+        return self::opening($opening, [
+            PostingLine::debit($account->ledger_account_id, $opening->amount),
+            PostingLine::credit('3900', $opening->amount),
+        ]);
     }
 
     /**
@@ -192,9 +200,14 @@ final class PostingRules
      * Debit: 3900.
      * Credit: Control account (P).
      */
-    public static function pr18OpeningWeOweSupplierOrOther(): PostingRequest
+    public static function pr18OpeningWeOweSupplierOrOther(OpeningBalance $opening, Party $party): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-18');
+        self::assertPartyType($party, [PartyType::Supplier, PartyType::Other], 'PR-18');
+
+        return self::opening($opening, [
+            PostingLine::debit('3900', $opening->amount),
+            PostingLine::credit(self::controlAccount($party), $opening->amount, $party->id),
+        ]);
     }
 
     /**
@@ -202,9 +215,14 @@ final class PostingRules
      * Debit: Control account (P).
      * Credit: 3900.
      */
-    public static function pr19OpeningAdvanceWithSupplierOrOther(): PostingRequest
+    public static function pr19OpeningAdvanceWithSupplierOrOther(OpeningBalance $opening, Party $party): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-19');
+        self::assertPartyType($party, [PartyType::Supplier, PartyType::Other], 'PR-19');
+
+        return self::opening($opening, [
+            PostingLine::debit(self::controlAccount($party), $opening->amount, $party->id),
+            PostingLine::credit('3900', $opening->amount),
+        ]);
     }
 
     /**
@@ -212,9 +230,14 @@ final class PostingRules
      * Debit: Control account (P).
      * Credit: 3900.
      */
-    public static function pr20OpeningBuyerOrEmployeeOwesUs(): PostingRequest
+    public static function pr20OpeningBuyerOrEmployeeOwesUs(OpeningBalance $opening, Party $party): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-20');
+        self::assertPartyType($party, [PartyType::Buyer, PartyType::Employee], 'PR-20');
+
+        return self::opening($opening, [
+            PostingLine::debit(self::controlAccount($party), $opening->amount, $party->id),
+            PostingLine::credit('3900', $opening->amount),
+        ]);
     }
 
     /**
@@ -222,9 +245,14 @@ final class PostingRules
      * Debit: 3900.
      * Credit: Control account (P).
      */
-    public static function pr21OpeningAdvanceFromBuyerOrWeOweEmployee(): PostingRequest
+    public static function pr21OpeningAdvanceFromBuyerOrWeOweEmployee(OpeningBalance $opening, Party $party): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-21');
+        self::assertPartyType($party, [PartyType::Buyer, PartyType::Employee], 'PR-21');
+
+        return self::opening($opening, [
+            PostingLine::debit('3900', $opening->amount),
+            PostingLine::credit(self::controlAccount($party), $opening->amount, $party->id),
+        ]);
     }
 
     /**
@@ -232,9 +260,14 @@ final class PostingRules
      * Debit: 3900.
      * Credit: 3000 Partner Capital (P).
      */
-    public static function pr22OpeningPartnerCapital(): PostingRequest
+    public static function pr22OpeningPartnerCapital(OpeningBalance $opening, Party $party): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-22');
+        self::assertPartyType($party, [PartyType::Partner], 'PR-22');
+
+        return self::opening($opening, [
+            PostingLine::debit('3900', $opening->amount),
+            PostingLine::credit('3000', $opening->amount, $party->id),
+        ]);
     }
 
     /**
@@ -286,5 +319,38 @@ final class PostingRules
     public static function pr27RateCorrectionSale(): PostingRequest
     {
         throw new LogicException('Not built yet: PR-27');
+    }
+
+    /** Spec §8.3: supplier 2000, buyer 1200, employee 1300, other 2100. */
+    public static function controlAccount(Party $party): string
+    {
+        return $party->type->controlAccountCode()
+            ?? throw new InvalidArgumentException("Party {$party->code} has no control account.");
+    }
+
+    /**
+     * @param  list<PartyType>  $allowed
+     */
+    private static function assertPartyType(Party $party, array $allowed, string $rule): void
+    {
+        if (! in_array($party->type, $allowed, true)) {
+            throw new InvalidArgumentException("{$rule} does not apply to a {$party->type->value}.");
+        }
+    }
+
+    /**
+     * Openings are posted on the system start date (BR-OPB-01).
+     *
+     * @param  list<PostingLine>  $lines
+     */
+    private static function opening(OpeningBalance $opening, array $lines): PostingRequest
+    {
+        return new PostingRequest(
+            postingDate: $opening->as_of_date,
+            sourceType: 'opening_balance',
+            sourceId: $opening->id,
+            description: "Opening balance {$opening->voucher_no}",
+            lines: $lines,
+        );
     }
 }

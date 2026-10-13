@@ -4,10 +4,11 @@
  */
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, LayoutGrid, Package, Users } from 'lucide-react';
+import { BookOpen, Landmark, LayoutGrid, Package, Users } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as items } from '@/routes/items';
 import { index as moneyAccounts } from '@/routes/money-accounts';
+import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
 
 /** Sidebar groups in the order of spec §15.1. */
@@ -69,6 +70,14 @@ export const navigation: NavEntry[] = [
         permission: 'settings.manage',
         mobileFirst: false,
         icon: Package,
+    },
+    {
+        group: 'Settings',
+        label: 'Opening balances',
+        href: openingBalances(),
+        permission: 'opening.manage',
+        mobileFirst: false,
+        icon: BookOpen,
     },
 ];
 

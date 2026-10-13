@@ -4,11 +4,13 @@ namespace Tests\Support;
 
 use App\Domain\Adjustments\Actions\CreateAdjustment;
 use App\Domain\Audit\Models\AuditLog;
+use App\Domain\Checks\Actions\CreateCashCount;
 use App\Domain\Expenses\Actions\CreateExpense;
 use App\Domain\Expenses\Actions\UpdateExpense;
 use App\Domain\Expenses\Models\Expense;
 use App\Domain\Expenses\Models\ExpenseCategory;
 use App\Domain\Items\Models\Item;
+use App\Domain\Ledger\Models\JournalEntry;
 use App\Domain\MoneyAccounts\Actions\CreateMoneyAccount;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\OpeningBalances\Actions\MarkOpeningBalancesComplete;
@@ -20,6 +22,11 @@ use App\Domain\Partners\Actions\CreatePartnerTransaction;
 use App\Domain\Payments\Actions\ApprovePayment;
 use App\Domain\Payments\Actions\CreatePayment;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Periods\Actions\CloseMonth;
+use App\Domain\Periods\Actions\PostCashDifference;
+use App\Domain\Periods\Actions\RecordBankStatement;
+use App\Domain\Periods\Month;
+use App\Domain\Periods\MonthEndCheck;
 use App\Domain\Purchases\Actions\AddPurchaseRate;
 use App\Domain\Purchases\Actions\CreatePurchase;
 use App\Domain\Purchases\Actions\CreateRateCorrection;
@@ -78,8 +85,9 @@ final class AcceptanceRunner
 
     /**
      * @param  array<string, mixed>  $data  one acceptance file, or one case of controls.json
+     * @param  array<string, mixed>|null  $base  the file a case builds on (`base`), run first
      */
-    private function __construct(public readonly array $data) {}
+    private function __construct(public readonly array $data, private readonly ?array $base = null) {}
 
     /** Loads `docs/acceptance/{file}.json`, or one case of it by id. */
     public static function load(string $file, ?string $caseId = null): self
@@ -88,6 +96,10 @@ final class AcceptanceRunner
 
         if ($caseId !== null) {
             $data = collect($data['cases'])->firstWhere('id', $caseId) ?? throw new LogicException("No case {$caseId} in {$file}.json.");
+
+            if (isset($data['base'])) {
+                return new self($data, json_decode((string) file_get_contents(base_path("docs/acceptance/{$data['base']}")), true, flags: JSON_THROW_ON_ERROR));
+            }
         }
 
         return new self($data);
@@ -96,20 +108,21 @@ final class AcceptanceRunner
     /** Steps 1 and 2: today, users, expense categories, accounts, parties, openings marked complete. */
     public function setUp(): self
     {
-        freezeToday($this->data['today']);
+        $world = $this->base ?? $this->data;
+        freezeToday($world['today']);
         $this->owner = User::factory()->create()->assignRole(RolesAndPermissionsSeeder::OWNER);
         $this->accountant = User::factory()->create()->assignRole(RolesAndPermissionsSeeder::ACCOUNTANT);
         app(TestExpenseCategoriesSeeder::class)->run();
 
-        foreach ($this->data['money_accounts'] ?? [] as $account) {
+        foreach ($world['money_accounts'] ?? [] as $account) {
             $this->accounts[$account['key']] = app(CreateMoneyAccount::class)->handle($this->owner, $account);
         }
 
-        foreach ($this->data['parties'] ?? [] as $party) {
+        foreach ($world['parties'] ?? [] as $party) {
             $this->parties[$party['key']] = app(CreateParty::class)->handle($this->owner, $party);
         }
 
-        foreach ($this->data['opening_balances'] ?? [] as $opening) {
+        foreach ($world['opening_balances'] ?? [] as $opening) {
             app(SetOpeningBalance::class)->handle($this->owner, isset($opening['money_account'])
                 ? ['money_account_id' => $this->accounts[$opening['money_account']]->id, 'amount' => $opening['amount']]
                 : ['party_id' => $this->parties[$opening['party']]->id, 'side' => $opening['side'] ?? null, 'amount' => $opening['amount']]);
@@ -120,10 +133,10 @@ final class AcceptanceRunner
         return $this;
     }
 
-    /** Step 3: every entry (or step) in file order. */
+    /** Step 3: every entry (or step) in file order; a case's base entries first. */
     public function runAll(): self
     {
-        foreach ($this->data['entries'] ?? $this->data['steps'] ?? [] as $entry) {
+        foreach ([...$this->base['entries'] ?? [], ...$this->data['entries'] ?? $this->data['steps'] ?? []] as $entry) {
             $this->run($entry);
         }
 
@@ -182,6 +195,10 @@ final class AcceptanceRunner
             ]),
             'rate_correction' => app(CreateRateCorrection::class)->handle($by, $this->target($entry, Purchase::class, Sale::class), $entry['new_rate'], $entry['date'], $entry['reason']),
             'set_today' => $this->setToday($entry['date']),
+            'bank_statement' => app(RecordBankStatement::class)->handle($by, $entry['period'], $this->accounts[$entry['money_account']], $entry['statement_balance']),
+            'cash_count' => app(CreateCashCount::class)->handle($by, $this->accounts[$entry['money_account']], $entry['date'], $entry['counted_amount']),
+            'cash_shortage' => $this->cashShortage($by, $entry),
+            'close_month' => $this->closeMonth($by, $entry),
             'attempt' => $this->attempt($entry),
             default => throw new LogicException("Acceptance entry type {$entry['type']} is not built yet."),
         };
@@ -262,6 +279,18 @@ final class AcceptanceRunner
             expect([
                 'old_rate' => $change?->old_rate, 'new_rate' => $change?->new_rate, 'old_amount' => $change?->old_amount, 'new_amount' => $change?->new_amount,
             ])->toBe(array_diff_key($row, ['entry' => 0]), "rate_changes.{$i}");
+        }
+
+        if (isset($expected['cash_shortage_journal'])) {
+            $journal = JournalEntry::query()->where('source_type', 'month_end_adjustment')->orderBy('id')->sole();
+            expect(['posting_date' => $journal->posting_date, 'voucher' => preg_match('/CSH-\d{6}/', $journal->description, $m) === 1 ? $m[0] : null])
+                ->toBe($expected['cash_shortage_journal'], 'cash_shortage_journal');
+        }
+
+        foreach ($expected as $key => $status) {
+            if (preg_match('/^period_(\d{4})_(\d{2})$/', (string) $key, $m) === 1) {
+                expect(Month::of("{$m[1]}-{$m[2]}")->isClosed() ? 'closed' : 'open')->toBe($status, (string) $key);
+            }
         }
 
         // `insights` is checked from T7.5 (self::SKIPPED).
@@ -515,6 +544,43 @@ final class AcceptanceRunner
         }
 
         throw new LogicException("Ref {$entry['target']} is not a ".implode(' or ', $types).'.');
+    }
+
+    /**
+     * `cash_shortage`: PR-23 by the Owner (checked in `expected.cash_shortage_journal`).
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    private function cashShortage(User $by, array $entry): null
+    {
+        app(PostCashDifference::class)->handle($by, $entry['period'], $this->accounts[$entry['money_account']], $entry['amount'], PostCashDifference::SHORTAGE, $entry['note']);
+
+        return null;
+    }
+
+    /**
+     * `close_month`: closes, or fails with exactly the expected failing checks.
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    private function closeMonth(User $by, array $entry): null
+    {
+        $result = app(CloseMonth::class)->handle($by, $entry['period'], (bool) ($entry['accept_pending_rates'] ?? false));
+        $accountKeys = array_flip(array_map(fn (MoneyAccount $account): int => $account->id, $this->accounts));
+
+        expect($result->closed)->toBe($entry['expect']['closed'], "close_month {$entry['period']}");
+
+        if (isset($entry['expect']['failing_checks'])) {
+            $failing = array_map(fn (MonthEndCheck $check): array => array_filter([
+                'check' => $check->check,
+                'money_account' => isset($check->details['money_account_id']) ? $accountKeys[$check->details['money_account_id']] : null,
+                'difference' => $check->details['difference'] ?? null,
+            ], fn ($value) => $value !== null), $result->failing());
+
+            expect($failing)->toBe($entry['expect']['failing_checks'], "close_month {$entry['period']} failing checks");
+        }
+
+        return null;
     }
 
     private function setToday(string $date): null

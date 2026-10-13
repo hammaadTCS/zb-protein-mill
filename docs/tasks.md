@@ -95,7 +95,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 ## M7: Month-end and remaining controls  ·  card file `docs/cards/M7.md`
 
-- [ ] **T7.1** Month-end close (backend). *Done when:* tests pass.
+- [x] **T7.1** Month-end close (backend). *Done when:* tests pass.
 - [ ] **T7.2** Month-end pages and reopen. *Done when:* tests pass.
 - [ ] **T7.3** Opening balances lock. *Done when:* tests pass.
 - [ ] **T7.4** Merge duplicate parties. *Done when:* tests pass.

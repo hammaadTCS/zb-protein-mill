@@ -47,6 +47,21 @@ final class EntrySources
         return $sources;
     }
 
+    /**
+     * A journal whose source has no table of its own (conventions §7: a month-end cash
+     * adjustment): its description, and the voucher written in it.
+     *
+     * @return array{voucher: string|null, description: string, route: null}
+     */
+    public static function fromJournal(string $description): array
+    {
+        return [
+            'voucher' => preg_match('/\b[A-Z]{2,3}-\d{6}\b/', $description, $m) === 1 ? $m[0] : null,
+            'description' => $description,
+            'route' => null,
+        ];
+    }
+
     /** "Waste 800 kg @ 50", or "Waste 400 kg – Rate pending". */
     public static function entryText(string $item, string $kg, ?string $rate): string
     {

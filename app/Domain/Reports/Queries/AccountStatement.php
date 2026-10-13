@@ -35,7 +35,7 @@ final class AccountStatement
             ->orderBy('journal_lines.line_no')
             ->select([
                 'journal_entries.posting_date', 'journal_entries.source_type', 'journal_entries.source_id',
-                'journal_entries.reversal_of_id', 'journal_lines.debit', 'journal_lines.credit',
+                'journal_entries.reversal_of_id', 'journal_entries.description AS journal_description', 'journal_lines.debit', 'journal_lines.credit',
             ])
             // The party of the movement sits on the other line of the same journal.
             ->selectSub(fn (Builder $q) => $q->from('journal_lines AS other')
@@ -58,17 +58,17 @@ final class AccountStatement
             $balance = Decimal::add($balance, Decimal::sub($debit, $credit));
             $in = Decimal::add($in, $debit);
             $out = Decimal::add($out, $credit);
-            $source = $sources["{$line->source_type}:{$line->source_id}"] ?? null;
+            $source = $sources["{$line->source_type}:{$line->source_id}"] ?? EntrySources::fromJournal((string) $line->journal_description);
 
             $rows[] = [
                 'date' => (string) $line->posting_date,
-                'voucher' => $source['voucher'] ?? null,
-                'description' => ($line->reversal_of_id !== null ? 'Reversal – ' : '').($source['description'] ?? ''),
+                'voucher' => $source['voucher'],
+                'description' => ($line->reversal_of_id !== null ? 'Reversal – ' : '').$source['description'],
                 'party' => $line->party !== null ? (string) $line->party : null,
                 'in' => Decimal::isPositive($debit) ? $debit : null,
                 'out' => Decimal::isPositive($credit) ? $credit : null,
                 'balance' => $balance,
-                'route' => $source['route'] ?? null,
+                'route' => $source['route'],
             ];
         }
 

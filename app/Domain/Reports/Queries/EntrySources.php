@@ -14,6 +14,7 @@ use App\Domain\Purchases\Enums\RateStatus;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Purchases\Models\RateCorrection;
 use App\Domain\Sales\Models\Sale;
+use App\Domain\Transfers\Models\Transfer;
 use App\Support\NumberFormat;
 
 /**
@@ -103,6 +104,12 @@ final class EntrySources
                     'voucher' => $c->voucher_no,
                     'description' => 'Rate correction '.$c->target()->voucher_no.' – '.NumberFormat::plain($c->old_rate).' → '.NumberFormat::plain($c->new_rate),
                     'route' => $c->target_type === 'purchase' ? route('purchases.show', $c->purchase_id, false) : route('sales.show', $c->sale_id, false),
+                ]])->all(),
+            'transfer' => Transfer::query()->with(['fromAccount', 'toAccount'])->whereIn('id', $ids)->get()
+                ->mapWithKeys(fn (Transfer $t) => [$t->id => [
+                    'voucher' => $t->voucher_no,
+                    'description' => 'Transfer – '.$t->fromAccount->name.' → '.$t->toAccount->name.($t->reference_no !== null ? ' – '.$t->reference_no : ''),
+                    'route' => null,
                 ]])->all(),
             'opening_balance' => OpeningBalance::query()->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (OpeningBalance $o) => [$o->id => [

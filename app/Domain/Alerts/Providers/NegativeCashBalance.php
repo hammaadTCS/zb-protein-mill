@@ -31,7 +31,7 @@ final class NegativeCashBalance implements AlertProvider
 
     public function route(): string
     {
-        return route('dashboard', [], false).'#balances';
+        return route('accounts.index', [], false);
     }
 
     public function label(): string

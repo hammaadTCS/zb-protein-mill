@@ -27,6 +27,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { index as accounts } from '@/routes/accounts';
 import { index as cashCounts } from '@/routes/cash-counts';
 import { index as auditLog } from '@/routes/audit-log';
 import { edit as companySettings } from '@/routes/company-settings';
@@ -137,6 +138,14 @@ export const navigation: NavEntry[] = [
         permission: 'partner.view',
         mobileFirst: false,
         icon: Handshake,
+    },
+    {
+        group: 'Money',
+        label: 'Accounts',
+        href: accounts(),
+        permission: 'account.view',
+        mobileFirst: false,
+        icon: Landmark,
     },
     {
         group: 'Checks',

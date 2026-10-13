@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
@@ -134,6 +135,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('cash-counts/system-amount', [CashCountController::class, 'systemAmount'])->name('cash-counts.system-amount')->can('cashcount.create');
     Route::post('cash-counts', [CashCountController::class, 'store'])->name('cash-counts.store')->can('cashcount.create');
     Route::post('cash-counts/dismiss', [CashCountController::class, 'dismiss'])->name('cash-counts.dismiss')->can('period.close');
+
+    // Pages 24 and 25: accounts and account statement (T6.5).
+    Route::get('accounts', [AccountController::class, 'index'])->name('accounts.index')->can('account.view');
+    Route::get('accounts/{moneyAccount}', [AccountController::class, 'show'])->name('accounts.show')->can('account.view');
 
     // Page 41: audit log (T5.5).
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-log.index')->can('audit.view');

@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.4 |
-| Next task | T6.5 Accounts list and account statement (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.5 |
+| Next task | T6.6 Expense report (T2.10 client review is yours) |
 
 ---
 
@@ -938,4 +938,17 @@ Choices and questions:
 - **As-of balances use posting dates**: a rate added later to an entry in an open month posts on the entry date (BR-LED-08), so it counts on that date too. Rate-pending kg counts entries dated up to the as-of date that are still pending now.
 - Words not in the glossary: "Pending balances" (spec page name), "Advances", "Advance age (days)", "Overdue", "Rate pending" column, "All parties", "Suppliers", "Buyers", "Employees", "Others", "Total", "Code", "Party", "Amount".
 - Tests: the card's R-02 after AT-1 (We owe Aslam 52000.00 and Bashir 7000.00, total 59000.00; Owes us ABC 23000.00; Advances Rehman 30000.00, 25 days; Karim absent) plus an earlier as-of date and the type filter.
+- Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.
+
+### T6.5 Accounts list and account statement
+
+Built as the card lists: page 24 `/accounts` (each cash and bank account with today's balance; inactive accounts only while they still hold money) and page 25 `/accounts/{id}` (opening, each movement with date, voucher, description and party, money in and out, running balance, closing, for a date range; default the current month). "Accounts" added to the Money group in the menu; the negative cash alert now opens page 24.
+
+Choices and questions:
+- **Opening balances always count in the "Opening balance" line**, even when the range starts on the system start date, so a January statement opens with the real opening (300000.00 for HBL) instead of listing it as a movement.
+- **The party of a movement is taken from the other line of the same journal** (for example Bashir on PAY-000003).
+- **Account balances may be negative and are shown with a sign** (they are not party balances).
+- Transfers now have khata/statement text: "Transfer – HBL → Cash – reference".
+- Words not in the glossary: "Accounts" (spec page name), "Account", "Type", "Bank", "Cash", "Balance", "Inactive", "Opening balance", "Closing balance", "In", "Out", "Description", "Party".
+- Tests: the card's R-06 (HBL after AT-1: opening 300000.00, 8 movements on 5 and 6 January, closing 417600.00, equal to `at1.json`) plus a later range starting from the earlier balance, and the pages for the accountant.
 - Checks: build, check, types, Pint, Larastan, guard pass; full PHP suite passes.

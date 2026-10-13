@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Reports\Queries;
 
 use App\Domain\Audit\Models\AuditLog;
+use App\Domain\Expenses\Models\ExpenseCategory;
 use App\Domain\Items\Models\Item;
 use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\Parties\Models\Party;
+use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Purchases\Models\RateChange;
+use App\Domain\Sales\Models\Sale;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,6 +41,13 @@ final class ChangeHistory
         'handled_by_party_id' => Party::class,
         'item_id' => Item::class,
         'money_account_id' => MoneyAccount::class,
+        'category_id' => ExpenseCategory::class,
+    ];
+
+    /** Linked entry ids shown with their voucher number. */
+    private const VOUCHERS = [
+        'linked_purchase_id' => Purchase::class,
+        'linked_sale_id' => Sale::class,
     ];
 
     /**
@@ -133,6 +143,12 @@ final class ChangeHistory
             $model = self::NAMED[$field];
 
             return (string) ($model::query()->withoutGlobalScopes()->whereKey((int) $value)->value('name') ?? $value);
+        }
+
+        if (isset(self::VOUCHERS[$field]) && is_numeric($value)) {
+            $model = self::VOUCHERS[$field];
+
+            return (string) ($model::query()->withoutGlobalScopes()->whereKey((int) $value)->value('voucher_no') ?? $value);
         }
 
         if (is_bool($value)) {

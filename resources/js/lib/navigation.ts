@@ -17,6 +17,7 @@ import {
     Receipt,
     ShoppingCart,
     Users,
+    Wallet,
 } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as items } from '@/routes/items';
@@ -24,6 +25,7 @@ import { index as moneyAccounts } from '@/routes/money-accounts';
 import { index as openingBalances } from '@/routes/opening-balances';
 import { index as parties } from '@/routes/parties';
 import { index as expenseCategories } from '@/routes/expense-categories';
+import { create as newExpense, index as expenses } from '@/routes/expenses';
 import { create as newPayment, index as payments } from '@/routes/payments';
 import { index as approvals } from '@/routes/approvals';
 import { index as ratePending } from '@/routes/rate-pending';
@@ -90,6 +92,14 @@ export const navigation: NavEntry[] = [
         permission: 'payment.view',
         mobileFirst: false,
         icon: Banknote,
+    },
+    {
+        group: 'Daily entries',
+        label: 'Expenses',
+        href: expenses(),
+        permission: 'expense.view',
+        mobileFirst: false,
+        icon: Wallet,
     },
     {
         group: 'People',
@@ -185,6 +195,14 @@ export const bottomBar: NavEntry[] = [
         permission: 'payment.create',
         mobileFirst: true,
         icon: Banknote,
+    },
+    {
+        group: 'Daily entries',
+        label: 'Quick expense',
+        href: newExpense(),
+        permission: 'expense.create',
+        mobileFirst: true,
+        icon: Wallet,
     },
 ];
 

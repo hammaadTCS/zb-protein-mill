@@ -29,6 +29,7 @@ class StoreExpenseRequest extends FormRequest
             'linked_sale_id' => ['nullable', 'integer'],
             'note' => ['present', 'nullable', 'string', 'max:2000'],
             'photo' => ['nullable', 'file'], // checked by StoreAttachment (BR-SEC-06)
+            'add_another' => ['sometimes', 'boolean'],
             'confirmed_warnings' => ['sometimes', 'array'],
             'confirmed_warnings.*' => ['string', Rule::in(Warnings::CODES)],
         ];
@@ -39,7 +40,7 @@ class StoreExpenseRequest extends FormRequest
      */
     public function entryData(): array
     {
-        return $this->safe()->except(['confirmed_warnings']);
+        return $this->safe()->except(['confirmed_warnings', 'add_another']);
     }
 
     /**

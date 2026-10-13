@@ -67,3 +67,21 @@ export function previewAmount(
 
     return paisaToMoney(paisa.toString());
 }
+
+/**
+ * Compares two positive decimal strings exactly: -1, 0 or 1. Null when either is not
+ * a number yet (used for limits shown while typing, such as BR-EXP-03).
+ */
+export function compareDecimals(a: string, b: string): -1 | 0 | 1 | null {
+    if (!DECIMAL.test(a.trim()) || !DECIMAL.test(b.trim())) {
+        return null;
+    }
+
+    const [aInt, aScale] = scaled(a);
+    const [bInt, bScale] = scaled(b);
+    const scale = Math.max(aScale, bScale);
+    const left = aInt * 10n ** BigInt(scale - aScale);
+    const right = bInt * 10n ** BigInt(scale - bScale);
+
+    return left === right ? 0 : left > right ? 1 : -1;
+}

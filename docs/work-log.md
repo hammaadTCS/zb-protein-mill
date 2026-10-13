@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1, T4.2 |
-| Next task | T4.3 Expense pages (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.3 |
+| Next task | T4.4 Partner money (T2.10 client review is yours) |
 
 ---
 
@@ -726,3 +726,19 @@ Choices and questions:
 - **The acceptance runner (`tests/Support/AcceptanceRunner.php`) is left for T4.8**, as the acceptance README says; these tests read the AT-1 and AT-2 entries directly, like T2.7 to T3.9.
 - Tests: the card's ten (AT-1 #7–#9, #19, #21 journals and category totals; AT-1 #20 edit with one reversal and the audit row from `at1.json`; AT-2 #8 unpaid transport linked to the sale; PR-11 employee owes 3,800; empty and 2-character notes; party at the limit; unpaid to a buyer; both links; same key twice) plus inactive category, paid by employee needs an employee, account rules per mode, negative cash warning, cancel.
 - Checks: Pint, Larastan, guard pass; **395 PHP tests pass**.
+
+### T4.3 Expense pages
+
+Built as the card lists: page 13 `/expenses/create` "Quick expense" (mobile-first: date, quick category buttons by `sort_order` above the full category list, amount with the decimal keypad, note, Paid / Unpaid / Paid by employee, account when Paid, then "More" with party, link to purchase or sale, handled by, receipt photo; the party moves out of "More" and becomes required when the mode needs it or the amount reaches the limit), page 12 `/expenses` (date range, category, party, status, search by voucher, note or party; note shown in each row; total of active entries), page 14 `/expenses/{id}` (every field, Edit, Cancel entry, change history, journal lines for the Owner), the edit page, "Expenses" in Daily entries and "Quick expense" in the phone bottom bar.
+
+Choices and questions:
+- **The server sends the BR-EXP-09 defaults** (`defaults`: today, "paid", the active cash account with the lowest ledger code), so the card's test checks them on the server.
+- **"Link to purchase or sale" is a voucher number field** (PUR-… or SAL-…) checked by a small lookup (`GET /expenses/link-lookup`) that only finds active entries. A list of every purchase and sale would be too long on a phone. Tell me if you want a picker instead.
+- **"Save" opens the expense; "Save and add another" opens a fresh form** (new idempotency key), like purchases and sales. Spec §11.9 does not list the buttons.
+- **The party filter on the list shows suppliers, employees and other parties** (the types an expense can have).
+- **Change history now shows the category name and the linked voucher number** instead of ids.
+- **One earlier test of mine was flaky**: `ItemsTest` "a deactivated item is not active any more" read rows without an order; I added `orderBy('id')` to its query. Its expected list did not change.
+- Words not in the glossary: "Quick category", "More", "Party (optional)", "Link to purchase or sale", "Find", "No active purchase or sale has this voucher number.", "All categories", "Voucher, note or party", "Total", "Payment mode", "Receipt photo".
+- **Timed check (card's "Done when")**: an automated phone-size run (375 px, touch) opened the page, tapped Tea, typed 150 and a note, and saved in **0.8 seconds** (machine time). A real check by hand on a phone is still needed; please time it when you test locally.
+- Tests: the card's one (defaults today, Paid, first active cash account, never a bank, the next one when the first is inactive) plus the list's category filter and note, detail with link, history and Owner-only journal lines, the link lookup, "Save and add another", page permissions; front-end test for the exact amount-versus-limit check.
+- Checks: build, check, types, front-end tests, Pint, Larastan, guard pass; **401 PHP tests pass**.

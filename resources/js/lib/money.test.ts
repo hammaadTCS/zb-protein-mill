@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { multiplyToPaisa, previewAmount } from './money';
+import { compareDecimals, multiplyToPaisa, previewAmount } from './money';
 
 describe('multiplyToPaisa (BR-GEN-06 preview only)', () => {
     it('multiplies exactly in whole paisa', () => {
@@ -26,5 +26,18 @@ describe('previewAmount', () => {
         expect(previewAmount('', '50', 'two_decimals')).toBeNull();
         expect(previewAmount('800', '', 'two_decimals')).toBeNull();
         expect(previewAmount('80a', '50', 'two_decimals')).toBeNull();
+    });
+});
+
+describe('compareDecimals (BR-EXP-03 limit in the form)', () => {
+    it('compares exactly, whatever the decimals', () => {
+        expect(compareDecimals('10000', '10000.00')).toBe(0);
+        expect(compareDecimals('9999.99', '10000.00')).toBe(-1);
+        expect(compareDecimals('100000.01', '100000')).toBe(1);
+    });
+
+    it('is null while the amount is incomplete', () => {
+        expect(compareDecimals('', '10000.00')).toBeNull();
+        expect(compareDecimals('1.', '10000.00')).toBeNull();
     });
 });

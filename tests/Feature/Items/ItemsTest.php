@@ -80,7 +80,7 @@ it('BR-ITM-02 a new item is renamed with its ledger account; its type may change
 it('BR-GEN-08 a deactivated item is not active any more', function () {
     app(DeactivateItem::class)->handle(owner(), itemNamed('Wood'));
 
-    expect(Item::query()->active()->pluck('name')->all())->toBe(['Waste', 'Protein product', 'Oil/Fat']);
+    expect(Item::query()->active()->orderBy('id')->pluck('name')->all())->toBe(['Waste', 'Protein product', 'Oil/Fat']);
 });
 
 it('page 45 lists the items for the owner; the accountant is refused', function () {

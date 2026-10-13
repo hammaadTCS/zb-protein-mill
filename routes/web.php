@@ -5,6 +5,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MoneyAccountController;
 use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatePendingController;
 use App\Http\Controllers\Reports\TrialBalanceController;
@@ -31,6 +32,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('purchases/{purchase}', [PurchaseController::class, 'update'])->name('purchases.update');
     Route::post('purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
     Route::post('purchases/{purchase}/rate', [PurchaseController::class, 'addRate'])->name('purchases.rate');
+
+    // Payments and receipts (T3.5; pages in T3.6).
+    Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::get('payments/balance-preview', [PaymentController::class, 'balancePreview'])->name('payments.balance-preview');
+    Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
+    Route::post('payments/{payment}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
 
     // Pages 6, 7 and 8: sales (T3.4).
     Route::get('sales', [SaleController::class, 'index'])->name('sales.index');

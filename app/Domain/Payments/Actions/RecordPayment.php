@@ -51,11 +51,14 @@ final class RecordPayment
     public static function posting(Payment $payment, ?string $postingDate = null): PostingRequest
     {
         $type = $payment->party->type;
+        $paid = $payment->direction === PaymentDirection::Paid;
 
-        return match (true) {
-            $payment->direction === PaymentDirection::Paid && $type === PartyType::Supplier => PostingRules::pr02PaymentToSupplier($payment, $postingDate),
-            $payment->direction === PaymentDirection::Received && $type === PartyType::Buyer => PostingRules::pr05ReceiptFromBuyer($payment, $postingDate),
-            default => throw new LogicException("Not built yet: {$payment->direction->value} payment to a {$type->value}."),
+        // Spec §8.3 and card T3.5: the rule by party type and direction.
+        return match ($type) {
+            PartyType::Supplier => $paid ? PostingRules::pr02PaymentToSupplier($payment, $postingDate) : PostingRules::pr03MoneyBackFromSupplier($payment, $postingDate),
+            PartyType::Buyer => $paid ? PostingRules::pr06MoneyBackToBuyer($payment, $postingDate) : PostingRules::pr05ReceiptFromBuyer($payment, $postingDate),
+            PartyType::Other, PartyType::Employee => $paid ? PostingRules::pr12PaymentToOtherOrEmployee($payment, $postingDate) : PostingRules::pr13MoneyFromOtherOrEmployee($payment, $postingDate),
+            PartyType::Partner => throw new LogicException('Partner money is a partner entry, not a payment (BR-PAY-01).'),
         };
     }
 

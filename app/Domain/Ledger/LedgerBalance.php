@@ -80,4 +80,19 @@ final class LedgerBalance
 
         return $nets;
     }
+
+    /** Debit minus credit of one journal's lines on an account code, for one party. */
+    public static function journalNet(int $journalEntryId, string $code, int $partyId): string
+    {
+        $net = JournalLine::query()
+            ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
+            ->where('journal_lines.journal_entry_id', $journalEntryId)
+            ->where('ledger_accounts.code', $code)
+            ->where('journal_lines.party_id', $partyId)
+            ->toBase()
+            ->selectRaw('COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(20, 2)::text AS net')
+            ->value('net');
+
+        return (string) $net;
+    }
 }

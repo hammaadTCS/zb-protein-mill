@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.4 |
-| Next task | T3.5 Payments and receipts backend (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.5 |
+| Next task | T3.6 Payment pages (T2.10 client review is yours) |
 
 ---
 
@@ -639,3 +639,17 @@ Choices and questions:
 - Messages not in the glossary: "Select an active buyer.", "Select an active product.". The credit-limit text is glossary §4.
 - Tests: the card's seven (AT-1 #5 exact journal; AT-1 #6 with RCV-000001 and "Settled"; supplier refused; Waste refused; credit limit 50,000 vs 63,000 warns, confirmed saves; received now never needs approval for the accountant; T-05/T-06 for sales; T-18 double submit) plus a cancelled sale's receipt left as an advance and pages 6, 7, 8 and the rate-pending filter.
 - Checks: build, check, types, Pint, Larastan, guard pass; **335 PHP tests pass**.
+
+### T3.5 Payments and receipts (backend)
+
+Built as the card lists: PR-02, PR-03, PR-05, PR-06, PR-12, PR-13 with the card's mapping (supplier 2000, buyer 1200, other 2100, employee 1300), `CreatePayment` (voucher PAY / RCV, idempotency key), `UpdatePayment` (reversal and repost; the direction may change and the voucher number stays), `CancelPayment` (from T3.2), checks (no partner, amount > 0, active account, "Handled by" employee), method "Cash" / "Bank transfer" from the account type, warning `missing_reference` for a bank account without a reference, information `overpayment_info` (flash toast, never blocks), `GET /payments/balance-preview` (balance now and after, in words, plus the information text), `POST /payments`, `PUT /payments/{id}`, `POST /payments/{id}/cancel`, `PaymentPolicy`. All payments are "not required" for approval until T3.7.
+
+Also added: `PaymentInput` (shared checks for create and edit), `PaymentBalance` (net, after, overpayment), `LedgerBalance::journalNet()` (so an edit's preview can leave out the payment being edited).
+
+Choices and questions:
+- **"Owed in that direction" (BR-PAY-11):** paying: what we owe the party (their credit balance); receiving: what they owe us (their debit balance). The extra above that is the advance in the message.
+- **The overpayment information is worked out before the save** and shown as an info toast after it, together with the "Saved." toast.
+- **`photo` is accepted as a field shape now**; storing the receipt photo comes with the payment page (T3.6).
+- Messages not in the glossary: "Choose Paid or Received.", "Select an active party. Partner money is entered on the partner page.", "Only an active payment can be edited."; `missing_reference` and `overpayment_info` texts are glossary §4.
+- Tests: the card's list (AT-1 #3, #13, #14, #18; one test per mapping row with exact lines (8); partner refused; "Handled by" supplier refused; bank without reference warns, cash does not; overpayment information and saves; direction edit keeps PAY-000001; T-18) plus the balance preview.
+- Checks: Pint, Larastan, guard pass; **354 PHP tests pass**.

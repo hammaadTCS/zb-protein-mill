@@ -61,9 +61,9 @@ final class PostingRules
      * Debit: M.
      * Credit: 2000 Suppliers (P).
      */
-    public static function pr03MoneyBackFromSupplier(): PostingRequest
+    public static function pr03MoneyBackFromSupplier(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-03');
+        return self::payment($payment, $postingDate, debit: $payment->moneyAccount->ledger_account_id, credit: '2000');
     }
 
     /**
@@ -102,9 +102,9 @@ final class PostingRules
      * Debit: 1200 Buyers (P).
      * Credit: M.
      */
-    public static function pr06MoneyBackToBuyer(): PostingRequest
+    public static function pr06MoneyBackToBuyer(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-06');
+        return self::payment($payment, $postingDate, debit: '1200', credit: $payment->moneyAccount->ledger_account_id);
     }
 
     /**
@@ -162,9 +162,11 @@ final class PostingRules
      * Debit: Party's control account (P).
      * Credit: M.
      */
-    public static function pr12PaymentToOtherOrEmployee(): PostingRequest
+    public static function pr12PaymentToOtherOrEmployee(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-12');
+        self::assertPartyType($payment->party, [PartyType::Other, PartyType::Employee], 'PR-12');
+
+        return self::payment($payment, $postingDate, debit: self::controlAccount($payment->party), credit: $payment->moneyAccount->ledger_account_id);
     }
 
     /**
@@ -172,9 +174,11 @@ final class PostingRules
      * Debit: M.
      * Credit: Party's control account (P).
      */
-    public static function pr13MoneyFromOtherOrEmployee(): PostingRequest
+    public static function pr13MoneyFromOtherOrEmployee(Payment $payment, ?string $postingDate = null): PostingRequest
     {
-        throw new LogicException('Not built yet: PR-13');
+        self::assertPartyType($payment->party, [PartyType::Other, PartyType::Employee], 'PR-13');
+
+        return self::payment($payment, $postingDate, debit: $payment->moneyAccount->ledger_account_id, credit: self::controlAccount($payment->party));
     }
 
     /**

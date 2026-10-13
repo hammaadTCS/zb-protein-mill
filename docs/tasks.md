@@ -101,7 +101,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T7.4** Merge duplicate parties. *Done when:* tests pass.
 - [x] **T7.5** Business insights. *Done when:* tests pass.
 - [ ] **T7.6** Backup status page. *Done when:* tests pass. **[Human]** after T8.3: one restore done on staging (runbook §4) and recorded in `docs/release-checks.md`.
-- [ ] **T7.7** Acceptance AT-3 to AT-6. *Done when:* all four pass in CI.
+- [x] **T7.7** Acceptance AT-3 to AT-6. *Done when:* all four pass in CI.
 - [ ] **T7.8** Integrity check command. *Done when:* tests pass; the schedule is listed by `php artisan schedule:list`.
 
 ## M8: Release and handover  ·  card file `docs/cards/M8.md`

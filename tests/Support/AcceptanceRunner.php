@@ -35,6 +35,7 @@ use App\Domain\Purchases\Actions\CreateRateCorrection;
 use App\Domain\Purchases\Actions\UpdatePurchase;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Purchases\Models\RateChange;
+use App\Domain\Purchases\Models\RateCorrection;
 use App\Domain\Reports\Queries\IncomeVsSpending;
 use App\Domain\Reports\Queries\PartnerStatement;
 use App\Domain\Reports\Queries\TrialBalance;
@@ -57,7 +58,7 @@ use LogicException;
 /**
  * docs/acceptance/README.md: runs an acceptance file through the real Action classes
  * (never HTTP, never direct model writes) and checks every expected key. Built in T4.8;
- * T7.7 adds the month-end steps.
+ * the month-end, merge and step-level checks of controls.json came with T7.1 to T7.7.
  */
 final class AcceptanceRunner
 {
@@ -66,6 +67,9 @@ final class AcceptanceRunner
      * builds the runner"). Each names the task that removes it from this list.
      */
     private const SKIPPED = [];
+
+    /** Every top-level `expected` key this runner checks; any other key fails the test. */
+    private const KNOWN_EXPECTED = '/^(money_accounts|parties|partners|ledger_accounts|trial_balance|income_vs_spending|kg|vouchers|audit|reversal_journals|rate_changes|insights|cash_shortage_journal|merge_journal|rate_correction|rate_correction_journal|period_\d{4}_\d{2}|purchase_\w+_party|purchase_\w+_unchanged)$/';
 
     public User $owner;
 
@@ -204,6 +208,11 @@ final class AcceptanceRunner
             default => throw new LogicException("Acceptance entry type {$entry['type']} is not built yet."),
         };
 
+        // A step's own `expect` (controls.json AT-4); close_month checks its own.
+        if (isset($entry['expect']) && $entry['type'] !== 'close_month') {
+            $this->assertStep($record, $entry['expect'], "{$entry['type']} ".($entry['ref'] ?? $entry['target'] ?? ''));
+        }
+
         if ($record instanceof Model) {
             if (isset($entry['ref'])) {
                 $this->refs[$entry['ref']] = $record;
@@ -220,7 +229,9 @@ final class AcceptanceRunner
     /** Step 6: every key in `expected`. */
     public function assertExpected(): self
     {
-        $expected = $this->data['expected'];
+        $expected = $this->data['expected'] ?? [];
+        $unknown = array_filter(array_keys($expected), fn (string $key): bool => preg_match(self::KNOWN_EXPECTED, $key) !== 1);
+        expect(array_values($unknown))->toBe([], 'expected keys this runner does not check');
         $today = Today::date();
 
         foreach ($expected['money_accounts'] ?? [] as $key => $balance) {
@@ -293,6 +304,27 @@ final class AcceptanceRunner
             if (preg_match('/^purchase_(\w+)_party$/', (string) $key, $m) === 1) {
                 expect($this->refs[$m[1]]->refresh()->getAttribute('party_id'))->toBe($this->parties[$value]->id, (string) $key);
             }
+        }
+
+        foreach ($expected as $key => $value) {
+            // `purchase_<ref>_unchanged`: a closed-month entry keeps its rate and amount (AT-5).
+            if (preg_match('/^purchase_(\w+)_unchanged$/', (string) $key, $m) === 1) {
+                $purchase = $this->refs[$m[1]]->refresh();
+                expect(['rate' => $purchase->getAttribute('rate'), 'amount' => $purchase->getAttribute('amount')])->toBe($value, (string) $key);
+            }
+        }
+
+        if (isset($expected['rate_correction'])) {
+            $correction = RateCorrection::query()->sole();
+            expect([
+                'voucher' => $correction->voucher_no, 'correction_date' => $correction->correction_date,
+                'old_rate' => $correction->old_rate, 'new_rate' => $correction->new_rate,
+                'old_amount' => $correction->old_amount, 'new_amount' => $correction->new_amount, 'difference' => $correction->difference,
+            ])->toBe($expected['rate_correction'], 'rate_correction');
+        }
+
+        if (isset($expected['rate_correction_journal'])) {
+            $this->assertJournal(JournalEntry::query()->where('source_type', 'rate_correction')->sole(), $expected['rate_correction_journal'], 'rate_correction_journal');
         }
 
         if (isset($expected['merge_journal'])) {
@@ -564,6 +596,39 @@ final class AcceptanceRunner
         }
 
         throw new LogicException("Ref {$entry['target']} is not a ".implode(' or ', $types).'.');
+    }
+
+    /**
+     * A step's `expect`: approval status, whether it has a journal and its posting
+     * date, and party and money account balances right after it (AT-4).
+     *
+     * @param  array<string, mixed>  $expect
+     */
+    private function assertStep(?Model $record, array $expect, string $label): void
+    {
+        expect(array_values(array_diff(array_keys($expect), ['approval_status', 'journal', 'journal_posting_date', 'parties', 'money_accounts'])))->toBe([], "{$label}: expect keys this runner does not check");
+
+        $record?->refresh();
+
+        if (isset($expect['approval_status'])) {
+            expect($record?->getAttribute('approval_status')?->value)->toBe($expect['approval_status'], "{$label}.approval_status");
+        }
+
+        if (isset($expect['journal'])) {
+            expect($record?->getAttribute('journal_entry_id') !== null)->toBe($expect['journal'], "{$label}.journal");
+        }
+
+        if (isset($expect['journal_posting_date'])) {
+            expect(JournalEntry::query()->findOrFail($record?->getAttribute('journal_entry_id'))->posting_date)->toBe($expect['journal_posting_date'], "{$label}.journal_posting_date");
+        }
+
+        foreach ($expect['parties'] ?? [] as $key => $party) {
+            $this->assertParty($key, $party);
+        }
+
+        foreach ($expect['money_accounts'] ?? [] as $key => $balance) {
+            expect(ledgerBalance($this->accounts[$key]->ledgerAccount->code))->toBe($balance, "{$label}.money_accounts.{$key}");
+        }
     }
 
     /**

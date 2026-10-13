@@ -1097,3 +1097,12 @@ Choices and questions:
 - **The restore on staging is yours** (after T8.3, recorded in `docs/release-checks.md`). So I left T7.6 **unticked** in `docs/tasks.md`: its build and tests are done; tick it after your restore.
 - Words not in the glossary: "Backups", "Database", "Uploads", "Late", "OK", "Last successful backup", "Size", "Copies made", "Last attempt", "Succeeded", "Failed", "Error", "Backups are not configured on this server.", "Late when the last successful backup is older than {n} hours.", alert "Backup late".
 - Tests: the card's six with fixture JSON files in a temporary folder (fresh success OK; 3 hours old Late, alert count 2 for the Owner and 0 for the Accountant; a failure shows its error text; missing folder not configured; page needs `backup.view`; the only route with "backup" is GET `settings/backups` and no route is named "download").
+
+### T7.7 Acceptance AT-3 to AT-6
+
+Built as the card lists: the `AcceptanceRunner` runs every step type of `controls.json` (the month-end steps came with T7.1, `merge` with T7.4; this task adds a step's own `expect` — approval status, journal or not, journal posting date, party and money account balances right after it — and the AT-5 checks `purchase_<ref>_unchanged`, `rate_correction` and `rate_correction_journal`). `tests/Acceptance/ControlsTest.php` has one test per case: AT-3, AT-4, AT-5 (with the real close) and AT-6. The runner now **fails on any `expected` or step `expect` key it does not check**, so a new key in the JSON can never be skipped silently.
+
+Choices and questions:
+- **`closeMonthForTest()`**: no acceptance test uses it. Seven older feature tests (T1.9 to T4.x) still do; I left them as they are (the rule is not to change existing tests, and the T7.1 card only forbids it in new tests).
+- **AT-3 and AT-6 also have their own tests** in `tests/Feature/Periods` and `tests/Feature/Parties` from T7.1 and T7.4; I kept them (they add the event, audit and khata checks).
+- Tests: AT-1 to AT-6 all pass.

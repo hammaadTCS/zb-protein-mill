@@ -1,8 +1,13 @@
 <?php
 
+use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+// GET only (see routes/settings.php): Route::redirect() would also register QUERY.
+Route::get('/', RedirectController::class)
+    ->defaults('destination', '/dashboard')
+    ->defaults('status', 302)
+    ->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');

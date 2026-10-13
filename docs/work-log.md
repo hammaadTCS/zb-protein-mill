@@ -7,7 +7,7 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 
 | Item | Status |
 | --- | --- |
-| Current task | T0.1 Laravel app, React starter kit, Pest, PostgreSQL, CI |
+| Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **T0.1 built; all local checks pass.** Waiting for CI on the pull request, then your review. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy`, pull request [hammaadTCS/zb-protein-mill#1](https://github.com/hammaadTCS/zb-protein-mill/pull/1) |
 | Tasks ticked in `docs/tasks.md` | T0.1 |
@@ -241,3 +241,24 @@ CI on PHP 8.5 cannot be run here; the pull request shows it.
    and paste it directly above
    `run "PHP tests (Pest, PostgreSQL)" php artisan test`.
 5. **G-30** is still waiting for your `[spec-change]` pull request (steps above). Until it is merged, a new cloud session cannot install PHP packages.
+
+---
+
+## One-session build (from 13 October 2026)
+
+You asked: "continue, build in one go then we will test it on my local PC". Your process normally has one task per session and pull request; this session builds the tasks one after another on branch `claude/lucid-ptolemy-w3fhsy`, **one commit per task** (message starts with the task ID), one section per task below. Where the documents do not decide something, I take the most cautious choice, note it under the task as a question, and continue. Human tasks (T2.10, T7.6 restore, T8.3 to T8.7) are not done.
+
+Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` (`b2a1735`). A `git checkout -B` was refused by the session's safety check; the fast-forward did the same without any risk.
+
+### T0.2 Project files check, brand icons, remove kit features the spec forbids
+
+- All 16 project files and folders the card lists exist.
+- Icons: `public/favicon.svg` (ZB monogram), `public/favicon-32.png`, `public/apple-touch-icon.png` from `brand/`; `public/favicon.ico` removed; `app.blade.php` points at `favicon-32.png` and `favicon.svg`.
+- Removed (BR-USR-06): password reset (`Features::resetPasswords()`, the two pages, the "Forgot your password?" link, `ResetUserPassword`, its registration and views in `FortifyServiceProvider`).
+- Removed (BR-USR-03, BR-USR-06): delete account (`profile.destroy` route, `ProfileController::destroy`, `ProfileDeleteRequest`, `delete-user.tsx`).
+- Removed: public welcome page. `GET /` now redirects to `/dashboard` (guests then go to login). Like the T0.1 `/settings` fix, it uses `Route::get` with Laravel's `RedirectController` instead of `Route::redirect`, so it does not register the `QUERY` verb Wayfinder cannot type.
+- `.env.example`: `SESSION_LIFETIME=60` (BR-SEC-04).
+- Kit tests removed because they only covered removed features: `tests/Feature/Auth/PasswordResetTest.php`, `tests/Feature/ExampleTest.php` (welcome page), and the two delete-account methods of `tests/Feature/Settings/ProfileUpdateTest.php` (`test_user_can_delete_their_account`, `test_correct_password_must_be_provided_to_delete_account`).
+- New tests (`tests/Feature/Auth/RemovedKitFeaturesTest.php`): BR-USR-06 registration route does not exist; BR-USR-06 password reset routes do not exist; BR-USR-03 there is no delete account route; BR-SEC-03 login is throttled after 5 failures; the home page sends guests to login.
+- `scripts/guard.sh` now passes (the kit's `$user->delete()` is gone).
+- Checks: ALL CHECKS PASSED (26 PHP tests).

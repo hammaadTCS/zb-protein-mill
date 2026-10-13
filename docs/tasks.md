@@ -16,7 +16,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 ## M0: Setup  ·  card file `docs/cards/M0.md`
 
 - [x] **T0.1** Laravel app, React starter kit, Pest, PostgreSQL, CI. *Done when:* `composer install`, `npm ci`, `npm run build`, `php artisan migrate`, `php artisan test`, `vendor/bin/pint --test`, `vendor/bin/phpstan analyse`, `npm run check`, `npm run types:check` all pass locally and in CI (both PHP jobs); `bash scripts/secret-scan.sh` passes; `docs/installed-versions.md` exists.
-- [ ] **T0.2** Project files check, brand icons, remove kit features the spec forbids. *Done when:* all tests pass; the removed features are unreachable; favicon shows the ZB monogram.
+- [x] **T0.2** Project files check, brand icons, remove kit features the spec forbids. *Done when:* all tests pass; the removed features are unreachable; favicon shows the ZB monogram.
 - [ ] **T0.3** Architecture tests and guard script in CI. *Done when:* CI shows Pint, Larastan, vite-plus check, TypeScript, guard, secret scan and tests all green.
 
 ## M1: Accounting core and security baseline (no screens)  ·  card file `docs/cards/M1.md`

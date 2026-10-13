@@ -23,7 +23,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 - [x] **T1.1** Companies and company scope. *Done when:* tests pass; every later business model uses `BelongsToCompany`.
 - [x] **T1.2** Settings, setup gate, test settings. *Done when:* tests pass; no production default exists for any OPEN value.
-- [ ] **T1.3** Roles and permissions. *Done when:* tests pass.
+- [x] **T1.3** Roles and permissions. *Done when:* tests pass.
 - [ ] **T1.4** Ledger accounts. *Done when:* tests pass.
 - [ ] **T1.5** Journal tables and database protections. *Done when:* tests pass.
 - [ ] **T1.6** Voucher numbering. *Done when:* tests pass.

@@ -17,6 +17,7 @@ class SystemDataSeeder extends Seeder
         $this->call([
             CompanySeeder::class,
             SettingsDefinitionSeeder::class,
+            RolesAndPermissionsSeeder::class,
         ]);
     }
 }

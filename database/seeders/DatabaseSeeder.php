@@ -24,12 +24,16 @@ class DatabaseSeeder extends Seeder
             $this->call(TestSettingsSeeder::class);
         }
 
-        if (! User::query()->where('email', 'test@example.com')->exists()) {
-            User::factory()->create([
+        $user = User::query()->where('email', 'test@example.com')->first()
+            ?? User::factory()->create([
                 'company_id' => Company::query()->orderBy('id')->value('id'),
                 'name' => 'Test User',
                 'email' => 'test@example.com',
             ]);
+
+        // T1.3: the local test user sees every screen. Never on a server (this seeder refuses production).
+        if (app()->environment(['local', 'testing'])) {
+            $user->syncRoles([RolesAndPermissionsSeeder::OWNER]);
         }
     }
 }

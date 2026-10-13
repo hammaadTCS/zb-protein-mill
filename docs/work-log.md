@@ -297,3 +297,12 @@ Before starting: PR #1 (T0.1) was merged; I fast-forwarded the branch to `main` 
   3. `company_name`: at most 150 characters (same as `companies.name`).
 - Tests: T-10 (one case per required key, and the passing case), wrong types (11 cases), typed reads, valid write, BR-OPS-11 never overwrites, no production default for any OPEN value (checked on a fresh second company).
 - Checks: Pint and Larastan pass; tests pass except the known T0.3 Actions rule.
+
+### T1.3 Roles and permissions
+
+- Package `spatie/laravel-permission` **8.3.0** (`^8.3`; the card names the package without a version; Composer picked the newest that fits Laravel 13). Installed through the G-30 cloud steps (`require --no-install`, git-built zips, `install`). `composer audit`: no advisories. Config and migration published; teams stay off.
+- `RolesAndPermissionsSeeder` (in `SystemDataSeeder`): the 42 permission keys of the card; `owner` gets all, `accountant` all except the 13 owner-only keys; `syncPermissions` every run; permission cache cleared.
+- `User` uses `HasRoles`. `DatabaseSeeder` gives `test@example.com` the owner role in local/testing only.
+- Test helpers `owner()` and `accountant()` in `tests/Pest.php`.
+- Tests: owner has every permission; accountant has exactly the accountant list; BR-OPS-11 restores a removed permission and adds no duplicates; BR-OPS-11 takes away a permission the accountant must not have; local test user is owner.
+- Checks: Pint, Larastan, guard pass; tests pass except the known T0.3 Actions rule.

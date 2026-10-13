@@ -94,14 +94,15 @@ it('page 4 opens with today and the bought items; page 5 shows the purchase', fu
 
 it('"Save and add another" returns to page 4; Save opens the detail page', function () {
     [$owner, $world] = pagesWorld();
-    $form = fn () => [
+    // Different kg each time, so the second save is not a duplicate entry (BR-PUR-08, T3.3).
+    $form = fn (string $kg) => [
         'idempotency_key' => (string) Str::uuid(), 'date' => '2026-01-05', 'party_id' => $world['parties']['aslam']->id,
-        'item_id' => Item::query()->where('code', 'WASTE')->value('id'), 'kg' => '10', 'rate' => '50',
+        'item_id' => Item::query()->where('code', 'WASTE')->value('id'), 'kg' => $kg, 'rate' => '50',
     ];
 
-    $this->actingAs($owner)->post(route('purchases.store'), [...$form(), 'add_another' => true])
+    $this->actingAs($owner)->post(route('purchases.store'), [...$form('10'), 'add_another' => true])
         ->assertRedirect(route('purchases.create'));
-    $this->actingAs($owner)->post(route('purchases.store'), $form())
+    $this->actingAs($owner)->post(route('purchases.store'), $form('11'))
         ->assertRedirect(route('purchases.show', Purchase::query()->where('voucher_no', 'PUR-000002')->sole()));
 });
 

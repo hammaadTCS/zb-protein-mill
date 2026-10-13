@@ -38,6 +38,16 @@ final class Decimal
         };
     }
 
+    /**
+     * A value with exactly $scale decimals, half up.
+     *
+     * @param  int<0, max>  $scale
+     */
+    public static function toScale(string $value, int $scale): string
+    {
+        return (string) BigDecimal::of($value)->toScale($scale, RoundingMode::HalfUp);
+    }
+
     /** A value as kg: exactly 3 decimals, half up. */
     public static function kg(string $value): string
     {

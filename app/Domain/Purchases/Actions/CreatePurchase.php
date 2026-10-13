@@ -21,7 +21,9 @@ use App\Domain\Settings\Settings;
 use App\Models\User;
 use App\Support\Decimal;
 use App\Support\EntryChecks;
+use App\Support\EntryWarnings;
 use App\Support\Idempotency;
+use App\Support\Warnings\Warnings;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +45,7 @@ final class CreatePurchase
         $key = (string) $data['idempotency_key'];
 
         try {
-            return DB::transaction(fn (): Purchase => $this->create($by, $data, $key));
+            return DB::transaction(fn (): Purchase => $this->create($by, $data, $key, new Warnings($confirmedWarnings)));
         } catch (QueryException $e) {
             // BR-GEN-11: the same form was saved by another request at the same moment.
             if (Idempotency::isDuplicateKeyViolation($e)) {
@@ -57,7 +59,7 @@ final class CreatePurchase
     /**
      * @param  array<string, mixed>  $data
      */
-    private function create(User $by, array $data, string $key): Purchase
+    private function create(User $by, array $data, string $key, Warnings $warnings): Purchase
     {
         Settings::assertComplete(); // BR-GEN-07
         $date = (string) $data['date'];
@@ -71,6 +73,13 @@ final class CreatePurchase
 
         $input = PurchaseInput::from($data); // BR-PUR-01 to BR-PUR-03
         $paidNow = self::paidNow($data);
+        EntryWarnings::slipRules($input->slipNo, ($data['slip_photo'] ?? null) instanceof UploadedFile, $input->ourWeightKg, checkPhoto: true); // BR-PUR-07
+
+        if ($input->rate !== null) {
+            EntryWarnings::unusualRate($warnings, Purchase::class, $input->item->id, $input->rate); // BR-PUR-06
+        }
+
+        EntryWarnings::duplicate($warnings, Purchase::class, 'purchase', $input->party->id, $input->item->id, $input->kg, $date); // BR-PUR-08
 
         $purchase = Purchase::query()->create([
             'company_id' => $by->company_id,
@@ -97,6 +106,7 @@ final class CreatePurchase
         } // BR-PUR-04, BR-LED-06: a rate-pending purchase has no journal yet.
 
         AuditLogger::log(AuditActions::CREATED, $purchase, [], self::audited($purchase), by: $by);
+        $warnings->audit($purchase, $by);
 
         if (($data['slip_photo'] ?? null) instanceof UploadedFile) {
             app(StoreAttachment::class)->handle($by, $purchase, $data['slip_photo'], AttachmentKind::SlipPhoto, 'slip_photo'); // BR-PUR-07

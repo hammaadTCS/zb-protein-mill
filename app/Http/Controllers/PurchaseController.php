@@ -18,10 +18,13 @@ use App\Http\Requests\CancelEntryRequest;
 use App\Http\Requests\Purchases\AddRateRequest;
 use App\Http\Requests\Purchases\StorePurchaseRequest;
 use App\Http\Requests\Purchases\UpdatePurchaseRequest;
+use App\Support\Decimal;
 use App\Support\EntryStatus;
+use App\Support\EntryWarnings;
 use App\Support\Flash;
 use App\Support\Today;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -202,6 +205,28 @@ class PurchaseController extends Controller
         Flash::saved($purchase->voucher_no);
 
         return to_route('purchases.show', $purchase);
+    }
+
+    /**
+     * BR-PUR-05: the last fixed rate for this supplier and item, shown under the rate
+     * field. Never filled in automatically.
+     */
+    public function lastRate(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Purchase::class);
+
+        $input = $request->validate(['party_id' => ['required', 'integer'], 'item_id' => ['required', 'integer']]);
+        $last = EntryWarnings::lastRate(Purchase::class, (int) $input['party_id'], (int) $input['item_id']);
+        $decimals = Settings::get(SettingKeys::RATE_DECIMALS);
+
+        if ($last === null) {
+            return JsonResponse::fromJsonString('null');
+        }
+
+        return response()->json([
+            'rate' => Decimal::toScale($last['rate'], is_int($decimals) ? max(0, $decimals) : 2),
+            'date' => $last['date'],
+        ]);
     }
 
     /** "Add rate" on page 5 and on the rate-pending list (BR-PUR-04). */

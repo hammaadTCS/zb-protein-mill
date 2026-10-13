@@ -17,6 +17,8 @@ use App\Models\User;
 use App\Support\Decimal;
 use App\Support\EntryChecks;
 use App\Support\EntryStatus;
+use App\Support\EntryWarnings;
+use App\Support\Warnings\Warnings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -34,7 +36,8 @@ final class AddPurchaseRate
      */
     public function handle(User $by, Purchase $purchase, string $rate, string $date, array $confirmedWarnings = []): Purchase
     {
-        return DB::transaction(function () use ($by, $purchase, $rate, $date): Purchase {
+        return DB::transaction(function () use ($by, $purchase, $rate, $date, $confirmedWarnings): Purchase {
+            $warnings = new Warnings($confirmedWarnings);
             Settings::assertComplete(); // BR-GEN-07
             $purchase = Purchase::query()->with('item')->lockForUpdate()->findOrFail($purchase->id);
 
@@ -43,6 +46,7 @@ final class AddPurchaseRate
             }
 
             $rate = EntryChecks::rate($rate);
+            EntryWarnings::unusualRate($warnings, Purchase::class, $purchase->item_id, $rate, $purchase->id); // BR-PUR-06
             $postingDate = Periods::isClosed($purchase->entry_date) ? $date : $purchase->entry_date; // BR-LED-08
             Periods::assertValidEntryDate($postingDate);
 
@@ -60,6 +64,7 @@ final class AddPurchaseRate
 
             RateChange::record($purchase, null, (string) $purchase->rate, null, (string) $purchase->amount, $by);
             AuditLogger::log(AuditActions::RATE_ADDED, $purchase, ['rate' => null, 'amount' => null], ['rate' => $purchase->rate, 'amount' => $purchase->amount, 'posting_date' => $postingDate], by: $by);
+            $warnings->audit($purchase, $by);
 
             return $purchase;
         });

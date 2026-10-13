@@ -19,6 +19,8 @@ use App\Models\User;
 use App\Support\ConcurrentEdit;
 use App\Support\Decimal;
 use App\Support\EntryStatus;
+use App\Support\EntryWarnings;
+use App\Support\Warnings\Warnings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -37,7 +39,8 @@ final class UpdatePurchase
      */
     public function handle(User $by, Purchase $purchase, array $data, array $confirmedWarnings = []): Purchase
     {
-        return DB::transaction(function () use ($by, $purchase, $data): Purchase {
+        return DB::transaction(function () use ($by, $purchase, $data, $confirmedWarnings): Purchase {
+            $warnings = new Warnings($confirmedWarnings);
             Settings::assertComplete(); // BR-GEN-07
             $purchase = Purchase::query()->lockForUpdate()->findOrFail($purchase->id);
             ConcurrentEdit::check($purchase->updated_at, isset($data['version']) ? (string) $data['version'] : null); // BR-GEN-09
@@ -60,6 +63,14 @@ final class UpdatePurchase
             if ($input->rate === null && $purchase->rate_status === RateStatus::Fixed) {
                 throw ValidationException::withMessages(['rate' => __('A fixed rate cannot be removed. Enter the correct rate.')]);
             }
+
+            EntryWarnings::slipRules($input->slipNo, true, $input->ourWeightKg, checkPhoto: false); // BR-PUR-07
+
+            if ($input->rate !== null && ($input->rate !== $purchase->rate || $input->item->id !== $purchase->item_id)) {
+                EntryWarnings::unusualRate($warnings, Purchase::class, $input->item->id, $input->rate, $purchase->id); // BR-PUR-06
+            }
+
+            EntryWarnings::duplicate($warnings, Purchase::class, 'purchase', $input->party->id, $input->item->id, $input->kg, $input->date, $purchase->id); // BR-PUR-08
 
             $old = CreatePurchase::audited($purchase);
             $oldRate = $purchase->rate;
@@ -105,6 +116,7 @@ final class UpdatePurchase
             $new = CreatePurchase::audited($purchase);
             $changed = array_keys(array_filter($new, fn ($value, $key) => ($old[$key] ?? null) !== $value, ARRAY_FILTER_USE_BOTH));
             AuditLogger::log(AuditActions::UPDATED, $purchase, array_intersect_key($old, array_flip($changed)), array_intersect_key($new, array_flip($changed)), by: $by);
+            $warnings->audit($purchase, $by);
 
             return $purchase;
         });

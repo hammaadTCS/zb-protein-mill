@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { DecimalInput } from '@/components/app/DecimalInput';
 import { FormField } from '@/components/app/FormField';
+import { LastRateHint } from '@/components/app/LastRateHint';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
 import type { PartyOption } from '@/components/app/PartyPicker';
@@ -24,7 +25,7 @@ import { useFormats } from '@/hooks/use-formats';
 import { prepareImage } from '@/lib/image';
 import { previewAmount } from '@/lib/money';
 import { newIdempotencyKey } from '@/lib/uuid';
-import { store, update } from '@/routes/purchases';
+import { lastRate, store, update } from '@/routes/purchases';
 
 type Option = { id: number; name: string };
 type AccountOption = Option & { type: 'cash' | 'bank' };
@@ -286,6 +287,19 @@ export function PurchaseForm({
                         />
                     </FormField>
                 </div>
+
+                <LastRateHint
+                    url={
+                        data.party_id && data.item_id
+                            ? lastRate.url({
+                                  query: {
+                                      party_id: data.party_id,
+                                      item_id: data.item_id,
+                                  },
+                              })
+                            : null
+                    }
+                />
 
                 <div className="flex items-center justify-between rounded-md bg-muted px-4 py-3">
                     <span className="text-sm text-muted-foreground">Total</span>

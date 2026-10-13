@@ -10,8 +10,8 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 | Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
 | State | **M0 and M1 done (T0.1 to T1.13); M2 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1, T3.2 |
-| Next task | T3.3 Purchase warnings and weight-slip settings (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.3 |
+| Next task | T3.4 Sales (T2.10 client review is yours) |
 
 ---
 
@@ -608,3 +608,18 @@ Choices and questions:
 - Messages not in the glossary: "A cancelled entry cannot be edited.", "This entry is already cancelled.", "Give a reason of at least 5 characters.".
 - Tests: the card's seven (edit kg: exact original, reversal and new journals; cancel reverses and keeps the row; cancel without the payment → "Advance 40000.00"; 4-character reason refused; stale version refused, also as HTTP 409; closed month refuses edit and cancel; fixed rate change → `rate_changes`), plus cancel with the payment, pending edit without journal, party must stay a supplier, route permissions.
 - Checks: build, check, types, Pint, Larastan, guard pass; **314 PHP tests pass**.
+
+### T3.3 Purchase warnings and weight-slip settings
+
+Built as the card lists: `GET /purchases/last-rate` (`{rate, date}` of the latest active fixed purchase for that supplier and item, or `null`), shown under the rate field as "Last rate: Rs 52.00 on 06-01-2026" and never filled in; unusual rate (BR-PUR-06: weighted average Σ amount ÷ Σ kg of the last `unusual_rate_lookback` active fixed purchases of the item, all suppliers, by date then id, excluding the entry being edited; warning above `unusual_rate_percent`; glossary text with whole percent and higher/lower) on create, edit and add rate; duplicate entry (BR-PUR-08); slip rules (BR-PUR-07: slip number and photo per settings, "Our weight" refused without a scale); `warning_confirmed` audit for every confirmed warning.
+
+Also added: `App\Support\EntryWarnings` (last rate, average, unusual rate, duplicate, slip rules) written for both purchases and sales, so T3.4 reuses it; `Decimal::toScale()`.
+
+Choices and questions:
+- **On edit, the unusual-rate check runs only when the rate or the item changed.** Otherwise editing a note on an entry whose unusual rate was already confirmed would ask again.
+- **The slip photo rule applies to new entries only**: the edit form has no photo field, and the photo is not removed by editing.
+- **The average in the message uses `rate_decimals`** ("Rs 50.00").
+- **Two earlier tests of mine changed because of this task's new rules** (expected, not weakened): T2.8's "Save and add another" test saved the same purchase twice, which is now a duplicate warning, so the second save uses 11 kg instead of 10; no assertion changed. My own weighted-average test confirms the warnings its set-up purchases raise.
+- Messages not in the glossary: "Weight slip number is required.", "Slip photo is required.", "Our weight is not used: the plant has no scale."; hint "Last rate: …" is from spec §11.4.
+- Tests: the card's seven (last rate 52.00 after AT-1 #10; 70 vs 50 warns, confirmed saves and logs; 60 vs 50 silent; last 5 only; duplicate; slip number required; our weight refused) plus "lower", add-rate warning, slip photo required, `null` when there is no last rate.
+- Checks: build, `npm test`, check, types, Pint, Larastan, guard pass; **324 PHP tests pass**.

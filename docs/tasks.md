@@ -52,7 +52,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 - [x] **T3.1** Rate pending and adding the rate later. *Done when:* tests pass.
 - [x] **T3.2** Edit and cancel purchases. *Done when:* tests pass.
-- [ ] **T3.3** Purchase warnings and weight-slip settings. *Done when:* tests pass.
+- [x] **T3.3** Purchase warnings and weight-slip settings. *Done when:* tests pass.
 - [ ] **T3.4** Sales. *Done when:* tests pass.
 - [ ] **T3.5** Payments and receipts (backend). *Done when:* tests pass.
 - [ ] **T3.6** Payment pages. *Done when:* tests pass; screenshots at 375 px.

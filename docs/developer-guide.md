@@ -65,6 +65,9 @@ Useful single commands:
 - **Closed months are locked**: `Periods::assertValidEntryDate` and `PostingService` refuse them.
 - **Words on screens come from `docs/glossary.md`**; party balances are words ("We owe", "Advance"), never a minus sign.
 - **Each new route** goes into the route table of `tests/Feature/Permissions/RoutePermissionTest.php` (T-09).
+- **Answers to the user are not errors**: an exception that only carries a message for the screen (like `WarningRequired` or `ConcurrentEdit`) goes into `dontReport` in `bootstrap/app.php`, so its text (which can hold a party name) never reaches the log (BR-SEC-17).
+- **Inertia DevTools is off.** To use the browser extension on your laptop, set `INERTIA_DEVTOOLS_ENABLED=true` in `.env`. It works only with `APP_ENV=local`, and it saves every page's data under `storage/inertia-devtools/`: delete that folder when you are done.
+- **No links or files from other sites** on any screen (BR-SEC-14); `tests/Feature/Security/ProtectedAppTest.php` fails if one appears.
 
 ## 6. Operations
 

@@ -7,6 +7,8 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RememberSettings;
+use App\Support\ConcurrentEdit;
+use App\Support\Warnings\WarningRequired;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -38,6 +40,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // BR-SEC-17: these are answers to the user, not errors. Their messages can hold a
+        // party name or code (duplicate party), so they must never reach the log.
+        $exceptions->dontReport([
+            WarningRequired::class,
+            ConcurrentEdit::class,
+        ]);
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

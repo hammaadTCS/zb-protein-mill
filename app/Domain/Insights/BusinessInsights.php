@@ -179,6 +179,7 @@ final class BusinessInsights
             ->selectRaw('COALESCE(SUM(t.our_weight_kg), 0)::numeric(16, 3)::text AS our_kg')
             ->get();
         $parties = Party::query()->whereIn('id', $rows->pluck('grp')->all())->get()->keyBy('id');
+        $nets = LedgerBalance::partyNets(array_values($parties->modelKeys()), $to); // one query (T9.2)
         $result = [];
 
         foreach ($rows as $row) {
@@ -189,7 +190,7 @@ final class BusinessInsights
             }
 
             $sums = self::row($row);
-            $balance = $party->balanceOfNet(LedgerBalance::byCode((string) $party->type->controlAccountCode(), $to, $party->id));
+            $balance = $party->balanceOfNet($nets[$party->id][(string) $party->type->controlAccountCode()] ?? '0.00');
 
             $result[] = [
                 'party_id' => $party->id,
@@ -231,6 +232,10 @@ final class BusinessInsights
             ->all();
         $allSales = Decimal::sum($rows->map(fn (object $row): string => self::row($row)['fixed_amount'])->all());
         $parties = Party::query()->whereIn('id', $rows->pluck('grp')->all())->get()->keyBy('id');
+        // Spec §12.6 for every buyer in two queries (T9.2: the oldest-first match one buyer
+        // at a time took seconds at 100,000 entries). Same figures as Ageing::match().
+        $daysToPay = Ageing::averageDaysToPayMany($parties, $from, $to);
+        $overdue = Ageing::overdueMany($parties, $to);
         $result = [];
 
         foreach ($rows as $row) {
@@ -241,15 +246,14 @@ final class BusinessInsights
             }
 
             $his = self::row($row)['fixed_amount'];
-            $matched = Ageing::match($party, $to); // once for both figures (spec §12.6)
             $adjusted = (string) ($adjustments[$party->id] ?? '0.00');
 
             $result[] = [
                 'party_id' => $party->id,
                 'code' => $party->code,
                 'name' => $party->name,
-                'average_days_to_pay' => Ageing::averageDaysToPay($party, $from, $to, $matched),
-                'overdue' => Ageing::overdueFor($party, $to, $matched),
+                'average_days_to_pay' => $daysToPay[$party->id],
+                'overdue' => $overdue[$party->id],
                 'adjustments' => $adjusted,
                 'adjustments_percent' => self::percent($adjusted, $his),
                 'share_percent' => self::percent($his, $allSales),

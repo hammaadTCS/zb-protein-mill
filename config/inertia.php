@@ -15,8 +15,12 @@ return [
     |
     */
 
+    // Off (T9.2): servers never build or run an SSR bundle (release.yml runs `npm run
+    // build` only), so pages always render in the browser. Left on, a laptop running
+    // the Vite dev server sent every full page load to Vite to render on the server
+    // first: 0.5 to 16 seconds per page instead of a tenth of one.
     'ssr' => [
-        'enabled' => true,
+        'enabled' => false,
         'url' => 'http://127.0.0.1:13714',
         // 'bundle' => base_path('bootstrap/ssr/ssr.mjs'),
 

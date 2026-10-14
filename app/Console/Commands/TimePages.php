@@ -7,6 +7,7 @@ use App\Domain\Parties\Models\Party;
 use App\Domain\Settings\SettingKeys;
 use App\Domain\Settings\Settings;
 use App\Models\User;
+use App\Support\Dates;
 use App\Support\Today;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
@@ -79,7 +80,8 @@ class TimePages extends Command
             'Month-end close' => route('month-end.show', [], false),
             'Months' => route('months.index', [], false),
             'Statement PDF, this month' => route('parties.statement', ['party' => $supplier, 'from' => substr($today, 0, 8).'01', 'to' => $today], false),
-            'Statement PDF, 12 months' => route('parties.statement', ['party' => $supplier, ...$year], false),
+            // BR-RPT-11: the longest period one statement PDF may cover.
+            'Statement PDF, 3 months' => route('parties.statement', ['party' => $supplier, 'from' => Dates::threeMonthsBefore($today), 'to' => $today], false),
         ];
 
         // One plain request first: the Inertia asset version is known after it.

@@ -53,12 +53,12 @@ final class LedgerBalance
 
     /**
      * Debit minus credit per party and account code, for many parties in one query
-     * (party lists).
+     * (party lists), up to a posting date when given.
      *
      * @param  list<int>  $partyIds
      * @return array<int, array<int|string, string>> party id => [account code => net]
      */
-    public static function partyNets(array $partyIds): array
+    public static function partyNets(array $partyIds, ?string $asOf = null): array
     {
         if ($partyIds === []) {
             return [];
@@ -67,6 +67,9 @@ final class LedgerBalance
         $rows = JournalLine::query()
             ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
             ->whereIn('journal_lines.party_id', $partyIds)
+            ->when($asOf !== null, fn ($query) => $query
+                ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
+                ->where('journal_entries.posting_date', '<=', $asOf))
             ->groupBy('journal_lines.party_id', 'ledger_accounts.code')
             ->toBase()
             ->selectRaw('journal_lines.party_id, ledger_accounts.code, (SUM(journal_lines.debit) - SUM(journal_lines.credit))::numeric(20, 2)::text AS net')

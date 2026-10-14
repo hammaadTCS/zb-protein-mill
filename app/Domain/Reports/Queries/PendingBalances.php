@@ -49,6 +49,9 @@ final class PendingBalances
             ->orderBy('code')
             ->get();
 
+        // Overdue for every buyer on the report, in one query (spec §12.6, T9.2).
+        $overdue = Ageing::overdueMany($parties->filter(fn (Party $party): bool => $party->type === PartyType::Buyer), $date);
+
         foreach ($parties as $party) {
             $balance = $party->balanceOfNet((string) $nets[$party->id], $pendingKg[$party->id] ?? '0.000');
 
@@ -65,7 +68,7 @@ final class PendingBalances
                 'amount' => $balance->amount,
                 'pending_kg' => $balance->pendingKg,
                 'advance_age_days' => $balance->words === 'Advance' ? Ageing::advanceAgeDays($party, $date) : null,
-                'overdue' => $party->type === PartyType::Buyer && $balance->words === 'Owes us' ? Ageing::overdueFor($party, $date) : null,
+                'overdue' => $party->type === PartyType::Buyer && $balance->words === 'Owes us' ? $overdue[$party->id] : null,
             ];
             $sections[$balance->words]['total'] = Decimal::add($sections[$balance->words]['total'], $balance->amount);
         }

@@ -26,6 +26,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,19 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureMorphMap();
         $this->configureAudit();
+        $this->configureDevServer();
+    }
+
+    /**
+     * `composer run dev` on a laptop: `serve` answers several requests at once
+     * (PHP_CLI_SERVER_WORKERS in .env) only without its .env watcher. With one worker,
+     * hover prefetches and asset requests queue behind each other.
+     */
+    protected function configureDevServer(): void
+    {
+        if (! $this->app->isProduction()) {
+            DevCommands::artisan('serve --no-reload', 'server');
+        }
     }
 
     /**

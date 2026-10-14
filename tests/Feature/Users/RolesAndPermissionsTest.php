@@ -18,13 +18,14 @@ const SPEC_7_ALL_PERMISSIONS = [
     'partner.view', 'partner.manage', 'account.view', 'cashcount.create',
     'period.close', 'period.reopen', 'report.view', 'insights.view', 'audit.view',
     'settings.manage', 'opening.manage', 'users.manage', 'backup.view',
+    'dashboard.balances',
 ];
 
 /** Spec §7, the "No" column for the Accountant. */
 const SPEC_7_OWNER_ONLY = [
     'party.merge', 'party.review', 'payment.approve', 'partner.view', 'partner.manage',
     'period.close', 'period.reopen', 'insights.view', 'audit.view', 'settings.manage',
-    'opening.manage', 'users.manage', 'backup.view',
+    'opening.manage', 'users.manage', 'backup.view', 'dashboard.balances',
 ];
 
 it('spec §7 owner has every permission', function () {

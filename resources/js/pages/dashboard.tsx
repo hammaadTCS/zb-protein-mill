@@ -42,7 +42,8 @@ const SEVERITY: Record<Alert['severity'], string> = {
 
 /**
  * Page 2 (spec §11.3): Today, Alerts, Balances and the quick buttons. On a phone
- * Today and Alerts come first, balances after.
+ * Today and Alerts come first, balances after. BR-DSH-01: the server sends no
+ * balances without `dashboard.balances`, so the Accountant sees the simple dashboard.
  */
 export default function Dashboard({
     today,

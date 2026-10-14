@@ -26,13 +26,14 @@ class RolesAndPermissionsSeeder extends Seeder
         'partner.view', 'partner.manage', 'account.view', 'cashcount.create',
         'period.close', 'period.reopen', 'report.view', 'insights.view', 'audit.view',
         'settings.manage', 'opening.manage', 'users.manage', 'backup.view',
+        'dashboard.balances', // BR-DSH-01 (T9.3)
     ];
 
     /** Spec §7: what the Accountant may never do. */
     public const OWNER_ONLY = [
         'party.merge', 'party.review', 'payment.approve', 'partner.view', 'partner.manage',
         'period.close', 'period.reopen', 'insights.view', 'audit.view', 'settings.manage',
-        'opening.manage', 'users.manage', 'backup.view',
+        'opening.manage', 'users.manage', 'backup.view', 'dashboard.balances',
     ];
 
     public const OWNER = 'owner';

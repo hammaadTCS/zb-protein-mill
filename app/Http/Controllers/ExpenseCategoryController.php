@@ -24,6 +24,7 @@ class ExpenseCategoryController extends Controller
             'categories' => ExpenseCategory::query()->with('ledgerAccount')->orderBy('sort_order')->orderBy('name')->get()
                 ->map(fn (ExpenseCategory $c): array => [
                     'id' => $c->id,
+                    'public_id' => $c->public_id,
                     'name' => $c->name,
                     'code' => $c->ledgerAccount->code,
                     'is_quick' => $c->is_quick,

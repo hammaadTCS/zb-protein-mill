@@ -22,7 +22,7 @@ final class PendingBalances
     public const SECTIONS = ['Owes us', 'We owe', 'Advance'];
 
     /**
-     * @return array<string, array{rows: list<array{id: int, code: string, name: string, type: string, words: string, amount: string, pending_kg: string, advance_age_days: int|null, overdue: string|null}>, total: string}>
+     * @return array<string, array{rows: list<array{id: int, public_id: string, code: string, name: string, type: string, words: string, amount: string, pending_kg: string, advance_age_days: int|null, overdue: string|null}>, total: string}>
      */
     public static function asOf(string $date, ?PartyType $type = null): array
     {
@@ -61,6 +61,7 @@ final class PendingBalances
 
             $sections[$balance->words]['rows'][] = [
                 'id' => $party->id,
+                'public_id' => $party->public_id,
                 'code' => $party->code,
                 'name' => $party->name,
                 'type' => $party->type->value,

@@ -30,6 +30,7 @@ import { PARTY_TYPE_LABELS, PARTY_TYPES } from './types';
 
 type PartyRow = {
     id: number;
+    public_id: string;
     code: string;
     name: string;
     area: string | null;
@@ -159,7 +160,7 @@ export default function Parties({
                                 </TableCell>
                                 <TableCell className="font-medium">
                                     <Link
-                                        href={show(party.id)}
+                                        href={show(party.public_id)}
                                         className="underline-offset-4 hover:underline"
                                     >
                                         {party.name}

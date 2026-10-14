@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Companies\Models\Company;
+use App\Support\HasPublicId;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -16,6 +17,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property bool $is_active
  * @property bool $must_change_password
@@ -36,7 +38,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, HasPublicId, HasRoles, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Database defaults, also on a model that was never read back from the database

@@ -33,6 +33,7 @@ import { cancel, create, edit, index, statement } from '@/routes/partners';
 
 type Row = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     type: 'investment' | 'withdrawal';
@@ -47,7 +48,7 @@ type Row = {
 type Filters = {
     from: string;
     to: string;
-    party_id: number | null;
+    party_id: string | null;
     status: string;
     q: string;
     type: string;
@@ -146,7 +147,7 @@ export default function PartnerEntries({
                         value={party}
                         placeholder="All partners"
                         onChange={(picked) =>
-                            apply({ party_id: picked?.id ?? null })
+                            apply({ party_id: picked?.public_id ?? null })
                         }
                     />
                     <Select
@@ -256,7 +257,9 @@ export default function PartnerEntries({
                                                 variant="outline"
                                                 asChild
                                             >
-                                                <Link href={edit(row.id)}>
+                                                <Link
+                                                    href={edit(row.public_id)}
+                                                >
                                                     Edit
                                                 </Link>
                                             </Button>
@@ -298,7 +301,7 @@ export default function PartnerEntries({
                 onConfirm={(reason) =>
                     cancelling &&
                     router.post(
-                        cancel.url(cancelling.id),
+                        cancel.url(cancelling.public_id),
                         { reason },
                         {
                             preserveScroll: true,

@@ -48,14 +48,15 @@ export default function MergeParties({
     const [processing, setProcessing] = useState(false);
     const sameType = source && target && source.type === target.type;
 
-    const pick = (changes: { source_id?: number; target_id?: number }) => {
+    // BR-SEC-19: the address bar names the parties by public id; the merge itself posts ids.
+    const pick = (changes: { source_id?: string; target_id?: string }) => {
         const query = Object.fromEntries(
             Object.entries({
-                source_id: source?.id,
-                target_id: target?.id,
+                source_id: source?.public_id,
+                target_id: target?.public_id,
                 ...changes,
             }).filter(([, v]) => v !== undefined),
-        ) as Record<string, number>;
+        ) as Record<string, string>;
         router.get(
             merge.url({ query }),
             {},
@@ -78,7 +79,9 @@ export default function MergeParties({
                             id="source"
                             types={target ? [target.type] : ALL_TYPES}
                             value={source}
-                            onChange={(party) => pick({ source_id: party?.id })}
+                            onChange={(party) =>
+                                pick({ source_id: party?.public_id })
+                            }
                         />
                         {source && <BalanceInWords {...source.balance} />}
                     </div>
@@ -88,7 +91,9 @@ export default function MergeParties({
                             id="target"
                             types={source ? [source.type] : ALL_TYPES}
                             value={target}
-                            onChange={(party) => pick({ target_id: party?.id })}
+                            onChange={(party) =>
+                                pick({ target_id: party?.public_id })
+                            }
                         />
                         {target && <BalanceInWords {...target.balance} />}
                     </div>

@@ -43,8 +43,7 @@ class ExpenseController extends Controller
         $this->authorize('viewAny', Expense::class);
 
         $filters = $this->listFilters($request, ['active', 'cancelled']);
-        $categoryId = $request->validate(['category_id' => ['nullable', 'integer']])['category_id'] ?? null;
-        $categoryId = $categoryId === null ? null : (int) $categoryId;
+        $categoryId = ExpenseCategory::idFromPublic($request->validate(['category_id' => ['nullable', 'string']])['category_id'] ?? null);
 
         $query = Expense::query()
             ->with(['category', 'moneyAccount', 'party'])
@@ -68,12 +67,13 @@ class ExpenseController extends Controller
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();
 
         return Inertia::render('expenses/index', [
-            'filters' => [...$filters, 'category_id' => $categoryId],
+            'filters' => $this->shownFilters([...$filters, 'category_id' => $categoryId]),
             'party' => $this->partyOption($filters['party_id']),
             'categories' => $this->categoryOptions(withInactive: true),
             'total' => (string) ($total ?? '0.00'),
             'expenses' => $this->paginated($page, fn (Expense $e): array => [
                 'id' => $e->id,
+                'public_id' => $e->public_id,
                 'voucher_no' => $e->voucher_no,
                 'entry_date' => $e->entry_date,
                 'category' => $e->category->name,
@@ -118,6 +118,7 @@ class ExpenseController extends Controller
         return Inertia::render('expenses/show', [
             'expense' => [
                 'id' => $expense->id,
+                'public_id' => $expense->public_id,
                 'voucher_no' => $expense->voucher_no,
                 'entry_date' => $expense->entry_date,
                 'category' => $expense->category->name,
@@ -152,6 +153,7 @@ class ExpenseController extends Controller
             'link' => $this->linkOf($expense),
             'expense' => [
                 'id' => $expense->id,
+                'public_id' => $expense->public_id,
                 'voucher_no' => $expense->voucher_no,
                 'version' => $expense->updated_at?->toIso8601String(),
                 'date' => $expense->entry_date,
@@ -211,6 +213,7 @@ class ExpenseController extends Controller
         return response()->json([
             'type' => $entry instanceof Purchase ? 'purchase' : 'sale',
             'id' => $entry->id,
+            'public_id' => $entry->public_id,
             'voucher_no' => $entry->voucher_no,
             'label' => $entry->voucher_no.' · '.$entry->party->name,
         ]);
@@ -244,7 +247,7 @@ class ExpenseController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
-            ->map(fn (ExpenseCategory $c): array => ['id' => $c->id, 'name' => $c->name, 'is_quick' => (bool) $c->is_quick])
+            ->map(fn (ExpenseCategory $c): array => ['id' => $c->id, 'public_id' => $c->public_id, 'name' => $c->name, 'is_quick' => (bool) $c->is_quick])
             ->all());
     }
 
@@ -270,6 +273,7 @@ class ExpenseController extends Controller
         return $entry === null ? null : [
             'type' => $entry instanceof Purchase ? 'purchase' : 'sale',
             'id' => $entry->id,
+            'public_id' => $entry->public_id,
             'voucher_no' => $entry->voucher_no,
             'label' => $entry->voucher_no.' · '.$entry->party->name,
         ];

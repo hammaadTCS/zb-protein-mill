@@ -81,26 +81,26 @@ final class EntrySources
                 ->mapWithKeys(fn (Purchase $p) => [$p->id => [
                     'voucher' => $p->voucher_no,
                     'description' => self::entryText($p->item->name, $p->kg, $p->rate_status === RateStatus::Fixed ? $p->rate : null),
-                    'route' => route('purchases.show', $p->id, false),
+                    'route' => route('purchases.show', $p, false),
                 ]])->all(),
             'sale' => Sale::query()->with('item')->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (Sale $s) => [$s->id => [
                     'voucher' => $s->voucher_no,
                     'description' => self::entryText($s->item->name, $s->kg, $s->rate_status === RateStatus::Fixed ? $s->rate : null),
-                    'route' => route('sales.show', $s->id, false),
+                    'route' => route('sales.show', $s, false),
                 ]])->all(),
             'payment' => Payment::query()->with('moneyAccount')->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (Payment $p) => [$p->id => [
                     'voucher' => $p->voucher_no,
                     'description' => ($p->direction === PaymentDirection::Paid ? 'Paid' : 'Received').' – '.$p->moneyAccount->name
                         .($p->reference_no !== null ? ' – '.$p->reference_no : ''),
-                    'route' => route('payments.show', $p->id, false),
+                    'route' => route('payments.show', $p, false),
                 ]])->all(),
             'expense' => Expense::query()->with('category')->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (Expense $e) => [$e->id => [
                     'voucher' => $e->voucher_no,
                     'description' => $e->category->name.' – '.$e->note,
-                    'route' => route('expenses.show', $e->id, false),
+                    'route' => route('expenses.show', $e, false),
                 ]])->all(),
             'partner_transaction' => PartnerTransaction::query()->with('moneyAccount')->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (PartnerTransaction $t) => [$t->id => [
@@ -108,17 +108,17 @@ final class EntrySources
                     'description' => $t->type->label().' – '.$t->moneyAccount->name,
                     'route' => null,
                 ]])->all(),
-            'adjustment' => Adjustment::query()->whereIn('id', $ids)->get()
+            'adjustment' => Adjustment::query()->with(['purchase', 'sale'])->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (Adjustment $a) => [$a->id => [
                     'voucher' => $a->voucher_no,
                     'description' => 'Agreed adjustment – '.$a->reason->value,
-                    'route' => $a->target_type === 'purchase' ? route('purchases.show', $a->purchase_id, false) : route('sales.show', $a->sale_id, false),
+                    'route' => $a->target_type === 'purchase' ? route('purchases.show', $a->purchase, false) : route('sales.show', $a->sale, false),
                 ]])->all(),
             'rate_correction' => RateCorrection::query()->with(['purchase', 'sale'])->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (RateCorrection $c) => [$c->id => [
                     'voucher' => $c->voucher_no,
                     'description' => 'Rate correction '.$c->target()->voucher_no.' – '.NumberFormat::plain($c->old_rate).' → '.NumberFormat::plain($c->new_rate),
-                    'route' => $c->target_type === 'purchase' ? route('purchases.show', $c->purchase_id, false) : route('sales.show', $c->sale_id, false),
+                    'route' => $c->target_type === 'purchase' ? route('purchases.show', $c->purchase, false) : route('sales.show', $c->sale, false),
                 ]])->all(),
             'transfer' => Transfer::query()->with(['fromAccount', 'toAccount'])->whereIn('id', $ids)->get()
                 ->mapWithKeys(fn (Transfer $t) => [$t->id => [

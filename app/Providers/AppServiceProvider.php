@@ -31,6 +31,7 @@ use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -53,6 +54,23 @@ class AppServiceProvider extends ServiceProvider
         $this->configureMorphMap();
         $this->configureAudit();
         $this->configureDevServer();
+        $this->configureRoutePatterns();
+    }
+
+    /**
+     * BR-SEC-19: every record in a route is named by its public id (HasPublicId), so a
+     * route only matches a UUID there; `/purchases/12` is 404 before any query runs.
+     */
+    protected function configureRoutePatterns(): void
+    {
+        $parameters = [
+            'party', 'purchase', 'sale', 'payment', 'expense', 'transfer', 'partnerTransaction',
+            'adjustment', 'attachment', 'moneyAccount', 'item', 'category', 'user',
+        ];
+
+        foreach ($parameters as $parameter) {
+            Route::pattern($parameter, Party::PUBLIC_ID_PATTERN);
+        }
     }
 
     /**

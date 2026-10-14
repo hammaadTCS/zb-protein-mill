@@ -12,12 +12,12 @@ trait PresentsEntries
     /**
      * Active cash and bank accounts for a form (BR-GEN-08).
      *
-     * @return list<array{id: int, name: string, type: string}>
+     * @return list<array{id: int, public_id: string, name: string, type: string}>
      */
     protected function moneyAccountOptions(): array
     {
         return array_values(MoneyAccount::query()->active()->orderBy('type')->orderBy('name')->get()
-            ->map(fn (MoneyAccount $account): array => ['id' => $account->id, 'name' => $account->name, 'type' => $account->type->value])
+            ->map(fn (MoneyAccount $account): array => ['id' => $account->id, 'public_id' => $account->public_id, 'name' => $account->name, 'type' => $account->type->value])
             ->all());
     }
 

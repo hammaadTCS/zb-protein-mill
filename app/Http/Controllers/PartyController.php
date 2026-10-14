@@ -67,6 +67,7 @@ class PartyController extends Controller
             'parties' => [
                 'data' => array_map(fn (Party $party): array => [
                     'id' => $party->id,
+                    'public_id' => $party->public_id,
                     'code' => $party->code,
                     'name' => $party->name,
                     'area' => $party->area,
@@ -119,12 +120,13 @@ class PartyController extends Controller
         return Inertia::render('parties/show', [
             'party' => [
                 'id' => $party->id,
+                'public_id' => $party->public_id,
                 'code' => $party->code,
                 'type' => $party->type->value,
                 'status' => $party->status->value,
                 'needs_review' => $party->needs_review || $party->bank_change_needs_review,
                 // BR-PTY-08: "Merged into {target}" on the source profile.
-                'merged_into' => $party->mergedInto === null ? null : ['id' => $party->mergedInto->id, 'code' => $party->mergedInto->code, 'name' => $party->mergedInto->name],
+                'merged_into' => $party->mergedInto === null ? null : ['id' => $party->mergedInto->id, 'public_id' => $party->mergedInto->public_id, 'code' => $party->mergedInto->code, 'name' => $party->mergedInto->name],
                 'balance' => $balance->toArray(),
                 'partner' => $balance->invested === null ? null : ['invested' => $balance->invested, 'withdrawn' => $balance->withdrawn, 'net' => $balance->net],
                 ...array_map(fn ($value) => $value instanceof \BackedEnum ? $value->value : $value, $party->only(Party::FORM_FIELDS)),
@@ -209,6 +211,7 @@ class PartyController extends Controller
         return Inertia::render('parties/form', [
             'party' => [
                 'id' => $party->id,
+                'public_id' => $party->public_id,
                 'code' => $party->code,
                 'status' => $party->status->value,
                 'has_entries' => $party->hasEntries(),
@@ -272,6 +275,7 @@ class PartyController extends Controller
         return response()->json([
             'data' => $parties->map(fn (Party $party): array => [
                 'id' => $party->id,
+                'public_id' => $party->public_id,
                 'code' => $party->code,
                 'type' => $party->type->value,
                 'label' => self::label($party),

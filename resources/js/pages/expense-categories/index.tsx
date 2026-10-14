@@ -26,6 +26,7 @@ import { deactivate, index, store, update } from '@/routes/expense-categories';
 
 type Category = {
     id: number;
+    public_id: string;
     name: string;
     code: string;
     is_quick: boolean;
@@ -99,7 +100,7 @@ export default function ExpenseCategories({
                                                 onClick={() =>
                                                     router.post(
                                                         deactivate.url(
-                                                            category.id,
+                                                            category.public_id,
                                                         ),
                                                         {},
                                                         {
@@ -154,7 +155,7 @@ function CategoryDialog({
                         };
 
                         if (category) {
-                            form.put(update.url(category.id), options);
+                            form.put(update.url(category.public_id), options);
                         } else {
                             form.post(store.url(), options);
                         }

@@ -40,9 +40,10 @@ class TimePages extends Command
         $start = (string) Settings::get(SettingKeys::SYSTEM_START_DATE);
         $today = Today::date();
         $year = ['from' => $start, 'to' => $today];
-        $cash = MoneyAccount::query()->orderBy('id')->value('id');
-        $supplier = Party::query()->where('type', 'supplier')->orderBy('id')->value('id');
-        $buyer = Party::query()->where('type', 'buyer')->orderBy('id')->value('id');
+        // The first of each, named by public id as every route is (BR-SEC-19).
+        $cash = MoneyAccount::query()->orderBy('id')->value('public_id');
+        $supplier = Party::query()->where('type', 'supplier')->orderBy('id')->value('public_id');
+        $buyer = Party::query()->where('type', 'buyer')->orderBy('id')->value('public_id');
 
         $pages = [
             'Dashboard' => route('dashboard', [], false),

@@ -92,7 +92,7 @@ it('page 19 shows the party with its balance and khata', function () {
             ->where('party.balance.words', 'We owe')
             ->where('party.balance.amount', '18800.00')
             ->has('khata.rows', 2)
-            ->where('khata.rows.0.route', route('purchases.show', Purchase::query()->where('voucher_no', 'PUR-000002')->value('id'), false)));
+            ->where('khata.rows.0.route', route('purchases.show', Purchase::query()->where('voucher_no', 'PUR-000002')->value('public_id'), false)));
 });
 
 it('R-07 page totals equal TrialBalance query totals', function () {

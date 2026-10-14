@@ -37,6 +37,7 @@ class ApprovalController extends Controller
 
                 return [
                     'id' => $p->id,
+                    'public_id' => $p->public_id,
                     'voucher_no' => $p->voucher_no,
                     'entry_date' => $p->entry_date,
                     'party' => $party->code.' – '.$party->name,

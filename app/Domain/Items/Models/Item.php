@@ -8,6 +8,7 @@ use App\Domain\Items\Enums\ItemType;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
  * Something the mill buys or sells by the kg (spec §9.2, D-07).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $code
  * @property string $name
@@ -40,6 +42,7 @@ use Illuminate\Support\Carbon;
 class Item extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

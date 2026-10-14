@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\MoneyAccounts\Models\MoneyAccount;
 use App\Domain\Transfers\Actions\CancelTransfer;
 use App\Domain\Transfers\Actions\CreateTransfer;
 use App\Domain\Transfers\Actions\UpdateTransfer;
@@ -31,8 +32,7 @@ class TransferController extends Controller
         $this->authorize('viewAny', Transfer::class);
 
         $filters = $this->listFilters($request, ['active', 'cancelled']);
-        $accountId = $request->validate(['money_account_id' => ['nullable', 'integer']])['money_account_id'] ?? null;
-        $accountId = $accountId === null ? null : (int) $accountId;
+        $accountId = MoneyAccount::idFromPublic($request->validate(['money_account_id' => ['nullable', 'string']])['money_account_id'] ?? null);
 
         $query = Transfer::query()
             ->with(['fromAccount', 'toAccount'])
@@ -53,11 +53,12 @@ class TransferController extends Controller
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();
 
         return Inertia::render('transfers/index', [
-            'filters' => [...$filters, 'money_account_id' => $accountId],
+            'filters' => $this->shownFilters([...$filters, 'money_account_id' => $accountId]),
             'money_accounts' => $this->moneyAccountOptions(),
             'total' => (string) ($total ?? '0.00'),
             'transfers' => $this->paginated($page, fn (Transfer $t): array => [
                 'id' => $t->id,
+                'public_id' => $t->public_id,
                 'voucher_no' => $t->voucher_no,
                 'entry_date' => $t->entry_date,
                 'from' => $t->fromAccount->name,
@@ -100,6 +101,7 @@ class TransferController extends Controller
             'money_accounts' => $this->moneyAccountOptions(),
             'transfer' => [
                 'id' => $transfer->id,
+                'public_id' => $transfer->public_id,
                 'voucher_no' => $transfer->voucher_no,
                 'version' => $transfer->updated_at?->toIso8601String(),
                 'date' => $transfer->entry_date,

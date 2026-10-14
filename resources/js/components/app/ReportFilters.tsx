@@ -15,7 +15,7 @@ export type ReportFilterValues = {
     type: string;
     from: string;
     to: string;
-    party_id: number | null;
+    party_id: string | null;
     [key: string]: string | number | null;
 };
 
@@ -76,7 +76,9 @@ export function ReportFilters({
                 types={[filters.type === 'sale' ? 'buyer' : 'supplier']}
                 value={party}
                 placeholder="All parties"
-                onChange={(picked) => apply({ party_id: picked?.id ?? null })}
+                onChange={(picked) =>
+                    apply({ party_id: picked?.public_id ?? null })
+                }
             />
             {children?.(apply)}
         </div>

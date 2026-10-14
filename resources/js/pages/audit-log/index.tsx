@@ -33,7 +33,7 @@ type Row = {
 };
 
 type Filters = {
-    user_id: number | null;
+    user_id: string | null;
     action: string;
     from: string;
     to: string;
@@ -56,7 +56,7 @@ export default function AuditLogPage({
 }: {
     logs: Paginated<Row>;
     filters: Filters;
-    users: { id: number; name: string }[];
+    users: { id: number; public_id: string; name: string }[];
     actions: { value: string; label: string }[];
     types: string[];
 }) {
@@ -100,10 +100,10 @@ export default function AuditLogPage({
                         onChange={(e) => apply({ to: e.target.value })}
                     />
                     <Select
-                        value={filters.user_id ? String(filters.user_id) : ALL}
+                        value={filters.user_id ? filters.user_id : ALL}
                         onValueChange={(value) =>
                             apply({
-                                user_id: value === ALL ? null : Number(value),
+                                user_id: value === ALL ? null : value,
                             })
                         }
                     >
@@ -115,7 +115,7 @@ export default function AuditLogPage({
                             {users.map((user) => (
                                 <SelectItem
                                     key={user.id}
-                                    value={String(user.id)}
+                                    value={user.public_id}
                                 >
                                     {user.name}
                                 </SelectItem>

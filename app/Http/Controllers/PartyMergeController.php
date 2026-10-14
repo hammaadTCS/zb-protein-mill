@@ -22,12 +22,15 @@ class PartyMergeController extends Controller
     {
         Gate::authorize('party.merge');
 
+        // BR-SEC-19: the address bar names both parties by public id (the merge posts ids).
         $input = $request->validate([
-            'source_id' => ['nullable', 'integer'],
-            'target_id' => ['nullable', 'integer'],
+            'source_id' => ['nullable', 'string'],
+            'target_id' => ['nullable', 'string'],
         ]);
-        $source = isset($input['source_id']) ? Party::query()->find((int) $input['source_id']) : null;
-        $target = isset($input['target_id']) ? Party::query()->find((int) $input['target_id']) : null;
+        $sourceId = Party::idFromPublic($input['source_id'] ?? null);
+        $targetId = Party::idFromPublic($input['target_id'] ?? null);
+        $source = $sourceId === null ? null : Party::query()->find($sourceId);
+        $target = $targetId === null ? null : Party::query()->find($targetId);
         $words = fn (PartyBalance $b): array => ['words' => $b->words, 'amount' => $b->amount];
         $result = null;
 
@@ -74,6 +77,7 @@ class PartyMergeController extends Controller
     {
         return [
             'id' => $party->id,
+            'public_id' => $party->public_id,
             'code' => $party->code,
             'type' => $party->type->value,
             'label' => PartyController::label($party),

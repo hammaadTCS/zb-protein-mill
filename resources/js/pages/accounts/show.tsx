@@ -40,7 +40,7 @@ export default function AccountStatementPage({
     statement,
     pages,
 }: {
-    account: { id: number; name: string; type: string };
+    account: { id: number; public_id: string; name: string; type: string };
     filters: { from: string; to: string };
     statement: {
         opening: string;
@@ -55,7 +55,7 @@ export default function AccountStatementPage({
     const formats = useFormats();
     const apply = (changes: Partial<typeof filters>) =>
         router.get(
-            show.url(account.id, { query: { ...filters, ...changes } }),
+            show.url(account.public_id, { query: { ...filters, ...changes } }),
             {},
             { preserveState: true, replace: true },
         );

@@ -34,11 +34,17 @@ import { PARTY_TYPE_LABELS } from './types';
 
 type Profile = {
     id: number;
+    public_id: string;
     code: string;
     type: PartyType;
     status: 'active' | 'inactive';
     needs_review: boolean;
-    merged_into: { id: number; code: string; name: string } | null;
+    merged_into: {
+        id: number;
+        public_id: string;
+        code: string;
+        name: string;
+    } | null;
     balance: { words: string; amount: string; pending_kg: string };
     partner: { invested: string; withdrawn: string; net: string } | null;
     name: string;
@@ -130,7 +136,7 @@ export default function PartyProfile({
                             <Button asChild>
                                 <Link
                                     href={newPurchase({
-                                        query: { party_id: party.id },
+                                        query: { party_id: party.public_id },
                                     })}
                                 >
                                     New purchase
@@ -143,7 +149,7 @@ export default function PartyProfile({
                             <Button asChild>
                                 <Link
                                     href={newSale({
-                                        query: { party_id: party.id },
+                                        query: { party_id: party.public_id },
                                     })}
                                 >
                                     New sale
@@ -156,7 +162,7 @@ export default function PartyProfile({
                             <Button variant="outline" asChild>
                                 <Link
                                     href={newPayment({
-                                        query: { party_id: party.id },
+                                        query: { party_id: party.public_id },
                                     })}
                                 >
                                     New payment
@@ -165,7 +171,7 @@ export default function PartyProfile({
                         )}
                     {can('party.update') && (
                         <Button variant="outline" asChild>
-                            <Link href={edit(party.id)}>Edit</Link>
+                            <Link href={edit(party.public_id)}>Edit</Link>
                         </Button>
                     )}
                 </PageHeader>
@@ -181,7 +187,7 @@ export default function PartyProfile({
                         <span className="text-sm">
                             Merged into{' '}
                             <Link
-                                href={show(party.merged_into.id)}
+                                href={show(party.merged_into.public_id)}
                                 className="font-medium underline underline-offset-4"
                             >
                                 {party.merged_into.name} (
@@ -225,7 +231,9 @@ export default function PartyProfile({
                                         variant="outline"
                                         onClick={() =>
                                             router.post(
-                                                markReviewed.url(party.id),
+                                                markReviewed.url(
+                                                    party.public_id,
+                                                ),
                                                 { what: 'new_party' },
                                                 { preserveScroll: true },
                                             )
@@ -277,7 +285,9 @@ export default function PartyProfile({
                                         variant="outline"
                                         onClick={() =>
                                             router.post(
-                                                markReviewed.url(party.id),
+                                                markReviewed.url(
+                                                    party.public_id,
+                                                ),
                                                 { what: 'bank_change' },
                                                 { preserveScroll: true },
                                             )
@@ -389,7 +399,7 @@ export default function PartyProfile({
                                     ),
                                 );
                                 router.get(
-                                    show.url(party.id, { query }),
+                                    show.url(party.public_id, { query }),
                                     {},
                                     { preserveState: true, replace: true },
                                 );
@@ -417,7 +427,7 @@ export default function PartyProfile({
                                 Show
                             </Button>
                             <SharePdfButton
-                                href={statement.url(party.id, {
+                                href={statement.url(party.public_id, {
                                     query: Object.fromEntries(
                                         Object.entries({
                                             from: khata.from ?? '',

@@ -34,6 +34,7 @@ type ItemType = 'raw_material' | 'fuel' | 'product';
 
 type Item = {
     id: number;
+    public_id: string;
     code: string;
     name: string;
     type: ItemType;
@@ -116,7 +117,9 @@ export default function Items({ items }: { items: Item[] }) {
                                                 size="sm"
                                                 onClick={() =>
                                                     router.post(
-                                                        deactivate.url(item.id),
+                                                        deactivate.url(
+                                                            item.public_id,
+                                                        ),
                                                         {},
                                                         {
                                                             preserveScroll: true,
@@ -163,7 +166,7 @@ function ItemDialog({
         const options = { preserveScroll: true, onSuccess: onClose };
 
         if (item) {
-            form.put(update.url(item.id), options);
+            form.put(update.url(item.public_id), options);
         } else {
             form.post(store.url(), options);
         }

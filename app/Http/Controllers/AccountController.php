@@ -27,6 +27,7 @@ class AccountController extends Controller
                 ->get()
                 ->map(fn (MoneyAccount $account): array => [
                     'id' => $account->id,
+                    'public_id' => $account->public_id,
                     'name' => $account->name,
                     'type' => $account->type->value,
                     'is_active' => $account->is_active,
@@ -53,7 +54,7 @@ class AccountController extends Controller
         $page = $statement['page'];
 
         return Inertia::render('accounts/show', [
-            'account' => ['id' => $moneyAccount->id, 'name' => $moneyAccount->name, 'type' => $moneyAccount->type->value],
+            'account' => ['id' => $moneyAccount->id, 'public_id' => $moneyAccount->public_id, 'name' => $moneyAccount->name, 'type' => $moneyAccount->type->value],
             'filters' => ['from' => $from, 'to' => $to],
             'statement' => $statement,
             // BR-RPT-09: previous / next for the shared Pagination component.

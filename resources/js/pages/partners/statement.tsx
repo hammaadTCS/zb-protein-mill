@@ -24,7 +24,7 @@ type Row = {
     net: string;
 };
 
-type Filters = { from: string; to: string; party_id: number | null };
+type Filters = { from: string; to: string; party_id: string | null };
 
 /**
  * Page 23, R-09: invested, withdrawn and net invested per partner for a date range.
@@ -80,7 +80,7 @@ export default function PartnerStatement({
                         value={party}
                         placeholder="All partners"
                         onChange={(picked) =>
-                            apply({ party_id: picked?.id ?? null })
+                            apply({ party_id: picked?.public_id ?? null })
                         }
                     />
                 </div>

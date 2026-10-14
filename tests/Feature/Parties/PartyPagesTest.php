@@ -40,7 +40,7 @@ it('search by mobile digits finds the party', function () {
     $response = $this->actingAs($owner)->getJson(route('parties.search', ['q' => '0300-0000002']))->assertOk();
 
     expect($response->json('data'))->toBe([
-        ['id' => Party::query()->where('name', 'Karim')->value('id'), 'code' => 'S-0002', 'type' => 'supplier', 'label' => 'Karim – Mandian – 03000000002'],
+        ['id' => Party::query()->where('name', 'Karim')->value('id'), 'public_id' => Party::query()->where('name', 'Karim')->value('public_id'), 'code' => 'S-0002', 'type' => 'supplier', 'label' => 'Karim – Mandian – 03000000002'],
     ]);
 });
 

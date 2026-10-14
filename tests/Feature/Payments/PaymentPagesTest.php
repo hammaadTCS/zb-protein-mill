@@ -68,12 +68,12 @@ it('payment detail shows linked purchase or sale', function () {
     $this->actingAs($owner)->get(route('payments.show', $purchase->payments()->sole()))
         ->assertInertia(fn (Assert $page) => $page
             ->component('payments/show')
-            ->where('payment.linked', ['type' => 'purchase', 'id' => $purchase->id, 'voucher_no' => 'PUR-000001'])
+            ->where('payment.linked', ['type' => 'purchase', 'id' => $purchase->id, 'public_id' => $purchase->public_id, 'voucher_no' => 'PUR-000001'])
             ->where('payment.method', 'Cash'));
 
     $this->actingAs($owner)->get(route('payments.show', $sale->payments()->sole()))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('payment.linked', ['type' => 'sale', 'id' => $sale->id, 'voucher_no' => 'SAL-000001'])
+            ->where('payment.linked', ['type' => 'sale', 'id' => $sale->id, 'public_id' => $sale->public_id, 'voucher_no' => 'SAL-000001'])
             ->where('payment.method', 'Bank transfer')
             ->where('payment.reference_no', 'AT1-REF-06'));
 });
@@ -81,7 +81,7 @@ it('payment detail shows linked purchase or sale', function () {
 it('page 10 opens with the party pre-selected from the profile; a new payment opens its detail page', function () {
     [$owner, $world] = paymentPagesWorld();
 
-    $this->actingAs($owner)->get(route('payments.create', ['party_id' => $world['parties']['karim']->id]))
+    $this->actingAs($owner)->get(route('payments.create', ['party_id' => $world['parties']['karim']->public_id]))
         ->assertInertia(fn (Assert $page) => $page->component('payments/create')->where('party.label', 'Karim – Mandian – 03000000002'));
 
     $this->actingAs($owner)->post(route('payments.store'), [

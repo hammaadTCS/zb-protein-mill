@@ -28,7 +28,7 @@ export default function RatesReport({
     filters: ReportFilterValues;
     party: PartyOption | null;
     monthly: boolean;
-    items: { id: number; name: string }[];
+    items: { id: number; public_id: string; name: string }[];
     groups: RateGroup[];
 }) {
     return (
@@ -53,8 +53,7 @@ export default function RatesReport({
                             }
                             onValueChange={(value) =>
                                 apply({
-                                    item_id:
-                                        value === ALL ? null : Number(value),
+                                    item_id: value === ALL ? null : value,
                                 })
                             }
                         >
@@ -66,7 +65,7 @@ export default function RatesReport({
                                 {items.map((item) => (
                                     <SelectItem
                                         key={item.id}
-                                        value={String(item.id)}
+                                        value={item.public_id}
                                     >
                                         {item.name}
                                     </SelectItem>

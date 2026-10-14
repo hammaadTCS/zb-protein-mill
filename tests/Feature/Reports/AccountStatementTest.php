@@ -18,7 +18,7 @@ it('R-06 HBL after AT-1', function () {
         ->and($statement['rows'][0])->toMatchArray(['voucher' => 'PAY-000003', 'party' => 'Bashir', 'out' => '20000.00', 'balance' => '280000.00'])
         ->and(collect($statement['rows'])->firstWhere('description', 'Transfer – HBL → Cash – AT1-REF-17')['out'])->toBe('20000.00');
 
-    $this->actingAs($runner->accountant)->get(route('accounts.show', ['moneyAccount' => $hbl->id, 'from' => '2026-01-01', 'to' => '2026-01-31']))
+    $this->actingAs($runner->accountant)->get(route('accounts.show', ['moneyAccount' => $hbl->public_id, 'from' => '2026-01-01', 'to' => '2026-01-31']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('accounts/show')->where('statement.closing', '417600.00'));
 

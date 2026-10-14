@@ -53,6 +53,7 @@ type EntryFormData = {
 /** The saved values of a purchase or sale being edited (BR-PUR-11). */
 export type EditedEntry = {
     id: number;
+    public_id: string;
     voucher_no: string;
     version: string;
     date: string;
@@ -169,7 +170,7 @@ export function EntryForm({
                     confirmed_warnings: confirmed,
                 };
             });
-            form.put(routes.update.url(purchase.id), {
+            form.put(routes.update.url(purchase.public_id), {
                 onHttpException: (response) => {
                     if (response.status === 409) {
                         // BR-GEN-09: someone else saved this entry first.

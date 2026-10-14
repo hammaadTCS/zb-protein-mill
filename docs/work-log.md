@@ -1249,4 +1249,5 @@ Each one is explained in the task section named in brackets. Nothing here blocks
     - the party profile keeps its entry-by-entry rate and weight tabs;
     - an unknown public id in a filter answers 404, like a record URL;
     - the dev server uses 4 workers.
-18. **New npm advisory (appeared during this session):** `npm audit` reports 3 critical issues in `tinypool` (GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr), used by `oxfmt` through `vite-plus` (build, lint and format tooling, not sent to browsers). The morning baseline had 0. The fix is `vite-plus@0.3.3`, outside the range in `package.json`; a package change needs your approval (CLAUDE.md). CI's audit step fails until then.
+18. **npm advisory (correction):** `npm audit` over all packages lists 3 critical `tinypool` advisories inside `vite-plus` 0.3.0 (development tools only). They are not new: `docs/installed-versions.md` recorded them at T0.1. The project check (`npm audit --omit=dev --audit-level=high`, in CI and `check-all.sh`) finds 0. The fix (`vite-plus` 0.3.3) is not applied: `docs/stack-baseline.md` (protected) pins 0.3.0, so it needs a `[spec-change]` first. Say if you want it.
+19. **CI front-end unit tests failed since PR #3** (`CI=true` made `laravel-vite-plugin` refuse Vitest's server). Fixed in `vite.config.ts`: only Vitest skips that check.

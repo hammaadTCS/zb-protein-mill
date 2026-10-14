@@ -21,11 +21,13 @@ const ALL = 'all';
 export default function RatesReport({
     filters,
     party,
+    monthly,
     items,
     groups,
 }: {
     filters: ReportFilterValues;
     party: PartyOption | null;
+    monthly: boolean;
     items: { id: number; name: string }[];
     groups: RateGroup[];
 }) {
@@ -73,7 +75,12 @@ export default function RatesReport({
                         </Select>
                     )}
                 </ReportFilters>
-                <RateHistory groups={groups} />
+                {monthly && (
+                    <p className="text-sm text-muted-foreground">
+                        Periods longer than 3 months show one line per month.
+                    </p>
+                )}
+                <RateHistory groups={groups} monthly={monthly} />
             </div>
         </>
     );

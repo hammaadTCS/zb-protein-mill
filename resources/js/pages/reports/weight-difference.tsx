@@ -12,10 +12,12 @@ import { weightDifference } from '@/routes/reports';
 export default function WeightDifferenceReport({
     filters,
     party,
+    monthly,
     groups,
 }: {
     filters: ReportFilterValues;
     party: PartyOption | null;
+    monthly: boolean;
     groups: WeightGroup[];
 }) {
     return (
@@ -33,7 +35,12 @@ export default function WeightDifferenceReport({
                     filters={filters}
                     party={party}
                 />
-                <WeightDifferences groups={groups} />
+                {monthly && (
+                    <p className="text-sm text-muted-foreground">
+                        Periods longer than 3 months show one line per month.
+                    </p>
+                )}
+                <WeightDifferences groups={groups} monthly={monthly} />
             </div>
         </>
     );

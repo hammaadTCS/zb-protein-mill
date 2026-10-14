@@ -1,11 +1,13 @@
 import { Share2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 /**
  * Card T6.10, D-35: "Share PDF" sends the statement or slip through the phone's share
  * sheet (Web Share API with the file) where the browser can, and downloads it
- * otherwise.
+ * otherwise. A refused request (for example a statement over 3 months, BR-RPT-11)
+ * shows the server's message instead of saving a page as the file.
  */
 export function SharePdfButton({
     href,
@@ -22,10 +24,23 @@ export function SharePdfButton({
         try {
             const response = await fetch(href, {
                 credentials: 'same-origin',
-                headers: { Accept: 'application/pdf' },
+                // JSON first: a validation error comes back as 422 with its message.
+                headers: { Accept: 'application/json, application/pdf' },
             });
 
-            if (!response.ok) {
+            if (response.status === 422) {
+                const body = (await response.json()) as { message?: string };
+
+                if (body.message) {
+                    toast.error(body.message);
+
+                    return;
+                }
+            }
+
+            const type = response.headers.get('Content-Type') ?? '';
+
+            if (!response.ok || !type.startsWith('application/pdf')) {
                 // Let the browser show the server's error page.
                 window.location.assign(href);
 

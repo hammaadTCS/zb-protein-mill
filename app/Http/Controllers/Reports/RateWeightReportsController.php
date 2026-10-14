@@ -7,6 +7,7 @@ use App\Domain\Items\Models\Item;
 use App\Domain\Reports\Queries\RateWeightReports;
 use App\Http\Controllers\Concerns\ListsEntries;
 use App\Http\Controllers\Controller;
+use App\Support\Dates;
 use App\Support\Today;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +15,11 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Pages 37, 38 and 39: R-10 rates, R-11 weight difference, R-12 adjustments. */
+/**
+ * Pages 37, 38 and 39: R-10 rates, R-11 weight difference, R-12 adjustments.
+ * BR-RPT-10: over a range longer than 3 months, rates and weights show one line per
+ * month (`monthly` true) instead of one per entry; totals and averages are the same.
+ */
 class RateWeightReportsController extends Controller
 {
     use ListsEntries;
@@ -24,6 +29,7 @@ class RateWeightReportsController extends Controller
         Gate::authorize('report.view');
 
         $filters = $this->filters($request, ['item_id' => ['nullable', 'integer']]);
+        $monthly = Dates::longerThanThreeMonths($filters['from'], $filters['to']);
 
         return Inertia::render('reports/rates', [
             'filters' => $filters,
@@ -31,7 +37,8 @@ class RateWeightReportsController extends Controller
             'items' => Item::query()->orderBy('id')->get()
                 ->filter(fn (Item $item) => $item->type->isBought() === ($filters['type'] === 'purchase'))
                 ->map(fn (Item $item): array => ['id' => $item->id, 'name' => $item->name])->values(),
-            'groups' => RateWeightReports::rates($filters),
+            'monthly' => $monthly,
+            'groups' => $monthly ? RateWeightReports::rateMonths($filters) : RateWeightReports::rates($filters),
         ]);
     }
 
@@ -40,11 +47,13 @@ class RateWeightReportsController extends Controller
         Gate::authorize('report.view');
 
         $filters = $this->filters($request);
+        $monthly = Dates::longerThanThreeMonths($filters['from'], $filters['to']);
 
         return Inertia::render('reports/weight-difference', [
             'filters' => $filters,
             'party' => $this->partyOption($filters['party_id']),
-            'groups' => RateWeightReports::weights($filters),
+            'monthly' => $monthly,
+            'groups' => $monthly ? RateWeightReports::weightMonths($filters) : RateWeightReports::weights($filters),
         ]);
     }
 

@@ -42,14 +42,26 @@ class AccountController extends Controller
         $this->authorize('view', $moneyAccount);
 
         $today = Today::date();
-        $input = $request->validate(['from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d']]);
+        $input = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
         $from = (string) ($input['from'] ?? substr($today, 0, 8).'01'); // spec §11.2: current month
         $to = (string) ($input['to'] ?? $today);
+        $statement = AccountStatement::for($moneyAccount, $from, $to, (int) ($input['page'] ?? 1));
+        $page = $statement['page'];
 
         return Inertia::render('accounts/show', [
             'account' => ['id' => $moneyAccount->id, 'name' => $moneyAccount->name, 'type' => $moneyAccount->type->value],
             'filters' => ['from' => $from, 'to' => $to],
-            'statement' => AccountStatement::for($moneyAccount, $from, $to),
+            'statement' => $statement,
+            // BR-RPT-09: previous / next for the shared Pagination component.
+            'pages' => [
+                ...$page,
+                'prev_page_url' => $page['current_page'] > 1 ? $request->fullUrlWithQuery(['page' => $page['current_page'] - 1]) : null,
+                'next_page_url' => $page['current_page'] < $page['last_page'] ? $request->fullUrlWithQuery(['page' => $page['current_page'] + 1]) : null,
+            ],
         ]);
     }
 }

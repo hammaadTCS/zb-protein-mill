@@ -38,6 +38,12 @@ Read these first: `README.md`, `START-HERE.md`, `docs/README.md` (map of every d
 5. Optional demo data: `php artisan db:seed --class=DemoSeeder`.
 6. `composer run dev` — starts the app at http://127.0.0.1:8000 with Vite.
 
+Speed on the laptop (T9.2, measured):
+- `composer run dev` runs `php artisan serve --no-reload`, so `PHP_CLI_SERVER_WORKERS=4` in `.env` lets it answer 4 requests at once (copy the line from `.env.example` into an older `.env`). Restart it after any `.env` change.
+- Server-side rendering is off (`config/inertia.php`): servers never build an SSR bundle, and with it on the Vite dev server rendered every full page load first (up to 16 seconds for `/login`).
+- The Vite dev server serves hundreds of separate files. To see the real speed, run `npm run build` and stop `npm run dev`: the app then loads the built files, as the server does (the server also compresses them; `artisan serve` does not).
+- OPcache is already on for `php artisan serve` (PHP's built-in server uses it even with `opcache.enable_cli` off).
+
 ## 3. Running every check
 
 `bash scripts/check-all.sh` runs everything CI runs, in the same order: tests (`php artisan test`, PostgreSQL only), Pint, Larastan level 7, vite-plus lint and format (`npm run check`), TypeScript (`npm run types:check`), front-end tests (`npm test`), the project guard, the secret scan and the dependency audits. It must print **ALL CHECKS PASSED** before a pull request.

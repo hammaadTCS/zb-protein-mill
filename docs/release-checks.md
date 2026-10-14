@@ -110,3 +110,59 @@ From `npm run build` (gzip):
 | Dashboard | 196.2 kB (15 files) | 15.6 kB + 0.4 kB fonts |
 
 The largest single file is the Wayfinder route chunk (109.5 kB gzip): the signed-in menu imports the route helpers of every page, and the bundler puts them in one shared file that the login page also loads. Each page's own code is split out (login 1.1 kB, dashboard 2.1 kB). Files have content hashes for one-year caching. Possible improvement (not done, it changes the starter kit's layout loading): load the signed-in layout only after login.
+
+### M9 re-measure (T9.2, T9.4, T9.5)
+
+Measured on 14 October 2026 on the developer's laptop: Intel Core i5-6440HQ (4 cores, 2016), 7 GB RAM, PHP 8.3.6, PostgreSQL 16, everything on one machine. This machine is several times slower than the cloud container above (the same `PerformanceSeeder` took 234 minutes here). Data: `PerformanceSeeder`, 100,000 entries over 12 months, database `zb_mill_perf`. Timing: `php artisan zb:time-pages`, slowest of three runs. "Before" is commit `89da53a` (the end of T8.2), run with `INERTIA_DEVTOOLS_ENABLED=false` so both columns measure the same thing (see the note under the table); "after" is the M9 code (`eb804ae`). Nothing else ran on the machine during either run.
+
+| Page | Before (ms) | After (ms) | Under 3 s |
+| --- | --- | --- | --- |
+| Dashboard | 6,465 | 1,419 | yes |
+| Purchases / Sales / Payments / Expenses / Transfers lists | 41–102 | 49–99 | yes |
+| Purchases, 12 months | 156 | 155 | yes |
+| Parties list | 193 | 201 | yes |
+| Supplier profile and khata | 1,499 | 1,557 | yes |
+| Buyer profile and khata | 899 | 898 | yes |
+| Partners, Partner statement | 40–96 | 48–102 | yes |
+| Accounts | 351 | 292 | yes |
+| Account statement (this month) | 451 | 241 | yes |
+| Account statement, 12 months | 6,842 | 383 | yes |
+| Rate pending | 1,417 | 1,423 | yes |
+| Approvals, Cash check | 32–46 | 33–46 | yes |
+| Daily summary | 446 | 351 | yes |
+| Pending balances | 6,006 | 1,126 | yes |
+| Expense report, 12 months | 1,235 | 1,288 | yes |
+| Trial balance (with and without parties) | 341–344 | 299–300 | yes |
+| Income vs Spending, 12 months | 349 | 311 | yes |
+| Rate report (this month) | 814 | 804 | yes |
+| Rate report, 12 months | 19,170 | 1,117 | yes |
+| Weight difference (this month) | 344 | 299 | yes |
+| Weight difference, 12 months | 6,778 | 377 | yes |
+| Adjustments report, 12 months | 53 | 39 | yes |
+| Business insights (3 months) | 8,279 | 2,229 | yes |
+| Business insights, 12 months | 11,072 | 2,662 | yes |
+| Audit log | 274 | 222 | yes |
+| Month-end close, Months | 70–282 | 72–276 | yes |
+| Statement PDF, this month | 1,461 | 1,481 | yes |
+| Statement PDF, 12 months (before) / 3 months, the longest BR-RPT-11 allows (after) | 62,851 | 6,984 | **no** |
+
+What changed it:
+- Dashboard, pending balances and business insights: the oldest-first figures of spec §12.6 (overdue, average days to pay) now come from one PostgreSQL query for all buyers (`Ageing::overdueMany`, `averageDaysToPayMany`), instead of a PHP match per buyer over its whole history. A one-off comparison on this database (30 buyers, 4 dates and periods, 240 values) found no difference from the old calculation; `AgeingOverdueManyTest` keeps proving it.
+- Account statement, rate report, weight difference: BR-RPT-09 and BR-RPT-10 (100 rows per page; monthly lines over 3 months).
+- Statement PDF: BR-RPT-11 (at most 3 months).
+
+**Still over 3 seconds: the 3-month statement PDF of the busiest supplier** (349 rows, 15 pages): 0.5 s for the figures and 5.8 s inside the PDF library (dompdf), about 17 ms per row on this machine. Measured alternatives: separate borders 5.0 s, fixed table layout 6.2 s, no row page-break rule 5.8 s, no font subsetting 5.9 s, the table split into chunks of 40 rows 4.3 s (but every chunk repeats the header row, a visible change). A month of the same supplier takes 1.5 s. This needs a decision: see `docs/work-log.md`, M9.
+
+**Note on DevTools.** The same "before" code with Inertia DevTools on (its default for `APP_ENV=local` before T9.1) was much slower on the laptop: for example, the expense report 4,651 ms instead of 1,235 ms, and the supplier khata 4,322 ms instead of 1,499 ms, because DevTools wrote every page's data to disk. Servers never had it on (`APP_ENV=production`), so the table above leaves it out of both columns. Since T9.1 it is off unless a developer turns it on.
+
+**Laptop speed with `composer run dev`** (server time of a full page load, local database with demo data):
+
+| Mode | /login | /dashboard |
+| --- | --- | --- |
+| Vite dev server running, SSR on (before T9.2) | 0.5–16.7 s | 0.36–2.3 s |
+| Vite dev server running, SSR off (T9.2) | 0.12–0.19 s | 0.30–0.62 s |
+| Built files, no Vite | 0.11–0.17 s | 0.32–0.55 s |
+
+Eight requests at once (hover prefetches): 1.1–1.5 s with one `artisan serve` worker, 0.5–0.8 s with `PHP_CLI_SERVER_WORKERS=4` (T9.2). OPcache was already on for `artisan serve`.
+
+**Front-end size, re-measured** (gzip level 9 of the built files the page loads): login 190.8 kB JavaScript (16 files), dashboard 189.4 kB (15 files), CSS 14.8 kB. Correction to the note above: the largest shared file (105.5 kB) is named after Wayfinder but holds React, ReactDOM, the Inertia client and the Wayfinder runtime, which every page needs; the route helpers and the signed-in layout are in `app-*.js` (57.4 kB). Loading the signed-in layout lazily would take part of that off the first login only (the files are cached for a year), and would add a request before every signed-in page's first view, so it was not done.

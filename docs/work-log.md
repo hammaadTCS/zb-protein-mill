@@ -7,11 +7,11 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 
 | Item | Status |
 | --- | --- |
-| Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
-| State | **All Claude tasks built (T0.1 to T8.3, Claude's part).** T8.2 is built but not ticked: four 12-month views are over 3 seconds (your decision). One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
+| Current task | M9: the developer's requests of 14 October 2026 (Accountant dashboard, speed, clean and protected links, the T8.2 views) |
+| State | **M9 built on the branch below (T9.1 to T9.5, one commit each).** Its card and spec text are in `docs/proposals/G-31-m9.patch`, waiting for the client's written approval and your `[spec-change]` pull request. Still open from before: G-30, T8.2 (now one PDF over 3 s, see M9), T7.6 restore |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8, T8.1 (T7.6 and T8.2 built, not ticked: see below) |
-| Next task | Your decisions (see "Questions for you" at the end) and your tasks: T2.10, the T7.6 restore, T8.3 staging, T8.4 to T8.7 |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8, T8.1, T9.1, T9.4, T9.5 (T7.6, T8.2, T9.2 and T9.3 built, not ticked: see below) |
+| Next task | Your decisions (see "Questions for you" at the end), the G-31 `[spec-change]` pull request, and your tasks: T2.10, the T7.6 restore, T8.3 staging, T8.4 to T8.7 |
 
 
 ## How to test on your laptop
@@ -1167,6 +1167,52 @@ So I left **T8.2 unticked** in `docs/tasks.md`: its "done when" says every repor
 Also found: the Wayfinder route file (109 kB gzip) is loaded on the login page because the signed-in menu imports every page's route helpers. Loading the signed-in layout only after login would remove it from the login page; it changes the starter kit's layout loading, so I left it as a proposal.
 - Tests: the existing ageing, dashboard, insights and acceptance tests still pass (the counts and figures are unchanged); new `RememberSettingsTest` (one query per setting inside a GET request; fresh reads outside it; a set inside it is seen).
 
+## M9 Requested changes before go-live (T9.1 to T9.5)
+
+Your request (14 October 2026): a simple dashboard (or none) for the Accountant; faster loading, felt on the laptop with `composer run dev`, after `npm run build`, and on the first page and login; links sanitised "like a protected CRM" (you chose: remove leftover links, and hide record numbers in URLs); and the four slow 12-month views of T8.2 with my recommendation. You asked me to build it straight away.
+
+**How the process was kept.** Every change of what the system shows was approved by the CEO in the current documents, and those are protected files: spec §7, §9.1, §11.3, §12, §13.1, the glossary, the requirements, the cards. So the exact text is in `docs/proposals/G-31-m9.patch` (new card `docs/cards/M9.md`, spec update 7, glossary words, traceability, security and conventions rows; `git apply --check` passes). Spec §20.3: the client's written approval comes first, then you apply it in a `[spec-change]` pull request. The code is on the branch now and matches that text.
+
+Baseline before starting: `bash scripts/check-all.sh` ALL CHECKS PASSED (588 PHP tests at the end; 18 minutes on the laptop).
+
+### T9.1 Starter-kit leftovers and log safety
+- Deleted four unused kit files; `app-header.tsx` linked to GitHub and laravel.com. Nothing imported them.
+- Found while checking routes and logs (not guessed):
+  - **BR-SEC-17 break:** `WarningRequired` and `ConcurrentEdit` were written to `laravel.log` as errors, and a duplicate-party warning holds the party's name and code ("A party with this mobile already exists: Aslam (S-0001)"). They are now in `dontReport`.
+  - **Inertia DevTools** turned itself on in every `APP_ENV=local` and saved every page's data (names, amounts) under `storage/inertia-devtools/` (3.4 MB on your laptop; git ignores it; I did not delete it). It is now off unless `INERTIA_DEVTOOLS_ENABLED=true`, and never outside `local`.
+- `ProtectedAppTest`: no warning or concurrent edit is reported; DevTools is off and local-only; no screen links to another site. Without the fix, 3 of its 5 tests fail.
+
+### T9.2 Speed
+Measured first, on your laptop:
+- **Cause of the slow first page and login in dev:** `config/inertia.php` had SSR on. With Vite running, every full page load was sent to the Vite dev server to render on the server first: `/login` 0.5 to 16.7 s, `/dashboard` up to 2.3 s. SSR off (servers never build an SSR bundle; `release.yml` runs `npm run build` only): 0.12 to 0.19 s and 0.3 to 0.6 s.
+- One `artisan serve` worker: 8 requests at once took 1.1 to 1.5 s; with `PHP_CLI_SERVER_WORKERS=4` (now in `.env.example`; `composer run dev` runs `serve --no-reload` so it is used) 0.5 to 0.8 s. **Copy that line into your `.env`.**
+- **Correction of my plan:** OPcache is already on for `artisan serve`; there was nothing to change there.
+- **Correction of T8.2's note:** the 109 kB "wayfinder" file is React, ReactDOM and the Inertia client, not the route helpers. Lazy-loading the layout was not done (reason in release checks).
+- On 100,000 entries the dashboard (6.5 s) and business insights (8 to 11 s) spent their time in the oldest-first match of spec §12.6, run in PHP for every buyer.
+  - `Ageing::overdueMany` and `averageDaysToPayMany` give the same figures with one PostgreSQL query each (numeric, exact; the final division stays in `Decimal`).
+  - Proof: `AgeingOverdueManyTest` (the rule against the existing match on 3,000 seeded random histories; both queries against the old functions on AT-2 and on a random history posted through the Actions), plus a one-off comparison of 240 values on the 100,000-entry database with no difference.
+  - Two dead ends, measured and reverted: replacing `array_shift` changed nothing, and a first SQL version took 134 s (a nested-loop join, then a window frame recounted per row) before the final one.
+- Results: `docs/release-checks.md`, "M9 re-measure". Every page is under 3 s on the laptop except the 3-month statement PDF (question 15 below). **T9.2 is not ticked** for that reason.
+
+### T9.3 Accountant dashboard
+- New permission `dashboard.balances` (Owner only; `SystemDataSeeder` adds it on deploy). Without it the dashboard shows Today, the user's alerts and the quick buttons, and the balances are not computed. The Owner's dashboard is unchanged.
+- **On your laptop run `php artisan db:seed --class=SystemDataSeeder` once**, or the Owner's balances block stays hidden too.
+- Not ticked: the card asks for 375 px screenshots of both roles, and this session had no browser.
+
+### T9.4 Long report ranges
+- Account statement: 100 rows per page, running balance in PostgreSQL, "Brought forward" on later pages; opening, closing and totals over the whole range.
+- Rate report and weight difference: one line per month per party (and item) for ranges longer than 3 months, summed in SQL, rate corrections included; the totals and averages are the same as entry by entry.
+- Statement PDF: at most 3 months. Without a period it covers the last 3 months up to today (a plain limit would have refused the default "Share PDF" once the system is 3 months old).
+- "Share PDF" now shows the refusal message instead of saving the error page as the file (it did that for any refused request before).
+- One rule for "3 months" (`Dates::threeMonthsBefore`): 1 January to 31 March is 3 months, to 1 April is longer. My first version disagreed at month ends; the test caught it.
+
+### T9.5 Public ids in URLs
+- `public_id uuid` with `DEFAULT gen_random_uuid()` on the 13 linked tables. The database fills it, so a rollback to the previous release still works; 4 s on the 100,000-entry database.
+- Routes match only a UUID; filters and links use it. Form bodies and background lookups keep internal numbers.
+- What it does not do: the page data still holds internal numbers that forms post. The protection stays the permission on every route (T-09) and the company scope (now also tested by public id).
+- **Existing tests I changed** (only a URL with an internal number, or an exact array that now also has `public_id`): `RoutePermissionTest` (its parameter table), `AuditLogPageTest`, `MergePartiesTest`, `AccountStatementTest`, `PurchasePagesTest`, `ExpensePagesTest`, `PaymentPagesTest`, `PartyPagesTest`, `PartyKhataTest`; and `RolesAndPermissionsTest` (T9.3: its copy of the §7 list gains `dashboard.balances`). No expected amount, journal line or permission changed.
+- **On your laptop run `php artisan migrate`.**
+
 ## Questions for you (all in one place)
 
 Each one is explained in the task section named in brackets. Nothing here blocks testing on your laptop.
@@ -1175,7 +1221,7 @@ Each one is explained in the task section named in brackets. Nothing here blocks
 1. **G-30 spec change** (T0.1): apply `docs/proposals/G-30-cloud-composer.patch` in a `[spec-change]` pull request.
 2. **Party merge posting has no PR number** (T7.4): CLAUDE.md rule 2 says PR-01 to PR-27 are the only postings, but BR-PTY-08 and card T7.4 require the merge journal. Proposed: add "PR-28 Party merge" to spec §8.3 and allow it in CLAUDE.md rule 2.
 3. **README "Backups and restore"** (T7.6): README.md is protected; the proposed text is in the T7.6 section.
-4. **Four 12-month views over 3 seconds** (T8.2): choose paging, monthly summaries or a range limit. T8.2 stays unticked until then.
+4. **Four 12-month views over 3 seconds** (T8.2): done in M9 with my recommendation (T9.4); see question 15 for the one PDF still over 3 seconds.
 5. **Charts** (T7.5): the card says shadcn charts, which need the `recharts` package (not allowed without your approval). Built with simple bars instead.
 6. **Login by e-mail** (see the note on the requirements PDF): the client PDF says "username"; the spec and the starter kit use e-mail.
 
@@ -1189,4 +1235,17 @@ Each one is explained in the task section named in brackets. Nothing here blocks
 11. PDFs: DejaVu Sans font (no IBM Plex Sans TTF in the repository); kg follows `kg_decimals` ("800.000 kg" with the test value 3) (T6.10).
 12. The rate report and insights use the corrected rate after a rate correction (T6.8, T7.5); settled parties are left out of pending balances even with pending kg (pending balances task).
 13. A buyer or partner cannot be the party of a paid expense (expenses task).
-14. The login page loads the 109 kB route file because of the signed-in menu (T8.2); fixing it changes the kit's layout loading.
+14. ~~The login page loads the 109 kB route file~~: corrected in M9, that file is React and the Inertia client, needed by every page.
+
+**M9 (14 October 2026)**
+15. **The 3-month statement PDF of the busiest supplier takes 7 s on your laptop** (349 rows; 5.8 s inside dompdf). Choose one:
+    - (a) keep it: the server is likely faster, so measure it on staging (T8.3);
+    - (b) 1 month per PDF (1.5 s here);
+    - (c) split the table in chunks (4.3 s here, but a header row repeats inside each page);
+    - (d) make PDFs in a background queue (larger change).
+16. **G-31 spec change:** get the client's written approval (spec §20.3), then apply `docs/proposals/G-31-m9.patch` in a `[spec-change]` pull request. Also update the client documents in `docs/client/` (protected, Word and PDF), whose dashboard row still says "Both".
+17. **Defaults I chose in M9** (say if any should change):
+    - the Accountant still sees balances on the Accounts page (`account.view` unchanged);
+    - the party profile keeps its entry-by-entry rate and weight tabs;
+    - an unknown public id in a filter answers 404, like a record URL;
+    - the dev server uses 4 workers.

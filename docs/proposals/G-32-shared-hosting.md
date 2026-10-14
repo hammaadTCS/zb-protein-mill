@@ -73,11 +73,55 @@ Why: one partner develops the system and holds the logins. On a VPS the database
 
 New interface words (glossary) and a new rule ID come in part 2.
 
-## 7. Proposed design decisions (confirmed or changed after step 1)
+## 7. Exact money and accurate queries on MySQL/MariaDB
+
+**Goal:** the same answer to the paisa, the same rows in the same order, for every save, check and report, as on PostgreSQL today. MySQL/MariaDB can match PostgreSQL for money (`DECIMAL` is exact), but it is not stricter, and some of its differences give a **wrong answer without any error**. Found in this code:
+
+| # | Where | PostgreSQL today | MySQL/MariaDB, unchanged | Fix |
+| --- | --- | --- | --- | --- |
+| Q-1 | `Ageing.php` (days to pay): `completed_on - sale_date` | Days between the dates | Subtracts the dates as numbers (`20261101 - 20261031 = 70`, not 1): days to pay silently wrong | `DATEDIFF()` |
+| Q-2 | `TrialBalance.php` with parties: sorted by party code | Lines without a party come **last** | They come **first**: the trial balance changes order | Write the NULL order explicitly in every sort on a column that can be empty |
+| Q-3 | `AuditTrail.php` filters: `ilike` | Case-insensitive search | Not supported (error) | `LIKE` with the case-insensitive collation of that column |
+| Q-4 | `Periods.php`: shared and exclusive advisory locks for month close | Held until the save ends | MySQL has no shared named lock, and its named locks outlive the save | Shared and exclusive row locks on one lock row per company (`FOR SHARE` / `FOR UPDATE`), released with the save |
+| Q-5 | Every save | "Read committed": each statement sees the latest saved data | Default "repeatable read": a save keeps seeing the data as it was at its first read | Set the connection to `READ COMMITTED` |
+| Q-6 | Unique rules on names and codes, for example `(company_id, name)` | "Aslam", "aslam" and "Aslam " are different | The same (case and trailing spaces ignored): different duplicate rules | Binary collation on columns with unique rules and on keys; case-insensitive collation only on search columns |
+| Q-7 | 20 `timestampTz` columns | Time zone stored with the time | No such type | `DATETIME`, always UTC; the connection time zone set to `+00:00` |
+| Q-8 | 2 partial unique indexes (opening balances) | `UNIQUE … WHERE … IS NOT NULL` | No partial indexes | Plain unique index (MySQL allows many empty values in a unique index); a test proves the same behaviour |
+| Q-9 | 50 `CHECK` rules | Always enforced | Enforced only from MySQL 8.0.16 / MariaDB 10.2; older versions ignore them silently | The check script tests it; the system refuses to start on an older version |
+| Q-10 | Money columns `DECIMAL(16,2)`, kg `(14,3)`, rate `(14,4)` | Too many decimals: error | Rounded silently | The app refuses amounts with too many decimals before saving (`Decimal` helpers); tests for every money, kg and rate field |
+| Q-11 | `::numeric(16,2)::text` casts in 22 files, `FILTER (WHERE …)`, `to_char`, PostgreSQL error codes | PostgreSQL only | Error | `CAST(… AS DECIMAL(16,2))`, `CASE WHEN`, `DATE_FORMAT`, MySQL error codes |
+| Q-12 | Comparing a key with a value of another type | Error | Text is turned into a number (`'12abc' = 12` is true) | Every key compared with a value of its own type; a guard rule for raw SQL |
+
+**Fixed settings on the database connection:** strict mode (Laravel `strict`), `ONLY_FULL_GROUP_BY`, InnoDB only, `utf8mb4`, `READ COMMITTED`, UTC.
+
+**How we prove it before PostgreSQL is removed (in T10.3):**
+1. All 588 existing tests and AT-1 to AT-6 pass on the **exact** MySQL/MariaDB version Hostinger runs.
+2. **Same-answer check:** the same test data is loaded into PostgreSQL (today's code) and MySQL (new code). Every report, khata, account statement, trial balance, ageing, PDF data and dashboard number is produced from both and compared line by line. Any difference stops the change until it is explained and fixed.
+3. Only then are PostgreSQL and its code removed.
+
+## 8. Security (standard for business websites on shared hosting)
+
+**In the app: kept exactly as built** (it is code, not server): server-side permission checks on every route (T-09), two-step login, password rules, login limits, CSRF tokens, secure session cookies, CSP with nonce and the other security headers, company scope on every query, uploads checked and served only through the app, no personal data in logs, dependency audits in CI.
+
+**On the hosting account (the standard checklist for shopping and business sites):**
+
+1. Two-step login on the Hostinger account; the account owned by the business (D-10).
+2. HTTPS only (Hostinger's free certificate), HSTS from the app.
+3. The app, `.env` and uploads **outside** `public_html`; only the `public` folder is on the web.
+4. `APP_DEBUG=false`; error pages without details.
+5. SSH with a key only; no FTP accounts.
+6. Remote database access off; phpMyAdmin only through hPanel.
+7. Hostinger's malware scanner on; PHP kept on the newest supported version.
+8. Uptime and backup alerts to both partners.
+9. Off-site encrypted backups (D-4). Shopping sites keep copies outside the host for the same reason: a lost or hacked account takes the host's own copies with it.
+
+The books fingerprint (section 6) is not extra security: it is what keeps the books provable once the database can no longer refuse changes, so it stays.
+
+## 9. Proposed design decisions (confirmed or changed after step 1)
 
 | # | Decision | Proposal | Depends on |
 | --- | --- | --- | --- |
-| D-1 | Database | The exact MySQL/MariaDB version Hostinger runs, in tests, CI, cloud sessions and the laptop. Never SQLite | Check §5, H-7 |
+| D-1 | Database | The exact MySQL/MariaDB version Hostinger runs, in tests, CI, cloud sessions and the laptop, with the settings in section 7. Never SQLite | Check §5, H-7 |
 | D-2 | Database rules | Triggers for "refuse edit/delete" and the seal-row balance check (section 4). If triggers are refused: code only, and the fingerprint becomes the only proof | Check §5 |
 | D-3 | Database users | Two users if H-4 allows: one that changes tables (used only when installing updates), one for the app without the right to drop tables or triggers | H-4 |
 | D-4 | Backups | Hourly encrypted off-site backups from PHP (section 4); Hostinger's daily backups as an extra copy; a restore command for staging and the laptop | Storage approval, check §1 and §4 |
@@ -88,7 +132,7 @@ New interface words (glossary) and a new rule ID come in part 2.
 | D-9 | Staging | A second subdomain on the same plan, its own database, test data only | H-3 |
 | D-10 | Access | The Hostinger account belongs to the business, owned by the other partner with two-step login; the developer gets their own access. One copy of the backup private key and the `APP_KEY` with each partner (O-37) | H-6 |
 
-## 8. What changes
+## 10. What changes
 
 **Protected files (you change them in the part 2 `[spec-change]` pull request):** `CLAUDE.md`, `START-HERE.md`, `README.md`, `.env.production.example`, `docs/spec.md` (D-41, §18, change log, new rule IDs), `docs/requirements.md`, `docs/conventions.md`, `docs/glossary.md`, `docs/stack-baseline.md`, `docs/architecture.md`, `docs/security.md`, `docs/environments.md`, `docs/data-handling.md`, `docs/secrets.md`, `docs/backend.md`, `docs/traceability.md`, ADR-0002, 0003, 0004, 0006, 0007 and 0008 (marked replaced, new ADRs added), `docs/cards/M8.md` and a new `docs/cards/M10.md`, `docs/operations/*`, `infra/` (VPS scripts kept as history or removed), `scripts/check-all.sh`, `scripts/cloud-session-start.sh`, `scripts/setup-local.sh`, `scripts/guard.sh`, `.github/workflows/*`.
 
@@ -96,11 +140,11 @@ New interface words (glossary) and a new rule ID come in part 2.
 
 **Code (by Claude, after part 2 is merged):** the 33 migrations, 24 app files with PostgreSQL-only SQL (`::numeric`/`::text` casts, `FILTER (WHERE …)`, `to_char`, `pg_advisory_xact_lock`, error codes), `config/database.php`, `phpunit.xml`, `.env.example`.
 
-## 9. Proposed milestone M10 (cards in part 2)
+## 11. Proposed milestone M10 (cards in part 2)
 
-1. **T10.1** Test database switch: MySQL/MariaDB in cloud sessions, laptop and CI; all tests run there.
-2. **T10.2** Migrations for MySQL/MariaDB; database rules and the seal-row balance check (D-2); two database users (D-3).
-3. **T10.3** Queries: the 24 app files; AT-1 to AT-6 pass with the same numbers.
+1. **T10.1** Test database switch: MySQL/MariaDB in cloud sessions, laptop and CI, with the section 7 settings; all tests run there.
+2. **T10.2** Migrations for MySQL/MariaDB (Q-6 to Q-10); database rules and the seal-row balance check (D-2); two database users (D-3).
+3. **T10.3** Queries: the 24 app files (Q-1 to Q-5, Q-11, Q-12); AT-1 to AT-6 pass with the same numbers; the same-answer check against PostgreSQL (section 7) shows no difference; then PostgreSQL is removed.
 4. **T10.4** Books fingerprint (section 6): chain, `zb:verify`, month-end code, re-check page.
 5. **T10.5** Headers in the app (D-8).
 6. **T10.6** Hourly encrypted off-site backups from PHP, backup status page, restore command (D-4).

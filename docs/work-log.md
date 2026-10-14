@@ -1249,3 +1249,4 @@ Each one is explained in the task section named in brackets. Nothing here blocks
     - the party profile keeps its entry-by-entry rate and weight tabs;
     - an unknown public id in a filter answers 404, like a record URL;
     - the dev server uses 4 workers.
+18. **New npm advisory (appeared during this session):** `npm audit` reports 3 critical issues in `tinypool` (GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr), used by `oxfmt` through `vite-plus` (build, lint and format tooling, not sent to browsers). The morning baseline had 0. The fix is `vite-plus@0.3.3`, outside the range in `package.json`; a package change needs your approval (CLAUDE.md). CI's audit step fails until then.

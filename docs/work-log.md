@@ -7,11 +7,22 @@ Newest task at the bottom. One section per task. This file is not a rule documen
 
 | Item | Status |
 | --- | --- |
-| Current task | Building all remaining tasks in one session (your instruction, 13 October 2026) |
-| State | **M0 to M6 done (except your tasks T2.10); M7 in progress.** One commit per task on the branch below. G-30 (`[spec-change]`) still to be applied and merged by you |
+| Current task | M9: the developer's requests of 14 October 2026 (Accountant dashboard, speed, clean and protected links, the T8.2 views) |
+| State | **M9 built on the branch below (T9.1 to T9.5, one commit each).** Its card and spec text are in `docs/proposals/G-31-m9.patch`, waiting for the client's written approval and your `[spec-change]` pull request. Still open from before: G-30, T8.2 (now one PDF over 3 s, see M9), T7.6 restore |
 | Branch | `claude/lucid-ptolemy-w3fhsy` (PR #1 for T0.1 was merged; no new pull request yet: you open it when you want) |
-| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.4 |
-| Next task | T7.5 Business insights (T2.10 client review is yours) |
+| Tasks ticked in `docs/tasks.md` | T0.1 to T1.13, T2.1 to T2.9, T3.1 to T3.9, T4.1 to T4.8, T5.1 to T5.6, T6.1 to T6.10, T7.1 to T7.5, T7.7, T7.8, T8.1, T9.1, T9.4, T9.5 (T7.6, T8.2, T9.2 and T9.3 built, not ticked: see below) |
+| Next task | Your decisions (see "Questions for you" at the end), the G-31 `[spec-change]` pull request, and your tasks: T2.10, the T7.6 restore, T8.3 staging, T8.4 to T8.7 |
+
+
+## How to test on your laptop
+
+1. Get the branch: `git fetch origin && git checkout claude/lucid-ptolemy-w3fhsy && git pull`.
+2. Install what changed: `composer install` and `npm install` (dompdf was added in T6.10).
+3. Database: `php artisan migrate` keeps your data and adds the new tables. For a clean start with test settings and the local owner: `php artisan migrate:fresh --seed`, then demo data: `php artisan db:seed --class=DemoSeeder`.
+4. `npm run build`, then `composer run dev` and open http://127.0.0.1:8000 (local owner `test@example.com`, password `password` — local test login only).
+5. Run every check: `bash scripts/check-all.sh` (must end with ALL CHECKS PASSED).
+6. Worth trying by hand: a purchase with paid now; a rate-pending purchase and Add rate; a payment above the approval limit as an accountant, then approve as the owner; the party profile → Share PDF; Month-end close for January (bank statement, cash count, cash shortage, Close month) and Months → Reopen month; Parties → Merge parties; Reports → Business insights; Settings → Backups; `php artisan zb:verify`.
+7. Performance test (optional, about an hour): make an empty database: `sudo -u postgres createdb -O zb_test zb_mill_perf`, then `DB_DATABASE=zb_mill_perf php artisan migrate:fresh --seed`, `DB_DATABASE=zb_mill_perf php artisan db:seed --class=PerformanceSeeder`, `DB_DATABASE=zb_mill_perf php artisan zb:time-pages`.
 
 ---
 
@@ -1106,3 +1117,137 @@ Choices and questions:
 - **`closeMonthForTest()`**: no acceptance test uses it. Seven older feature tests (T1.9 to T4.x) still do; I left them as they are (the rule is not to change existing tests, and the T7.1 card only forbids it in new tests).
 - **AT-3 and AT-6 also have their own tests** in `tests/Feature/Periods` and `tests/Feature/Parties` from T7.1 and T7.4; I kept them (they add the event, audit and khata checks).
 - Tests: AT-1 to AT-6 all pass.
+
+### T7.8 Integrity check command
+
+Built as the card lists: `App\Domain\Ledger\IntegrityCheck` (SELECTs only) with the five checks — every journal balances; trial balance totals agree (the T1.10 query); voucher numbers 1 to `next_number − 1` exist once each for every document type (CSH numbers read from the month-end journal descriptions, party codes from parties); control-account lines carry a party and no other line does; an active posted entry points to a journal of its own and a cancelled posted entry has a reversal. Each check prints OK or FAILED with journal ids, voucher numbers or `type:id` (never names or amounts). `php artisan zb:verify {--db-name=}` (`App\Console\Commands\VerifyLedger`) only calls it; exit code 0 or 1; on the live database it writes `storage/app/zb-verify.json` as `{"result":"ok"|"failed","finished_at":"…Z","failed_checks":[…]}` with `json_encode` (no pretty printing); `--db-name` points the `pgsql` connection at that database for the run (`config` + `DB::purge`) and writes no file. Scheduled daily at 20:30 UTC (01:30 Pakistan time) with `withoutOverlapping()`; `php artisan schedule:list` shows `30 20 * * * php artisan zb:verify`.
+
+Choices and questions:
+- **`--db-name` accepts only letters, digits and underscores** (it becomes a connection setting).
+- **When the checks cannot run** (for example the database does not exist), it prints "FAILED could not run the checks ({error kind})" without the error message (it could contain server details) and exits 1; on the live database the file then says `failed` with `run` as the failed check.
+- **Trial balance check** uses the current company (version 1 has one); with no company at all (an empty restored copy) it has nothing to check and says OK.
+- **Test-only trigger switching**: as the card says, two tests disable a journal trigger inside their own transaction (rolled back after the test) to plant a fault. App code never does this.
+- **The tests save and restore `storage/app/zb-verify.json`**, so a local run's file is not lost; the file is git-ignored.
+- **Checked on the dev data**: all five checks OK.
+- Tests (T-20): after AT-1 every check OK and the file says ok; each planted fault fails exactly its check — two unbalanced journals (totals still agree), a voucher gap (PUR-number missing), a control-account line without a party, an active purchase pointing to another purchase's journal, a cancelled purchase without a reversal; `--db-name` checks the named database in a separate process (OK on the test database, exit 1 on a missing one, exit 1 on a bad name) and writes no file; the schedule entry (20:30 UTC, without overlapping).
+
+### T8.1 Security checklist
+
+Built as the card lists: `docs/release-checks.md` section "Security" with one row for each of BR-SEC-01 to BR-SEC-18 (and the Inertia devtools routes), and section "Operations" for BR-OPS-01 to BR-OPS-10: where each rule is enforced, the test or check that proves it, and the result. Rows that need a real server say **verify on staging** (for T8.3); rows that need the go-live (key holders, rebuild drill) say so.
+
+Found and fixed in application code:
+- **BR-SEC-04**: `config/session.php` fell back to the kit's 120 minutes when `SESSION_LIFETIME` is missing; the default is now 60.
+- **Missing proofs** added as tests (`tests/Feature/Security/ReleaseChecksTest.php`): bcrypt (BR-SEC-02), 60-minute idle in the shipped settings (BR-SEC-04), the CSRF middleware on the `web` group (BR-SEC-07), Secure/HttpOnly/SameSite=Lax cookies and encrypted sessions in `.env.production.example` (BR-SEC-15), no debug in production and strict models elsewhere (BR-SEC-16), daily logs kept 14 days in production (BR-SEC-17), CSP on in production (BR-SEC-14), and the Inertia devtools never on in production.
+
+Choices and questions:
+- **Inertia devtools routes** (`_inertia/devtools/*`): the Inertia package registers them only when `APP_ENV=local` (unless `INERTIA_DEVTOOLS_ENABLED` is set, which production does not). Locally they exist and record requests to `storage/inertia-devtools`; on servers they do not. Check once on staging with `php artisan route:list`.
+- **This cloud container's own `.env`** (not in git) has `SESSION_LIFETIME=120` from an older copy; your laptop's `.env` comes from `.env.example` (60). The test now checks the shipped files, not a developer's `.env`.
+- Nothing in protected files needed to change for T8.1.
+- Tests: the eight new checklist tests pass with the existing security tests (26 in `tests/Feature/Security`).
+
+### T8.2 Performance check
+
+Built as the card lists: `database/seeders/PerformanceSeeder` (local only; refuses `APP_ENV=production` and a database that already has parties) saves 100,000 invented entries over the last 12 months — 60% purchases, 20% sales, 15% payments, 5% expenses — one by one through the real Actions (same rules, warnings confirmed, vouchers, journals, audit rows), and `php artisan zb:time-pages` (local only) opens every list and report page as the Owner three times and prints the slowest time. Results, the machine and the bundle sizes are in `docs/release-checks.md`, section "Performance".
+
+Fixed because measurement showed it (no index was needed; every slow page was slow because of code):
+- **Settings were read from the database on every call** — a statement PDF of 300 rows made thousands of identical queries. A GET request now reads each setting once (`RememberSettings` middleware, `Settings::remember()`); saves (POST, PUT) still read fresh values, and `Settings::set` updates the remembered value.
+- **Rate corrections were looked up one query per entry** in the rate report and business insights: now one query for all (`RateCorrections::effectiveMany`).
+- **Business insights summed every entry in PHP**: the sums now run in PostgreSQL (same results; AT-1 and a new AT-5 check prove it).
+- **Dashboard alerts ran the ageing method for every supplier and buyer**: "Aged advances" now ages only parties whose balance is an advance, "Overdue buyers" only buyers who owe us (the same counts; the T-12 tests prove it).
+- **Ageing once per buyer**: business insights computed the ageing match twice per buyer (days to pay and overdue); now once (`Ageing` accepts the match it already has).
+
+Results on 100,000 entries (details and machine in `docs/release-checks.md`, "Performance"): **every page as it opens, and every summary report over 12 months, is under 3 seconds** (slowest: business insights 2.2 s, dashboard 1.5 s, pending balances 1.3 s). `zb:verify` on that data: all checks OK in 0.9 s. Front end: login and dashboard each load about 197 kB of JavaScript and 16 kB of CSS (gzip).
+
+**Not met — please decide.** Four views that list every entry of a whole year take longer: account statement for 12 months (4.8 s, 17,926 rows), rate report for 12 months (14.8 s, 57,000 entries), weight difference for 12 months (5.3 s) and a 12-month statement PDF for a busy supplier (20.8 s). Their page data is 3 to 6 MB, too heavy for a phone even if the server were instant. Fixing them changes what the pages show, so I did not choose:
+1. **Page the rows** (for example 100 per page) with totals still over the whole range — keeps every row reachable; my recommendation for the account statement.
+2. **Summarise long ranges** (one line per month and party in the rate and weight reports when the range is over 3 months) — my recommendation for those two reports.
+3. **Limit the range** (for example at most 3 months per statement PDF) — simplest for the PDF.
+So I left **T8.2 unticked** in `docs/tasks.md`: its "done when" says every report and list under 3 seconds.
+
+Also found: the Wayfinder route file (109 kB gzip) is loaded on the login page because the signed-in menu imports every page's route helpers. Loading the signed-in layout only after login would remove it from the login page; it changes the starter kit's layout loading, so I left it as a proposal.
+- Tests: the existing ageing, dashboard, insights and acceptance tests still pass (the counts and figures are unchanged); new `RememberSettingsTest` (one query per setting inside a GET request; fresh reads outside it; a set inside it is seen).
+
+## M9 Requested changes before go-live (T9.1 to T9.5)
+
+Your request (14 October 2026): a simple dashboard (or none) for the Accountant; faster loading, felt on the laptop with `composer run dev`, after `npm run build`, and on the first page and login; links sanitised "like a protected CRM" (you chose: remove leftover links, and hide record numbers in URLs); and the four slow 12-month views of T8.2 with my recommendation. You asked me to build it straight away.
+
+**How the process was kept.** Every change of what the system shows was approved by the CEO in the current documents, and those are protected files: spec §7, §9.1, §11.3, §12, §13.1, the glossary, the requirements, the cards. So the exact text is in `docs/proposals/G-31-m9.patch` (new card `docs/cards/M9.md`, spec update 7, glossary words, traceability, security and conventions rows; `git apply --check` passes). Spec §20.3: the client's written approval comes first, then you apply it in a `[spec-change]` pull request. The code is on the branch now and matches that text.
+
+Baseline before starting: `bash scripts/check-all.sh` ALL CHECKS PASSED (588 PHP tests at the end; 18 minutes on the laptop).
+
+### T9.1 Starter-kit leftovers and log safety
+- Deleted four unused kit files; `app-header.tsx` linked to GitHub and laravel.com. Nothing imported them.
+- Found while checking routes and logs (not guessed):
+  - **BR-SEC-17 break:** `WarningRequired` and `ConcurrentEdit` were written to `laravel.log` as errors, and a duplicate-party warning holds the party's name and code ("A party with this mobile already exists: Aslam (S-0001)"). They are now in `dontReport`.
+  - **Inertia DevTools** turned itself on in every `APP_ENV=local` and saved every page's data (names, amounts) under `storage/inertia-devtools/` (3.4 MB on your laptop; git ignores it; I did not delete it). It is now off unless `INERTIA_DEVTOOLS_ENABLED=true`, and never outside `local`.
+- `ProtectedAppTest`: no warning or concurrent edit is reported; DevTools is off and local-only; no screen links to another site. Without the fix, 3 of its 5 tests fail.
+
+### T9.2 Speed
+Measured first, on your laptop:
+- **Cause of the slow first page and login in dev:** `config/inertia.php` had SSR on. With Vite running, every full page load was sent to the Vite dev server to render on the server first: `/login` 0.5 to 16.7 s, `/dashboard` up to 2.3 s. SSR off (servers never build an SSR bundle; `release.yml` runs `npm run build` only): 0.12 to 0.19 s and 0.3 to 0.6 s.
+- One `artisan serve` worker: 8 requests at once took 1.1 to 1.5 s; with `PHP_CLI_SERVER_WORKERS=4` (now in `.env.example`; `composer run dev` runs `serve --no-reload` so it is used) 0.5 to 0.8 s. **Copy that line into your `.env`.**
+- **Correction of my plan:** OPcache is already on for `artisan serve`; there was nothing to change there.
+- **Correction of T8.2's note:** the 109 kB "wayfinder" file is React, ReactDOM and the Inertia client, not the route helpers. Lazy-loading the layout was not done (reason in release checks).
+- On 100,000 entries the dashboard (6.5 s) and business insights (8 to 11 s) spent their time in the oldest-first match of spec §12.6, run in PHP for every buyer.
+  - `Ageing::overdueMany` and `averageDaysToPayMany` give the same figures with one PostgreSQL query each (numeric, exact; the final division stays in `Decimal`).
+  - Proof: `AgeingOverdueManyTest` (the rule against the existing match on 3,000 seeded random histories; both queries against the old functions on AT-2 and on a random history posted through the Actions), plus a one-off comparison of 240 values on the 100,000-entry database with no difference.
+  - Two dead ends, measured and reverted: replacing `array_shift` changed nothing, and a first SQL version took 134 s (a nested-loop join, then a window frame recounted per row) before the final one.
+- Results: `docs/release-checks.md`, "M9 re-measure". Every page is under 3 s on the laptop except the 3-month statement PDF (question 15 below). **T9.2 is not ticked** for that reason.
+
+### T9.3 Accountant dashboard
+- New permission `dashboard.balances` (Owner only; `SystemDataSeeder` adds it on deploy). Without it the dashboard shows Today, the user's alerts and the quick buttons, and the balances are not computed. The Owner's dashboard is unchanged.
+- **On your laptop run `php artisan db:seed --class=SystemDataSeeder` once**, or the Owner's balances block stays hidden too.
+- Not ticked: the card asks for 375 px screenshots of both roles, and this session had no browser.
+
+### T9.4 Long report ranges
+- Account statement: 100 rows per page, running balance in PostgreSQL, "Brought forward" on later pages; opening, closing and totals over the whole range.
+- Rate report and weight difference: one line per month per party (and item) for ranges longer than 3 months, summed in SQL, rate corrections included; the totals and averages are the same as entry by entry.
+- Statement PDF: at most 3 months. Without a period it covers the last 3 months up to today (a plain limit would have refused the default "Share PDF" once the system is 3 months old).
+- "Share PDF" now shows the refusal message instead of saving the error page as the file (it did that for any refused request before).
+- One rule for "3 months" (`Dates::threeMonthsBefore`): 1 January to 31 March is 3 months, to 1 April is longer. My first version disagreed at month ends; the test caught it.
+
+### T9.5 Public ids in URLs
+- `public_id uuid` with `DEFAULT gen_random_uuid()` on the 13 linked tables. The database fills it, so a rollback to the previous release still works; 4 s on the 100,000-entry database.
+- Routes match only a UUID; filters and links use it. Form bodies and background lookups keep internal numbers.
+- What it does not do: the page data still holds internal numbers that forms post. The protection stays the permission on every route (T-09) and the company scope (now also tested by public id).
+- **Existing tests I changed** (only a URL with an internal number, or an exact array that now also has `public_id`): `RoutePermissionTest` (its parameter table), `AuditLogPageTest`, `MergePartiesTest`, `AccountStatementTest`, `PurchasePagesTest`, `ExpensePagesTest`, `PaymentPagesTest`, `PartyPagesTest`, `PartyKhataTest`; and `RolesAndPermissionsTest` (T9.3: its copy of the §7 list gains `dashboard.balances`). No expected amount, journal line or permission changed.
+- **On your laptop run `php artisan migrate`.**
+
+## Questions for you (all in one place)
+
+Each one is explained in the task section named in brackets. Nothing here blocks testing on your laptop.
+
+**Needs a decision or a protected-file change by you**
+1. **G-30 spec change** (T0.1): apply `docs/proposals/G-30-cloud-composer.patch` in a `[spec-change]` pull request.
+2. **Party merge posting has no PR number** (T7.4): CLAUDE.md rule 2 says PR-01 to PR-27 are the only postings, but BR-PTY-08 and card T7.4 require the merge journal. Proposed: add "PR-28 Party merge" to spec §8.3 and allow it in CLAUDE.md rule 2.
+3. **README "Backups and restore"** (T7.6): README.md is protected; the proposed text is in the T7.6 section.
+4. **Four 12-month views over 3 seconds** (T8.2): done in M9 with my recommendation (T9.4); see question 15 for the one PDF still over 3 seconds.
+5. **Charts** (T7.5): the card says shadcn charts, which need the `recharts` package (not allowed without your approval). Built with simple bars instead.
+6. **Login by e-mail** (see the note on the requirements PDF): the client PDF says "username"; the spec and the starter kit use e-mail.
+
+**Tests of mine I changed after they were written** (please look once)
+7. `ReportsHomeTest` (T7.5: the count assumption became a check of the two Owner-only report names), `PostingServiceTest` and `ItemsTest` (query order), the BR-SEC-13 session test (random id order), `DashboardTest` (setup: yesterday's cash count), `RoutePermissionTest` (new routes and a month parameter added to its table, as every task does).
+
+**Defaults I chose where the documents are silent** (say if any should change)
+8. A month can be closed only after it has ended; the cash difference posted at month end must be exactly what is left; "business closed" on the last day is not a cash count (T7.1).
+9. Reopening every closed month unlocks the opening balances again (T7.3); a reopen reason needs 5 characters (T7.2).
+10. A party with rate-pending entries or payments awaiting approval cannot be merged away (T7.4).
+11. PDFs: DejaVu Sans font (no IBM Plex Sans TTF in the repository); kg follows `kg_decimals` ("800.000 kg" with the test value 3) (T6.10).
+12. The rate report and insights use the corrected rate after a rate correction (T6.8, T7.5); settled parties are left out of pending balances even with pending kg (pending balances task).
+13. A buyer or partner cannot be the party of a paid expense (expenses task).
+14. ~~The login page loads the 109 kB route file~~: corrected in M9, that file is React and the Inertia client, needed by every page.
+
+**M9 (14 October 2026)**
+15. **The 3-month statement PDF of the busiest supplier takes 7 s on your laptop** (349 rows; 5.8 s inside dompdf). Choose one:
+    - (a) keep it: the server is likely faster, so measure it on staging (T8.3);
+    - (b) 1 month per PDF (1.5 s here);
+    - (c) split the table in chunks (4.3 s here, but a header row repeats inside each page);
+    - (d) make PDFs in a background queue (larger change).
+16. **G-31 spec change:** get the client's written approval (spec §20.3), then apply `docs/proposals/G-31-m9.patch` in a `[spec-change]` pull request. Also update the client documents in `docs/client/` (protected, Word and PDF), whose dashboard row still says "Both".
+17. **Defaults I chose in M9** (say if any should change):
+    - the Accountant still sees balances on the Accounts page (`account.view` unchanged);
+    - the party profile keeps its entry-by-entry rate and weight tabs;
+    - an unknown public id in a filter answers 404, like a record URL;
+    - the dev server uses 4 workers.
+18. **npm advisory (correction):** `npm audit` over all packages lists 3 critical `tinypool` advisories inside `vite-plus` 0.3.0 (development tools only). They are not new: `docs/installed-versions.md` recorded them at T0.1. The project check (`npm audit --omit=dev --audit-level=high`, in CI and `check-all.sh`) finds 0. The fix (`vite-plus` 0.3.3) is not applied: `docs/stack-baseline.md` (protected) pins 0.3.0, so it needs a `[spec-change]` first. Say if you want it.
+19. **CI front-end unit tests failed since PR #3** (`CI=true` made `laravel-vite-plugin` refuse Vitest's server). Fixed in `vite.config.ts`: only Vitest skips that check.

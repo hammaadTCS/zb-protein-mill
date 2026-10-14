@@ -7,6 +7,13 @@ import laravel from 'laravel-vite-plugin';
 import { fontsource } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
+// Vitest (`npm test`) starts a Vite server to run the unit tests. With CI=true the
+// Laravel plugin takes that for the HMR dev server and refuses to start, so CI's
+// front-end tests failed. Only the test runner skips that check; builds keep it.
+if (process.env.VITEST) {
+    process.env.LARAVEL_BYPASS_ENV_CHECK ??= '1';
+}
+
 export default defineConfig({
     plugins: lazyPlugins(() => [
         laravel({

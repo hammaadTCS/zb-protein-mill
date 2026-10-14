@@ -22,6 +22,7 @@ type AccountOption = { id: number; name: string; type: 'cash' | 'bank' };
 
 export type EditedTransfer = {
     id: number;
+    public_id: string;
     voucher_no: string;
     version: string;
     date: string;
@@ -76,7 +77,7 @@ export function TransferForm({
                 version: transfer.version,
                 confirmed_warnings: confirmed,
             }));
-            form.put(update.url(transfer.id), {
+            form.put(update.url(transfer.public_id), {
                 onHttpException: (response) => {
                     if (response.status === 409) {
                         const body = response.data as { message?: string };

@@ -38,6 +38,7 @@ type RateCorrectionRow = {
 
 type Purchase = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     party: { id: number; code: string; name: string };
@@ -125,7 +126,7 @@ export default function ShowPurchase({
                 <PageHeader title={`Purchase ${purchase.voucher_no}`}>
                     {purchase.status === 'active' && (
                         <SharePdfButton
-                            href={slip.url(purchase.id)}
+                            href={slip.url(purchase.public_id)}
                             filename={`${purchase.voucher_no}.pdf`}
                         />
                     )}
@@ -138,7 +139,7 @@ export default function ShowPurchase({
                         )}
                     {editable && can('purchase.update') && (
                         <Button variant="outline" asChild>
-                            <Link href={edit(purchase.id)}>Edit</Link>
+                            <Link href={edit(purchase.public_id)}>Edit</Link>
                         </Button>
                     )}
                     {editable && can('purchase.cancel') && (
@@ -354,7 +355,7 @@ export default function ShowPurchase({
                 onClose={() => setCancelling(false)}
                 onConfirm={(reason) =>
                     router.post(
-                        cancel.url(purchase.id),
+                        cancel.url(purchase.public_id),
                         { reason, cancel_linked_payment: cancelPayment },
                         {
                             onStart: () => setCancelProcessing(true),
@@ -388,7 +389,7 @@ export default function ShowPurchase({
                     kg={purchase.kg}
                     currentRate={effective.rate ?? ''}
                     currentAmount={effective.amount ?? ''}
-                    url={rateCorrection.url(purchase.id)}
+                    url={rateCorrection.url(purchase.public_id)}
                     today={today}
                     onClose={() => setCorrecting(false)}
                 />
@@ -399,7 +400,7 @@ export default function ShowPurchase({
                     title={purchase.voucher_no}
                     maximum={adjustment_max}
                     entryDate={purchase.entry_date}
-                    url={storeAdjustment.url(purchase.id)}
+                    url={storeAdjustment.url(purchase.public_id)}
                     today={today}
                     onClose={() => setAdjusting(false)}
                 />
@@ -408,7 +409,7 @@ export default function ShowPurchase({
                 open={addingRate}
                 title={purchase.voucher_no}
                 kg={purchase.kg}
-                url={rate.url(purchase.id)}
+                url={rate.url(purchase.public_id)}
                 today={today}
                 onClose={() => setAddingRate(false)}
             />

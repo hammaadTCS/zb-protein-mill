@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Domain\Expenses\Models\ExpenseCategory;
+use App\Domain\Parties\Models\Party;
 use App\Domain\Reports\Queries\ExpenseReport;
 use App\Http\Controllers\Concerns\ListsEntries;
 use App\Http\Controllers\Controller;
@@ -24,22 +25,22 @@ class ExpenseReportController extends Controller
         $input = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d'],
-            'category_id' => ['nullable', 'integer'],
-            'party_id' => ['nullable', 'integer'],
+            'category_id' => ['nullable', 'string'],
+            'party_id' => ['nullable', 'string'],
         ]);
         $today = Today::date();
         $filters = [
             'from' => (string) ($input['from'] ?? substr($today, 0, 8).'01'),
             'to' => (string) ($input['to'] ?? $today),
-            'category_id' => isset($input['category_id']) ? (int) $input['category_id'] : null,
-            'party_id' => isset($input['party_id']) ? (int) $input['party_id'] : null,
+            'category_id' => ExpenseCategory::idFromPublic($input['category_id'] ?? null),
+            'party_id' => Party::idFromPublic($input['party_id'] ?? null),
         ];
 
         return Inertia::render('reports/expenses', [
-            'filters' => $filters,
+            'filters' => $this->shownFilters($filters),
             'party' => $this->partyOption($filters['party_id']),
-            'categories' => ExpenseCategory::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])
-                ->map(fn (ExpenseCategory $c): array => ['id' => $c->id, 'name' => $c->name])->values(),
+            'categories' => ExpenseCategory::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'public_id', 'name'])
+                ->map(fn (ExpenseCategory $c): array => ['id' => $c->id, 'public_id' => $c->public_id, 'name' => $c->name])->values(),
             'report' => ExpenseReport::for($filters['from'], $filters['to'], $filters['category_id'], $filters['party_id']),
         ]);
     }

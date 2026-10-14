@@ -9,6 +9,7 @@ use App\Domain\Parties\Models\Party;
 use App\Domain\Partners\Enums\PartnerTransactionType;
 use App\Models\User;
 use App\Support\EntryStatus;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,7 @@ use Illuminate\Support\Carbon;
  * expenses.
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $voucher_no
  * @property string $entry_date
@@ -50,6 +52,7 @@ use Illuminate\Support\Carbon;
 class PartnerTransaction extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

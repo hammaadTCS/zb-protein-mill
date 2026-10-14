@@ -30,6 +30,7 @@ import { cancel, create, edit, index } from '@/routes/transfers';
 
 type Row = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     from: string;
@@ -44,10 +45,10 @@ type Row = {
 type Filters = {
     from: string;
     to: string;
-    party_id: number | null;
+    party_id: string | null;
     status: string;
     q: string;
-    money_account_id: number | null;
+    money_account_id: string | null;
 };
 
 const ALL = 'all';
@@ -64,7 +65,7 @@ export default function Transfers({
 }: {
     transfers: Paginated<Row>;
     filters: Filters;
-    money_accounts: { id: number; name: string }[];
+    money_accounts: { id: number; public_id: string; name: string }[];
     total: string;
 }) {
     const can = useCan();
@@ -121,13 +122,12 @@ export default function Transfers({
                     <Select
                         value={
                             filters.money_account_id
-                                ? String(filters.money_account_id)
+                                ? filters.money_account_id
                                 : ALL
                         }
                         onValueChange={(value) =>
                             apply({
-                                money_account_id:
-                                    value === ALL ? null : Number(value),
+                                money_account_id: value === ALL ? null : value,
                             })
                         }
                     >
@@ -139,7 +139,7 @@ export default function Transfers({
                             {money_accounts.map((account) => (
                                 <SelectItem
                                     key={account.id}
-                                    value={String(account.id)}
+                                    value={account.public_id}
                                 >
                                     {account.name}
                                 </SelectItem>
@@ -230,7 +230,11 @@ export default function Transfers({
                                                     variant="outline"
                                                     asChild
                                                 >
-                                                    <Link href={edit(row.id)}>
+                                                    <Link
+                                                        href={edit(
+                                                            row.public_id,
+                                                        )}
+                                                    >
                                                         Edit
                                                     </Link>
                                                 </Button>
@@ -275,7 +279,7 @@ export default function Transfers({
                 onConfirm={(reason) =>
                     cancelling &&
                     router.post(
-                        cancel.url(cancelling.id),
+                        cancel.url(cancelling.public_id),
                         { reason },
                         {
                             preserveScroll: true,

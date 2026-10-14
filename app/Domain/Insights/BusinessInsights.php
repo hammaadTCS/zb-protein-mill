@@ -4,34 +4,37 @@ declare(strict_types=1);
 
 namespace App\Domain\Insights;
 
-use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Items\Enums\ItemType;
 use App\Domain\Items\Models\Item;
 use App\Domain\Ledger\LedgerBalance;
-use App\Domain\Parties\Enums\PartyType;
-use App\Domain\Purchases\Enums\RateStatus;
-use App\Domain\Purchases\Models\Purchase;
-use App\Domain\Purchases\RateCorrections;
+use App\Domain\Parties\Models\Party;
 use App\Domain\Reports\Ageing;
 use App\Domain\Reports\Queries\IncomeVsSpending;
-use App\Domain\Sales\Models\Sale;
 use App\Domain\Settings\SettingKeys;
 use App\Domain\Settings\Settings;
 use App\Support\Decimal;
 use App\Support\EntryStatus;
+use App\Support\Tenancy\CurrentCompany;
 use App\Support\Today;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * R-13, spec §12.5 (D-36): rough indicators from what is already recorded. Kg by
  * entry date from purchases and sales (BR-RPT-01, BR-RPT-02: rate-pending kg count);
- * rates as Σ amount ÷ Σ kg of fixed-rate entries (spec §12.4); spending from the
- * Income vs Spending report. Ratios have 4 decimals, rupees 2. A ratio whose divisor
- * is zero is null (shown as "–").
+ * rates as Σ amount ÷ Σ kg of fixed-rate entries at their corrected amount
+ * (spec §12.4, BR-LED-09); spending from the Income vs Spending report. Ratios have
+ * 4 decimals, rupees 2; a ratio whose divisor is zero is null (shown as "–").
+ * The sums run in PostgreSQL, so a period of 100,000 entries stays fast (NFR-02).
  */
 final class BusinessInsights
 {
+    /** Kg of every entry; amount and kg of fixed-rate entries (pending ones have no amount yet). */
+    private const SUMS = "COALESCE(SUM(t.kg), 0)::numeric(16, 3)::text AS kg,
+        COALESCE(SUM(t.amount) FILTER (WHERE t.rate_status = 'fixed'), 0)::numeric(18, 2)::text AS fixed_amount,
+        COALESCE(SUM(t.kg) FILTER (WHERE t.rate_status = 'fixed'), 0)::numeric(16, 3)::text AS fixed_kg";
+
     /**
      * The default period: `insights_period_months` back from today, to today.
      *
@@ -50,14 +53,13 @@ final class BusinessInsights
      */
     public static function for(string $from, string $to): array
     {
-        $purchases = self::purchases($from, $to);
-        $sales = self::sales($from, $to);
-
-        $waste = self::kg($purchases->filter(fn (Purchase $p): bool => $p->item->type === ItemType::RawMaterial));
-        $wood = self::kg($purchases->filter(fn (Purchase $p): bool => $p->item->type === ItemType::Fuel));
-        $protein = self::kg($sales->filter(fn (Sale $s): bool => $s->item->code === 'PROTEIN'));
-        $oilFat = self::kg($sales->filter(fn (Sale $s): bool => $s->item->code === 'OILFAT'));
-        $products = self::kg($sales);
+        $bought = self::totals('purchases', $from, $to, 'type');
+        $soldByCode = self::totals('sales', $from, $to, 'code');
+        $waste = $bought[ItemType::RawMaterial->value]['kg'] ?? '0.000';
+        $wood = $bought[ItemType::Fuel->value]['kg'] ?? '0.000';
+        $protein = $soldByCode['PROTEIN']['kg'] ?? '0.000';
+        $oilFat = $soldByCode['OILFAT']['kg'] ?? '0.000';
+        $products = Decimal::sum(array_column($soldByCode, 'kg'), '0.000');
         $spending = IncomeVsSpending::for($from, $to)['spending'];
 
         return [
@@ -69,44 +71,208 @@ final class BusinessInsights
             'wood_per_kg_waste' => self::ratio($wood, $waste, 4),
             'rough_cost_per_kg_sold' => self::ratio($spending, $products, 2),
             'totals' => ['waste_kg' => $waste, 'wood_kg' => $wood, 'protein_kg' => $protein, 'oil_fat_kg' => $oilFat, 'product_kg' => $products, 'spending' => $spending],
-            'months' => self::withBars(self::months($purchases, $sales, $from, $to)),
-            'suppliers' => self::suppliers($purchases, $to),
-            'buyers' => self::buyers($sales, $from, $to),
+            'months' => self::withBars(self::months($from, $to)),
+            'suppliers' => self::suppliers($from, $to),
+            'buyers' => self::buyers($from, $to),
         ];
+    }
+
+    /**
+     * Active purchases or sales dated in the period, with the item and the amount after
+     * rate corrections (null while the rate is pending).
+     */
+    private static function entries(string $table, string $from, string $to): Builder
+    {
+        $link = $table === 'purchases' ? 'purchase_id' : 'sale_id';
+        $corrections = DB::table('rate_corrections')->whereNotNull($link)->groupBy($link)->selectRaw("{$link} AS entry_id, SUM(difference) AS difference");
+
+        return DB::table("{$table} AS e")
+            ->join('items', 'items.id', '=', 'e.item_id')
+            ->leftJoinSub($corrections, 'rc', 'rc.entry_id', '=', 'e.id')
+            ->where('e.company_id', CurrentCompany::id())
+            ->where('e.status', EntryStatus::Active->value)
+            ->whereBetween('e.entry_date', [$from, $to])
+            ->select(['e.id', 'e.party_id', 'e.entry_date', 'e.kg', 'e.our_weight_kg', 'e.rate_status', 'items.type', 'items.code', 'items.name'])
+            ->selectRaw('e.amount + COALESCE(rc.difference, 0) AS amount');
+    }
+
+    /**
+     * Kg, and amount and kg of fixed-rate entries, grouped by the item's type or code.
+     *
+     * @param  'type'|'code'  $column
+     * @return array<string, array{kg: string, fixed_amount: string, fixed_kg: string}>
+     */
+    private static function totals(string $table, string $from, string $to, string $column): array
+    {
+        return DB::query()->fromSub(self::entries($table, $from, $to), 't')
+            ->groupBy("t.{$column}")
+            ->selectRaw("t.{$column} AS grp")
+            ->selectRaw(self::SUMS)
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [(string) $row->grp => self::row($row)])
+            ->all();
     }
 
     /**
      * Wood per kg of waste and buying vs selling rates, per calendar month.
      *
-     * @param  Collection<int, Purchase>  $purchases
-     * @param  Collection<int, Sale>  $sales
      * @return list<array<string, mixed>>
      */
-    private static function months(Collection $purchases, Collection $sales, string $from, string $to): array
+    private static function months(string $from, string $to): array
     {
+        $bought = self::byMonth('purchases', 'type', $from, $to);
+        $sold = self::byMonth('sales', 'name', $from, $to);
         $productNames = Item::query()->where('type', ItemType::Product->value)->orderBy('id')->pluck('name')->all();
         $rows = [];
 
         for ($m = CarbonImmutable::parse($from)->startOfMonth(); $m->toDateString() <= $to; $m = $m->addMonth()) {
             $key = $m->format('Y-m');
-            $inMonth = fn (Purchase|Sale $e): bool => str_starts_with($e->entry_date, $key);
-            $monthPurchases = $purchases->filter($inMonth);
-            $monthSales = $sales->filter($inMonth);
-            $waste = $monthPurchases->filter(fn (Purchase $p): bool => $p->item->type === ItemType::RawMaterial);
+            $waste = $bought[$key][ItemType::RawMaterial->value] ?? null;
+            $wood = $bought[$key][ItemType::Fuel->value] ?? null;
 
             $rows[] = [
                 'month' => $key,
                 'name' => $m->format('M Y'),
-                'wood_per_kg_waste' => self::ratio(self::kg($monthPurchases->filter(fn (Purchase $p): bool => $p->item->type === ItemType::Fuel)), self::kg($waste), 4),
-                'waste_rate' => self::averageRate($waste),
+                'wood_per_kg_waste' => self::ratio($wood['kg'] ?? '0', $waste['kg'] ?? '0', 4),
+                'waste_rate' => self::ratio($waste['fixed_amount'] ?? '0', $waste['fixed_kg'] ?? '0', 2),
                 'product_rates' => array_map(fn (string $name): array => [
                     'item' => $name,
-                    'rate' => self::averageRate($monthSales->filter(fn (Sale $s): bool => $s->item->name === $name)),
+                    'rate' => self::ratio($sold[$key][$name]['fixed_amount'] ?? '0', $sold[$key][$name]['fixed_kg'] ?? '0', 2),
                 ], $productNames),
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * The sums per month and item type or name.
+     *
+     * @param  'type'|'name'  $column
+     * @return array<string, array<string, array{kg: string, fixed_amount: string, fixed_kg: string}>> month => group => sums
+     */
+    private static function byMonth(string $table, string $column, string $from, string $to): array
+    {
+        return DB::query()->fromSub(self::entries($table, $from, $to), 't')
+            ->groupByRaw("to_char(t.entry_date, 'YYYY-MM'), t.{$column}")
+            ->selectRaw("to_char(t.entry_date, 'YYYY-MM') AS month, t.{$column} AS grp")
+            ->selectRaw(self::SUMS)
+            ->get()
+            ->groupBy('month')
+            ->map(fn ($rows) => $rows->mapWithKeys(fn (object $row): array => [(string) $row->grp => self::row($row)])->all())
+            ->all();
+    }
+
+    /**
+     * Per supplier with purchases in the period: kg, average rate, advance outstanding
+     * at the period end, weight difference % (spec §12.4).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function suppliers(string $from, string $to): array
+    {
+        $rows = DB::query()->fromSub(self::entries('purchases', $from, $to), 't')
+            ->groupBy('t.party_id')
+            ->selectRaw('t.party_id AS grp')
+            ->selectRaw(self::SUMS)
+            ->selectRaw('COALESCE(SUM(t.kg - t.our_weight_kg) FILTER (WHERE t.our_weight_kg IS NOT NULL), 0)::numeric(16, 3)::text AS difference')
+            ->selectRaw('COALESCE(SUM(t.our_weight_kg), 0)::numeric(16, 3)::text AS our_kg')
+            ->get();
+        $parties = Party::query()->whereIn('id', $rows->pluck('grp')->all())->get()->keyBy('id');
+        $nets = LedgerBalance::partyNets(array_values($parties->modelKeys()), $to); // one query (T9.2)
+        $result = [];
+
+        foreach ($rows as $row) {
+            $party = $parties->get((int) $row->grp);
+
+            if ($party === null) {
+                continue;
+            }
+
+            $sums = self::row($row);
+            $balance = $party->balanceOfNet($nets[$party->id][(string) $party->type->controlAccountCode()] ?? '0.00');
+
+            $result[] = [
+                'party_id' => $party->id,
+                'code' => $party->code,
+                'name' => $party->name,
+                'kg' => $sums['kg'],
+                'average_rate' => self::ratio($sums['fixed_amount'], $sums['fixed_kg'], 2),
+                'advance' => $balance->words === 'Advance' ? $balance->amount : '0.00',
+                'weight_difference_percent' => self::percent((string) $row->difference, (string) $row->our_kg),
+            ];
+        }
+
+        usort($result, fn (array $a, array $b): int => [$a['name'], $a['party_id']] <=> [$b['name'], $b['party_id']]);
+
+        return $result;
+    }
+
+    /**
+     * Per buyer with sales in the period: average days to pay and overdue (spec §12.6),
+     * agreed adjustments and their % of his sales, his share of all sales.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function buyers(string $from, string $to): array
+    {
+        $rows = DB::query()->fromSub(self::entries('sales', $from, $to), 't')
+            ->groupBy('t.party_id')
+            ->selectRaw('t.party_id AS grp')
+            ->selectRaw(self::SUMS)
+            ->get();
+        $adjustments = DB::table('adjustments')
+            ->where('company_id', CurrentCompany::id())
+            ->whereNotNull('sale_id')
+            ->where('status', EntryStatus::Active->value)
+            ->whereBetween('entry_date', [$from, $to])
+            ->groupBy('party_id')
+            ->selectRaw('party_id, SUM(amount)::numeric(18, 2)::text AS total')
+            ->pluck('total', 'party_id')
+            ->all();
+        $allSales = Decimal::sum($rows->map(fn (object $row): string => self::row($row)['fixed_amount'])->all());
+        $parties = Party::query()->whereIn('id', $rows->pluck('grp')->all())->get()->keyBy('id');
+        // Spec §12.6 for every buyer in two queries (T9.2: the oldest-first match one buyer
+        // at a time took seconds at 100,000 entries). Same figures as Ageing::match().
+        $daysToPay = Ageing::averageDaysToPayMany($parties, $from, $to);
+        $overdue = Ageing::overdueMany($parties, $to);
+        $result = [];
+
+        foreach ($rows as $row) {
+            $party = $parties->get((int) $row->grp);
+
+            if ($party === null) {
+                continue;
+            }
+
+            $his = self::row($row)['fixed_amount'];
+            $adjusted = (string) ($adjustments[$party->id] ?? '0.00');
+
+            $result[] = [
+                'party_id' => $party->id,
+                'code' => $party->code,
+                'name' => $party->name,
+                'average_days_to_pay' => $daysToPay[$party->id],
+                'overdue' => $overdue[$party->id],
+                'adjustments' => $adjusted,
+                'adjustments_percent' => self::percent($adjusted, $his),
+                'share_percent' => self::percent($his, $allSales),
+            ];
+        }
+
+        usort($result, fn (array $a, array $b): int => [$a['name'], $a['party_id']] <=> [$b['name'], $b['party_id']]);
+
+        return $result;
+    }
+
+    /**
+     * @return array{kg: string, fixed_amount: string, fixed_kg: string}
+     */
+    private static function row(object $row): array
+    {
+        $values = (array) $row;
+
+        return ['kg' => (string) $values['kg'], 'fixed_amount' => (string) $values['fixed_amount'], 'fixed_kg' => (string) $values['fixed_kg']];
     }
 
     /**
@@ -143,127 +309,6 @@ final class BusinessInsights
     private static function max(string $current, mixed $value): string
     {
         return is_string($value) && Decimal::compare($value, $current) > 0 ? $value : $current;
-    }
-
-    /**
-     * Per supplier with purchases in the period: kg, average rate, advance outstanding
-     * at the period end, weight difference % (spec §12.4).
-     *
-     * @param  Collection<int, Purchase>  $purchases
-     * @return list<array<string, mixed>>
-     */
-    private static function suppliers(Collection $purchases, string $to): array
-    {
-        return array_values($purchases->groupBy('party_id')->map(function (Collection $entries) use ($to): array {
-            /** @var Purchase $first */
-            $first = $entries->first();
-            $party = $first->party;
-            $balance = $party->balanceOfNet(LedgerBalance::byCode((string) PartyType::Supplier->controlAccountCode(), $to, $party->id));
-            $weighed = $entries->filter(fn (Purchase $p): bool => $p->our_weight_kg !== null);
-            $ourKg = self::kg($weighed, 'our_weight_kg');
-            $difference = Decimal::sub(self::kg($weighed), $ourKg);
-
-            return [
-                'party_id' => $party->id,
-                'code' => $party->code,
-                'name' => $party->name,
-                'kg' => self::kg($entries),
-                'average_rate' => self::averageRate($entries),
-                'advance' => $balance->words === 'Advance' ? $balance->amount : '0.00',
-                'weight_difference_percent' => Decimal::isZero($ourKg) ? null : Decimal::divide(Decimal::multiply($difference, '100', 6), $ourKg, 2),
-            ];
-        })->sortBy('name')->all());
-    }
-
-    /**
-     * Per buyer with sales in the period: average days to pay and overdue (spec §12.6),
-     * agreed adjustments and their % of his sales, his share of all sales.
-     *
-     * @param  Collection<int, Sale>  $sales
-     * @return list<array<string, mixed>>
-     */
-    private static function buyers(Collection $sales, string $from, string $to): array
-    {
-        $fixed = $sales->filter(fn (Sale $s): bool => $s->rate_status === RateStatus::Fixed);
-        $allSales = self::amount($fixed);
-
-        return array_values($sales->groupBy('party_id')->map(function (Collection $entries) use ($from, $to, $allSales): array {
-            /** @var Sale $first */
-            $first = $entries->first();
-            $party = $first->party;
-            $his = self::amount($entries->filter(fn (Sale $s): bool => $s->rate_status === RateStatus::Fixed));
-            $adjustments = Decimal::sum(Adjustment::query()
-                ->where('party_id', $party->id)
-                ->whereNotNull('sale_id')
-                ->where('status', EntryStatus::Active->value)
-                ->whereBetween('entry_date', [$from, $to])
-                ->pluck('amount')
-                ->map(fn ($amount): string => (string) $amount)
-                ->all());
-
-            return [
-                'party_id' => $party->id,
-                'code' => $party->code,
-                'name' => $party->name,
-                'average_days_to_pay' => Ageing::averageDaysToPay($party, $from, $to),
-                'overdue' => Ageing::overdueFor($party, $to),
-                'adjustments' => $adjustments,
-                'adjustments_percent' => self::percent($adjustments, $his),
-                'share_percent' => self::percent($his, $allSales),
-            ];
-        })->sortBy('name')->all());
-    }
-
-    /**
-     * Active purchases dated in the period.
-     *
-     * @return Collection<int, Purchase>
-     */
-    private static function purchases(string $from, string $to): Collection
-    {
-        return Purchase::query()->with(['item', 'party'])->where('status', EntryStatus::Active->value)
-            ->whereBetween('entry_date', [$from, $to])->orderBy('entry_date')->orderBy('id')->get();
-    }
-
-    /**
-     * Active sales dated in the period.
-     *
-     * @return Collection<int, Sale>
-     */
-    private static function sales(string $from, string $to): Collection
-    {
-        return Sale::query()->with(['item', 'party'])->where('status', EntryStatus::Active->value)
-            ->whereBetween('entry_date', [$from, $to])->orderBy('entry_date')->orderBy('id')->get();
-    }
-
-    /**
-     * @param  Collection<int, Purchase>|Collection<int, Sale>  $entries
-     */
-    private static function kg(Collection $entries, string $field = 'kg'): string
-    {
-        return Decimal::sum($entries->map(fn (Purchase|Sale $e): string => (string) $e->getAttribute($field))->all(), '0.000');
-    }
-
-    /**
-     * Σ amount of fixed-rate entries, at the corrected rate where one was corrected.
-     *
-     * @param  Collection<int, Purchase>|Collection<int, Sale>  $entries
-     */
-    private static function amount(Collection $entries): string
-    {
-        return Decimal::sum($entries->map(fn (Purchase|Sale $e): string => (string) RateCorrections::effective($e)['amount'])->all());
-    }
-
-    /**
-     * Spec §12.4: Σ amount ÷ Σ kg of fixed-rate entries, 2 decimals; null without any.
-     *
-     * @param  Collection<int, Purchase>|Collection<int, Sale>  $entries
-     */
-    private static function averageRate(Collection $entries): ?string
-    {
-        $fixed = $entries->filter(fn (Purchase|Sale $e): bool => $e->rate_status === RateStatus::Fixed);
-
-        return self::ratio(self::amount($fixed), self::kg($fixed), 2);
     }
 
     /**

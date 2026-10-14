@@ -19,6 +19,7 @@ import { show as showSale } from '@/routes/sales';
 
 type Payment = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     direction: 'paid' | 'received';
@@ -39,6 +40,7 @@ type Payment = {
     linked: {
         type: 'purchase' | 'sale';
         id: number;
+        public_id: string;
         voucher_no: string;
     } | null;
 };
@@ -82,7 +84,7 @@ export default function ShowPayment({
                         payment.approval_status !== 'rejected' &&
                         can('payment.update') && (
                             <Button variant="outline" asChild>
-                                <Link href={edit(payment.id)}>Edit</Link>
+                                <Link href={edit(payment.public_id)}>Edit</Link>
                             </Button>
                         )}
                     {payment.is_active && can('payment.cancel') && (
@@ -126,8 +128,8 @@ export default function ShowPayment({
                             <Link
                                 href={
                                     payment.linked.type === 'purchase'
-                                        ? showPurchase(payment.linked.id)
-                                        : showSale(payment.linked.id)
+                                        ? showPurchase(payment.linked.public_id)
+                                        : showSale(payment.linked.public_id)
                                 }
                                 className="underline-offset-4 hover:underline"
                             >
@@ -208,7 +210,7 @@ export default function ShowPayment({
                 onClose={() => setCancelling(false)}
                 onConfirm={(reason) =>
                     router.post(
-                        cancel.url(payment.id),
+                        cancel.url(payment.public_id),
                         { reason },
                         {
                             onError: (errors) =>

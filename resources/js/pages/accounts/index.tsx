@@ -15,6 +15,7 @@ import { index, show } from '@/routes/accounts';
 
 type Account = {
     id: number;
+    public_id: string;
     name: string;
     type: 'cash' | 'bank';
     is_active: boolean;
@@ -43,7 +44,7 @@ export default function Accounts({ accounts }: { accounts: Account[] }) {
                             <TableRow key={account.id}>
                                 <TableCell>
                                     <Link
-                                        href={show(account.id)}
+                                        href={show(account.public_id)}
                                         className="underline-offset-4 hover:underline"
                                     >
                                         {account.name}

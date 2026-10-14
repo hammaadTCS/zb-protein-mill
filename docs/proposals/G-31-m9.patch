@@ -1,0 +1,236 @@
+diff --git a/docs/cards/M9.md b/docs/cards/M9.md
+new file mode 100644
+index 0000000..413ab52
+--- /dev/null
++++ b/docs/cards/M9.md
+@@ -0,0 +1,63 @@
++# M9: Requested changes before go-live (G-31)
++
++Requested by the developer for the client on 14 October 2026 and approved in writing (spec §20.3). Spec update 7.
++
++## T9.1 Starter-kit leftovers and log safety
++
++**Goal:** nothing on screen points to another site, and nothing a user sees is written to the log.
++
++**Build exactly:** delete the unused starter-kit files `components/app-header.tsx` (links to GitHub and laravel.com), `layouts/app/app-header-layout.tsx`, `components/nav-footer.tsx`, `components/text-link.tsx`. `WarningRequired` and `ConcurrentEdit` in `dontReport` (BR-SEC-17: a duplicate-party message holds a party name). Inertia DevTools (`config/inertia.php`) off unless `INERTIA_DEVTOOLS_ENABLED=true` with `APP_ENV=local`. Developer guide notes.
++
++**Tests:** `ProtectedAppTest` (no warning or concurrent edit reported; DevTools off and local-only; no link to another site in `resources/js` or `resources/views`).
++
++**Done when:** tests pass.
++
++---
++
++## T9.2 Speed
++
++**Goal:** the laptop and the server answer quickly; NFR-02 holds on the developer's laptop.
++
++**Build exactly:** Inertia SSR off (servers never build an SSR bundle; with the Vite dev server it rendered every full page load through Vite). `composer run dev` runs `serve --no-reload` and `.env.example` sets `PHP_CLI_SERVER_WORKERS=4`. `Ageing::overdueMany` and `Ageing::averageDaysToPayMany`: the oldest-first figures (§12.6) for many buyers in one PostgreSQL query each (numeric; the final division in `Decimal`), used by the overdue-buyers alert, pending balances and business insights; insights supplier balances in one `partyNets()` query. `zb:time-pages` times the 3-month statement PDF. Timings before and after, on the same machine, in `docs/release-checks.md`.
++
++**Not in this task:** lazy loading of the signed-in layout (it would add a request to every signed-in first page to save 1 request on the cached login page).
++
++**Tests:** `AgeingOverdueManyTest` (newest-first rule against the existing match on 3,000 random histories; both SQL functions against `overdueFor()` and `averageDaysToPay()` on AT-2 and on a random history posted through the Actions). T-12 and AT-1 to AT-6 unchanged.
++
++**Done when:** tests pass; every page in `zb:time-pages` under 3 seconds on the measured machine, recorded.
++
++---
++
++## T9.3 Simple dashboard for the Accountant
++
++**Goal:** BR-DSH-01.
++
++**Build exactly:** permission `dashboard.balances` (Owner only) in `RolesAndPermissionsSeeder`; `DashboardController` sends and computes balances only with it; the page hides the block without it.
++
++**Tests:** `AccountantDashboardTest`; `RolesAndPermissionsTest` lists the new key.
++
++**Done when:** tests pass; screenshot at 375 px for both roles.
++
++---
++
++## T9.4 Long report ranges
++
++**Goal:** BR-RPT-09, BR-RPT-10, BR-RPT-11 (closes the four 12-month views of T8.2).
++
++**Build exactly:** `AccountStatement::for(..., $page, $perPage = 100)` with the running balance as a PostgreSQL window sum and `pages` for the shared `Pagination`; "Brought forward" on later pages. `RateWeightReports::rateMonths` and `weightMonths` (SQL per month, rate corrections included) when `Dates::longerThanThreeMonths()`; `monthly` prop and note. Statement PDF: 3-month limit and default (`Dates::threeMonthsBefore()`). Share PDF shows a refusal message instead of saving an error page.
++
++**Tests:** `AccountStatementPagesTest`; `LongRangeReportsTest`.
++
++**Done when:** tests pass.
++
++---
++
++## T9.5 Public ids in links and filters
++
++**Goal:** BR-SEC-19.
++
++**Build exactly:** migration `add_public_id_to_linked_tables` (`uuid` default `gen_random_uuid()`, unique) on the 13 tables of §9.1; trait `App\Support\HasPublicId` (route key, UUID v4 on create, `idFromPublic()` for filters, 404 for unknown); UUID route patterns for every record parameter; every prop that builds a link carries `public_id`; links built on the server use the model or its `public_id`; address-bar filters (`party_id`, `category_id`, `money_account_id`, `item_id`, `user_id`, `source_id`, `target_id`, create-page `party_id`) carry the public id. Form bodies keep internal numbers.
++
++**Tests:** `PublicIdTest` (numeric and malformed ids 404; another company's public id 404; filters by public id; links in page data use public ids). Existing tests that put internal numbers in URLs are changed only there, listed in the pull request.
++
++**Done when:** tests pass; T-09 passes over every route.
+diff --git a/docs/conventions.md b/docs/conventions.md
+index 22fba2c..0dfbde5 100644
+--- a/docs/conventions.md
++++ b/docs/conventions.md
+@@ -150,6 +150,7 @@ Use `Relation::enforceMorphMap` in `AppServiceProvider` with exactly these alias
+ - Shared props (via `HandleInertiaRequests`): `auth.user` (id, name, roles, permissions list), `settings.formats` (`kg_decimals`, `rate_decimals`, `amount_rounding`, `number_format`, `date_format`), `flash.success`, `flash.voucher`, `app.env_name` (`staging` shows a banner; from `ZB_ENV_NAME`). Never share secrets, `.env` values or other users' data.
+ - Forms use Inertia's `useForm` (spec §5, D-44). Server validation errors always show under the field.
+ - Routes in React come from **Wayfinder** (generated in `resources/js/actions` and `resources/js/routes`; git-ignored, rebuilt by `npm run build` or `php artisan wayfinder:generate --with-form`). Never hard-code URLs; never add Ziggy.
++- **Public ids (BR-SEC-19):** a model whose rows open from a link uses `App\Support\HasPublicId` and its migration adds `public_id uuid` with `DEFAULT gen_random_uuid()`, unique; its route parameter gets the UUID pattern in `AppServiceProvider::configureRoutePatterns()`. Props that build a link send `public_id`; React passes `x.public_id` to Wayfinder. An address-bar filter takes the public id (`Model::idFromPublic()`) and is sent back with `shownFilters()`. Form bodies and background lookups keep internal ids.
+ - No `dangerouslySetInnerHTML`, no inline event-handler strings, no `eval`, no scripts, styles, fonts or images from other sites (CSP, BR-SEC-14). Inline `<script>` in Blade must carry `nonce="{{ Vite::cspNonce() }}"`.
+ - Lint and format with `npm run check` (vite-plus); fix with `npm run check:fix`. Type check with `npm run types:check`. Unit tests with `npm test` (`vp test`, from T2.1).
+ - All interface words come from `docs/glossary.md`. Do not invent labels.
+diff --git a/docs/glossary.md b/docs/glossary.md
+index 51469e5..5351b15 100644
+--- a/docs/glossary.md
++++ b/docs/glossary.md
+@@ -40,6 +40,7 @@ The people using this system are the owner and the accountant of ZB Poultry Prot
+ | Cash count | `cash_count` | Cash physically counted at day end |
+ | Month-end close | `period` close | Monthly matching and lock |
+ | Income vs Spending | report R-08 | Money earned minus money spent. **Not profit** |
++| Brought forward | `brought_forward` | The balance at the top of a later page of a statement (BR-RPT-09) |
+ 
+ ## 2. Balance words (never a minus sign)
+ 
+@@ -98,6 +99,8 @@ The plain "Cancel" link that closes a dialog without saving is labelled **Close*
+ | Account disabled | This account is disabled. Ask the owner. |
+ | Staging banner | TEST COPY – entries here are not real. |
+ | Last owner (BR-USR-04) | At least one active owner is required. |
++| Monthly lines (BR-RPT-10) | Periods longer than 3 months show one line per month. |
++| Statement too long (BR-RPT-11) | A statement PDF can cover at most 3 months. Choose a shorter period. |
+ 
+ ## 5. Words never used anywhere in the interface
+ 
+diff --git a/docs/requirements.md b/docs/requirements.md
+index f751715..ad3146e 100644
+--- a/docs/requirements.md
++++ b/docs/requirements.md
+@@ -373,7 +373,7 @@ Who: Both = owner and accountant. Owner = owner only.
+ | **#** | **Page** | **Who** | **What it contains** |
+ | --- | --- | --- | --- |
+ | 1 | Login | Both | Username and password. Every login recorded |
+-| 2 | Dashboard | Both | Today's totals, cash and bank balances, alerts, quick buttons |
++| 2 | Dashboard | Both | Today's totals, alerts, quick buttons; cash and bank balances for the Owner only (the Accountant sees them on the Accounts page) |
+ 
+ ## Daily entries
+ 
+diff --git a/docs/security.md b/docs/security.md
+index 4143cdb..cf7f8e7 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -85,6 +85,7 @@ What we protect, from whom, and exactly where each protection lives and how it i
+ | BR-SEC-16 no debug output | `.env`, error pages | T1.12 test |
+ | BR-SEC-17 log rules | `config/logging.php`, code review | T1.12 test (no password in logs) |
+ | BR-SEC-18 dependency and secret checks | CI, `check-all.sh`, Dependabot (alerts and monthly pull requests) | CI |
++| BR-SEC-19 public ids in URLs | `App\Support\HasPublicId` on every linked model, UUID route patterns (`AppServiceProvider`), `idFromPublic()` for filters, migration `add_public_id_to_linked_tables` | `PublicIdTest`; T-09 route table |
+ | BR-OPS-01 to 10 | `infra/`, runbook | infra tests; T8.1 and go-live checklist |
+ 
+ ## 5. If something happens
+diff --git a/docs/spec.md b/docs/spec.md
+index d28c8ea..cd3bb08 100644
+--- a/docs/spec.md
++++ b/docs/spec.md
+@@ -353,6 +353,7 @@ Two roles exist in version 1: Owner and Accountant (C). Permissions are stored i
+ | `opening.manage` | Opening balances | Yes | No | A |
+ | `users.manage` | Add users, assign roles, disable users | Yes | No | A |
+ | `backup.view` | Backup status (no download: backups are readable only with the offline key, ADR-0006) | Yes | No | A + P |
++| `dashboard.balances` | Cash and bank balances on the dashboard (BR-DSH-01) | Yes | No | C |
+ 
+ ### Rules
+ 
+@@ -471,6 +472,8 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
+ | `created_by`, `updated_by` | bigint, FK users | Set by the system |
+ | `created_at`, `updated_at` | timestamptz | Stored in UTC, shown in Asia/Karachi |
+ 
++**Tables opened from a link** (parties, purchases, sales, payments, expenses, transfers, partner_transactions, adjustments, attachments, money_accounts, items, expense_categories, users) also have `public_id` uuid, not null, default `gen_random_uuid()`, unique (BR-SEC-19).
++
+ **Transaction tables** (purchases, sales, adjustments, payments, expenses, partner_transactions, transfers) also have: `voucher_no` varchar(20) unique per company, `entry_date` date, `status` (active / cancelled), `cancel_reason` text, `cancelled_by`, `cancelled_at`, `journal_entry_id` (FK, latest journal, nullable), `idempotency_key` uuid nullable with a unique index on (`company_id`, `idempotency_key`) (BR-GEN-11).
+ 
+ ### 9.2 Master tables
+@@ -772,7 +775,7 @@ Every purchase rule BR-PUR-02 to BR-PUR-14 also applies to sales, reading "suppl
+ 
+ ## 11. Page specifications
+ 
+-The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (P). "Mobile-first" pages are designed for a phone screen first (A).
++The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (P). "Mobile-first" pages are designed for a phone screen first (A). A record in a route (`{id}`) and a record in an address-bar filter are named by the record's `public_id`, never by its internal number (BR-SEC-19).
+ 
+ ### 11.1 Page list
+ 
+@@ -838,9 +841,10 @@ The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (
+ ### 11.3 Dashboard (page 2)
+ 
+ - **Today:** kg bought per item, kg sold per product, money received, money paid, expenses total.
+-- **Balances:** each cash and bank account.
++- **Balances:** each cash and bank account (`dashboard.balances`, Owner).
+ - **Alerts (each links to its list):** rate-pending count (red if aged), payments awaiting approval (Owner), new parties to review (Owner), bank detail changes to review (Owner), overdue buyers, buyers over credit limit, aged advances, missing cash count, negative cash balance, trial balance error (Owner).
+ - **Quick buttons:** New purchase, New sale, New payment, Quick expense.
++- **BR-DSH-01 (C):** the Accountant's dashboard is the simple one: Today, the alerts the Accountant can act on, and the quick buttons. The balances block needs `dashboard.balances`, which only the Owner has; without it the server does not compute the balances. The Accountant still sees balances on the Accounts page (`account.view`).
+ 
+ ### 11.4 Form: New purchase (page 4)
+ 
+@@ -937,6 +941,9 @@ Money figures come only from journal lines; kg figures come only from purchases
+ - **BR-RPT-03 (P):** rate averages use the original entry amounts, before agreed adjustments. Adjustments are reported separately (R-12).
+ - **BR-RPT-04 (A):** party balances are shown in words, never with a minus sign (Section 8.2).
+ - **BR-RPT-05 (A):** numbers and dates follow `number_format` and `date_format`.
++- **BR-RPT-09 (C):** the account statement (R-06) shows 100 movements per page. Opening, closing and the in and out totals always cover the whole range; a later page starts with "Brought forward", the balance after the rows before it.
++- **BR-RPT-10 (C):** the rate report (R-10) and the weight difference report (R-11) list each entry for a range of at most 3 months. For a longer range they show one line per month in each party (and item) group, with the same totals, weighted average and %, and the note "Periods longer than 3 months show one line per month." The party profile keeps the entry-by-entry view.
++- **BR-RPT-11 (C):** one statement PDF (§13.1) covers at most 3 months; a longer range is refused with the glossary message. Without a chosen period it covers the 3 months up to today, never before `system_start_date`. A range of at most 3 months ends on its last day: 1 January to 31 March is 3 months; 1 January to 1 April is longer.
+ 
+ ### 12.2 Report list
+ 
+@@ -947,12 +954,12 @@ Money figures come only from journal lines; kg figures come only from purchases
+ | R-03 | Rate pending list (26) | Type, party | Entry, date, party, item, kg, age in days (red if over `rate_pending_age_days`) |
+ | R-04 | Daily summary (29) | Date | Kg bought per item, kg sold per product, money received, money paid, expenses by category, closing balance per money account, pending-rate count |
+ | R-05 | Expense report (34) | Date range, category, party | Total per category, then each expense with note, mode and party |
+-| R-06 | Account statement (25) | Account, date range | Opening, each movement, running balance, closing |
++| R-06 | Account statement (25) | Account, date range | Opening, each movement, running balance, closing; 100 movements per page (BR-RPT-09) |
+ | R-07 | Trial balance (36) | As-of date, "show parties" | Each ledger account's total debit, total credit and balance. "Show parties" splits control accounts by party. Footer: total debit = total credit |
+ | R-08 | Income vs Spending (35) | Month or range | Income, spending and the difference (12.3) |
+ | R-09 | Partner statement (23) | Partner, date range | Investments, withdrawals, net per partner |
+-| R-10 | Rate report (37) | Item, party, date range | Each fixed rate over time and the weighted average |
+-| R-11 | Weight difference (38) | Type, party, date range | Their kg vs our kg per party, difference and % (12.4) |
++| R-10 | Rate report (37) | Item, party, date range | Each fixed rate over time and the weighted average; one line per month over 3 months (BR-RPT-10) |
++| R-11 | Weight difference (38) | Type, party, date range | Their kg vs our kg per party, difference and % (12.4); one line per month over 3 months (BR-RPT-10) |
+ | R-12 | Adjustments report (39) | Type, party, reason, date range | Total, count and % of sales or purchases per party and reason |
+ | R-13 | Business insights (40) | Period (default `insights_period_months` = 3) | Indicators in 12.5, each labelled "rough indicator" |
+ 
+@@ -1025,7 +1032,7 @@ Two PDFs are generated on the server: the party statement and the entry slip (D-
+ 
+ | Part | Content |
+ | --- | --- |
+-| Header | Company name, "Statement of Account", party name, code, mobile, period (from – to) |
++| Header | Company name, "Statement of Account", party name, code, mobile, period (from – to), at most 3 months (BR-RPT-11) |
+ | Opening | Balance at the start of the period, in words (Section 8.2) |
+ | Rows | Date, voucher number, description (item, kg × rate, or payment method and reference), amount that increases the balance, amount that reduces it, running balance in words |
+ | Pending | Rate-pending entries listed with kg and "Rate pending", no amount |
+@@ -1079,6 +1086,7 @@ Every action is logged permanently, every request is permission-checked on the s
+ - **BR-SEC-15 (P):** the session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`; session data is encrypted in the database.
+ - **BR-SEC-16 (P):** staging and production run with `APP_ENV=production` and `APP_DEBUG=false`: users never see technical error details. Models are strict (no lazy loading, no silently discarded attributes) outside production.
+ - **BR-SEC-17 (P):** logs never contain passwords, tokens, session IDs, request bodies, party names, mobiles, bank details or amounts. Application logs rotate daily and are kept 14 days; web server logs leave out query strings.
++- **BR-SEC-19 (C):** links, record URLs and address-bar filters name a record by its random `public_id` (UUID v4), never by its internal number. An unknown or malformed public id answers 404. Form bodies and background lookups keep internal numbers; the protection stays the login, the permission on every route (BR-SEC-05) and the company scope.
+ - **BR-SEC-18 (P):** dependency lock files are committed; CI checks known vulnerabilities (`composer audit`, `npm audit`) Dependabot opens grouped pull requests for minor and patch updates monthly, and its alerts e-mail security warnings at once. Only packages named in a task card are installed.
+ 
+ ### 14.3 Operations (P unless stated)
+@@ -1418,6 +1426,7 @@ Anything not described in this document is not part of version 1. Asking for it
+ 
+ | Version | Date | Change |
+ | --- | --- | --- |
++| 1.0 (update 7) | 14 October 2026 | M9 (G-31), approved by the client in writing: simple dashboard for the Accountant (`dashboard.balances`, BR-DSH-01); account statement in pages of 100 (BR-RPT-09); monthly lines in the rate and weight reports over 3 months (BR-RPT-10); statement PDF at most 3 months (BR-RPT-11); random public ids in links and filters (BR-SEC-19, `public_id` in §9.1). Cards `docs/cards/M9.md` |
+ | 1.0 (update 6) | 13 October 2026 | Pack v4.1: Claude Code builds in cloud sessions and opens pull requests; the developer merges on GitHub and pulls and runs on a Linux Mint laptop. Cloud sessions are prepared by `scripts/cloud-session-start.sh` (PostgreSQL, both test databases, packages, `.env`). Main guard checks every push to `main`; Dependabot pull requests monthly, grouped (BR-SEC-18). Keeps the v4 documents (`README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`) and the laptop setup (`scripts/setup-local.sh`) |
+ | 1.0 (update 5) | 13 October 2026 | Pack v4, laptop edition: Claude Code runs on the developer's Linux Mint laptop (no cloud sessions). Code reaches `main` only through `scripts/finish-task.sh`; CI checks every push to `main`; protected files change only with `[spec-change]`. Dependabot pull requests replaced by alerts plus a monthly update session (BR-SEC-18). New documents: `README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`, `docs/templates/task-report.md`. Laptop app uses database `zb_mill_dev`; tests `zb_mill_test` |
+ | 1.0 (update 4) | 13 October 2026 | Corrections G-25 to G-29 (`docs/requirements-audit.md`). New: BR-OPS-11 (system data on servers through `SystemDataSeeder`, run by `zb-deploy-release`; local seeders refuse production). Changed: GitHub Free accepted, with a push guard in the hook, a CI main guard and a release gate instead of branch protection (ADR-0012), CI trimmed for 2,000 free Actions minutes, Dependabot monthly (BR-SEC-18); cloud-session network facts; local test user gets the Owner role in local and testing only (T1.3); trial-month notes and restore records in git hold voucher numbers and counts only, never names or amounts (T8.5, BR-OPS-04, runbook §4, `docs/data-handling.md` rule 9) |
+diff --git a/docs/traceability.md b/docs/traceability.md
+index ce1d25f..e3fa67b 100644
+--- a/docs/traceability.md
++++ b/docs/traceability.md
+@@ -140,6 +140,11 @@ Every confirmed fact (F) and decision (D) from the specification, the rules that
+ 
+ | Gap | Rules | Built in | Proof |
+ | --- | --- | --- | --- |
++| G-31 simple Accountant dashboard | BR-DSH-01, §7 `dashboard.balances` | T9.3 | `AccountantDashboardTest`; `RolesAndPermissionsTest` |
++| G-31 long report ranges | BR-RPT-09, BR-RPT-10, BR-RPT-11 | T9.4 | `AccountStatementPagesTest`; `LongRangeReportsTest`; `zb:time-pages` (release checks) |
++| G-31 no internal numbers in URLs | BR-SEC-19 | T9.5 | `PublicIdTest`; T-09 |
++| G-31 user messages and DevTools data kept out of logs | BR-SEC-17 | T9.1 | `ProtectedAppTest` |
++| G-31 speed of dashboard, insights, pending balances | NFR-02, spec §12.6 | T9.2 | `AgeingOverdueManyTest`; T-12; AT-1 to AT-6; `zb:time-pages` |
+ | G-25 no branch protection on GitHub Free | BR-OPS-10 | hook git guard, protected-files check on pull requests, main guard, release gate, ADR-0012 | `test-guardrails.sh` (git guard and main guard cases); release workflow gate step |
+ | G-26 network facts for building | — | `docs/stack-baseline.md` | T0.1 runs Composer and npm in the cloud session |
+ | G-27 local test user has no role | spec §7 | T1.3 | `local DatabaseSeeder gives test@example.com the owner role` |

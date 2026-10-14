@@ -10,6 +10,7 @@ use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
 use App\Models\User;
 use App\Support\EntryStatus;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,7 @@ use LogicException;
  * agreed to deduct after a purchase or sale. The original entry never changes (D-13).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $voucher_no
  * @property string $entry_date
@@ -55,6 +57,7 @@ use LogicException;
 class Adjustment extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

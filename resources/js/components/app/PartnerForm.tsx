@@ -26,6 +26,7 @@ type AccountOption = { id: number; name: string; type: 'cash' | 'bank' };
 
 export type EditedPartnerEntry = {
     id: number;
+    public_id: string;
     voucher_no: string;
     version: string;
     date: string;
@@ -88,7 +89,7 @@ export function PartnerForm({
                 version: entry.version,
                 confirmed_warnings: confirmed,
             }));
-            form.put(update.url(entry.id), {
+            form.put(update.url(entry.public_id), {
                 onHttpException: (response) => {
                     if (response.status === 409) {
                         const body = response.data as { message?: string };

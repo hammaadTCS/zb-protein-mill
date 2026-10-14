@@ -12,6 +12,7 @@ use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
 use App\Models\User;
 use App\Support\EntryStatus;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * The method comes from the money account type (BR-PAY-03).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $voucher_no
  * @property string $entry_date
@@ -66,6 +68,7 @@ use Illuminate\Support\Carbon;
 class Payment extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

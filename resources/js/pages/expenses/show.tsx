@@ -20,6 +20,7 @@ import { show as showSale } from '@/routes/sales';
 
 type Expense = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     category: string;
@@ -67,7 +68,7 @@ export default function ShowExpense({
                     )}
                     {expense.is_active && can('expense.update') && (
                         <Button variant="outline" asChild>
-                            <Link href={edit(expense.id)}>Edit</Link>
+                            <Link href={edit(expense.public_id)}>Edit</Link>
                         </Button>
                     )}
                     {expense.is_active && can('expense.cancel') && (
@@ -113,8 +114,8 @@ export default function ShowExpense({
                             <Link
                                 href={
                                     expense.linked.type === 'purchase'
-                                        ? showPurchase(expense.linked.id)
-                                        : showSale(expense.linked.id)
+                                        ? showPurchase(expense.linked.public_id)
+                                        : showSale(expense.linked.public_id)
                                 }
                                 className="underline-offset-4 hover:underline"
                             >
@@ -193,7 +194,7 @@ export default function ShowExpense({
                 onClose={() => setCancelling(false)}
                 onConfirm={(reason) =>
                     router.post(
-                        cancel.url(expense.id),
+                        cancel.url(expense.public_id),
                         { reason },
                         {
                             onError: (errors) =>

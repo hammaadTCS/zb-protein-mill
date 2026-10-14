@@ -15,6 +15,8 @@ export type PartyType = 'supplier' | 'buyer' | 'partner' | 'employee' | 'other';
 
 export type PartyOption = {
     id: number;
+    /** BR-SEC-19: what links and address-bar filters use. */
+    public_id: string;
     code: string;
     type: PartyType;
     /** "Name – Area – Mobile" (BR-PTY-09). */

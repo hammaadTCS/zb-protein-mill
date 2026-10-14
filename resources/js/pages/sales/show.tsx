@@ -38,6 +38,7 @@ type RateCorrectionRow = {
 
 type Sale = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     party: { id: number; code: string; name: string };
@@ -125,7 +126,7 @@ export default function ShowSale({
                 <PageHeader title={`Sale ${sale.voucher_no}`}>
                     {sale.status === 'active' && (
                         <SharePdfButton
-                            href={slip.url(sale.id)}
+                            href={slip.url(sale.public_id)}
                             filename={`${sale.voucher_no}.pdf`}
                         />
                     )}
@@ -138,7 +139,7 @@ export default function ShowSale({
                         )}
                     {editable && can('sale.update') && (
                         <Button variant="outline" asChild>
-                            <Link href={edit(sale.id)}>Edit</Link>
+                            <Link href={edit(sale.public_id)}>Edit</Link>
                         </Button>
                     )}
                     {editable && can('sale.cancel') && (
@@ -354,7 +355,7 @@ export default function ShowSale({
                 onClose={() => setCancelling(false)}
                 onConfirm={(reason) =>
                     router.post(
-                        cancel.url(sale.id),
+                        cancel.url(sale.public_id),
                         { reason, cancel_linked_payment: cancelPayment },
                         {
                             onStart: () => setCancelProcessing(true),
@@ -388,7 +389,7 @@ export default function ShowSale({
                     kg={sale.kg}
                     currentRate={effective.rate ?? ''}
                     currentAmount={effective.amount ?? ''}
-                    url={rateCorrection.url(sale.id)}
+                    url={rateCorrection.url(sale.public_id)}
                     today={today}
                     onClose={() => setCorrecting(false)}
                 />
@@ -399,7 +400,7 @@ export default function ShowSale({
                     title={sale.voucher_no}
                     maximum={adjustment_max}
                     entryDate={sale.entry_date}
-                    url={storeAdjustment.url(sale.id)}
+                    url={storeAdjustment.url(sale.public_id)}
                     today={today}
                     onClose={() => setAdjusting(false)}
                 />
@@ -408,7 +409,7 @@ export default function ShowSale({
                 open={addingRate}
                 title={sale.voucher_no}
                 kg={sale.kg}
-                url={rate.url(sale.id)}
+                url={rate.url(sale.public_id)}
                 today={today}
                 onClose={() => setAddingRate(false)}
             />

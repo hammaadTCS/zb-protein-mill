@@ -11,7 +11,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Page 2 (spec §11.3): today, balances, alerts and quick buttons. */
+/**
+ * Page 2 (spec §11.3): today, balances, alerts and quick buttons. BR-DSH-01: the
+ * Accountant's dashboard is the simple one (today, their alerts, quick buttons): the
+ * balances block needs `dashboard.balances`, and is not even computed without it.
+ */
 class DashboardController extends Controller
 {
     public function __invoke(Request $request): Response
@@ -22,7 +26,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'today' => $today,
             'figures' => DashboardToday::for($today),
-            'balances' => $user->can('account.view')
+            'balances' => $user->can('dashboard.balances')
                 ? MoneyAccount::query()->active()->orderBy(LedgerAccount::query()->select('code')->whereColumn('ledger_accounts.id', 'money_accounts.ledger_account_id'))->get()
                     ->map(fn (MoneyAccount $account): array => [
                         'id' => $account->id,

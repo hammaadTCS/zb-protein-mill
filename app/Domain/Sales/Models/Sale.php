@@ -11,6 +11,7 @@ use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Enums\RateStatus;
 use App\Models\User;
 use App\Support\EntryStatus;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * kg is the buyer's weight (BR-SAL-05); amount = kg × rate on the server (BR-GEN-06).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $voucher_no
  * @property string $entry_date
@@ -60,6 +62,7 @@ use Illuminate\Support\Carbon;
 class Sale extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

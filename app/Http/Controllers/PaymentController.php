@@ -67,11 +67,12 @@ class PaymentController extends Controller
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();
 
         return Inertia::render('payments/index', [
-            'filters' => [...$filters, 'direction' => $direction],
+            'filters' => $this->shownFilters([...$filters, 'direction' => $direction]),
             'party' => $this->partyOption($filters['party_id']),
             'totals' => ['paid' => (string) ($totals->paid ?? '0.00'), 'received' => (string) ($totals->received ?? '0.00')],
             'payments' => $this->paginated($page, fn (Payment $p): array => [
                 'id' => $p->id,
+                'public_id' => $p->public_id,
                 'voucher_no' => $p->voucher_no,
                 'entry_date' => $p->entry_date,
                 'direction' => $p->direction->value,
@@ -88,7 +89,8 @@ class PaymentController extends Controller
     {
         $this->authorize('create', Payment::class);
 
-        $party = $this->partyOption($request->integer('party_id') ?: null);
+        // BR-SEC-19: a party profile opens this page with the party's public id.
+        $party = $this->partyOption(Party::idFromPublic($request->validate(['party_id' => ['nullable', 'string']])['party_id'] ?? null));
 
         return Inertia::render('payments/create', [
             ...$this->formProps(),
@@ -128,6 +130,7 @@ class PaymentController extends Controller
         return Inertia::render('payments/show', [
             'payment' => [
                 'id' => $payment->id,
+                'public_id' => $payment->public_id,
                 'voucher_no' => $payment->voucher_no,
                 'entry_date' => $payment->entry_date,
                 'direction' => $payment->direction->value,
@@ -146,8 +149,8 @@ class PaymentController extends Controller
                 'created_at' => $payment->created_at?->toIso8601String(),
                 'is_active' => $payment->status === EntryStatus::Active,
                 'linked' => match (true) {
-                    $payment->purchase !== null => ['type' => 'purchase', 'id' => $payment->purchase->id, 'voucher_no' => $payment->purchase->voucher_no],
-                    $payment->sale !== null => ['type' => 'sale', 'id' => $payment->sale->id, 'voucher_no' => $payment->sale->voucher_no],
+                    $payment->purchase !== null => ['type' => 'purchase', 'id' => $payment->purchase->id, 'public_id' => $payment->purchase->public_id, 'voucher_no' => $payment->purchase->voucher_no],
+                    $payment->sale !== null => ['type' => 'sale', 'id' => $payment->sale->id, 'public_id' => $payment->sale->public_id, 'voucher_no' => $payment->sale->voucher_no],
                     default => null,
                 },
             ],
@@ -167,6 +170,7 @@ class PaymentController extends Controller
             'handled_by' => $this->partyOption($payment->handled_by_party_id),
             'payment' => [
                 'id' => $payment->id,
+                'public_id' => $payment->public_id,
                 'voucher_no' => $payment->voucher_no,
                 'version' => $payment->updated_at?->toIso8601String(),
                 'date' => $payment->entry_date,

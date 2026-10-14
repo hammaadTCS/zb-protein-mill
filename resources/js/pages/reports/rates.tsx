@@ -21,12 +21,14 @@ const ALL = 'all';
 export default function RatesReport({
     filters,
     party,
+    monthly,
     items,
     groups,
 }: {
     filters: ReportFilterValues;
     party: PartyOption | null;
-    items: { id: number; name: string }[];
+    monthly: boolean;
+    items: { id: number; public_id: string; name: string }[];
     groups: RateGroup[];
 }) {
     return (
@@ -51,8 +53,7 @@ export default function RatesReport({
                             }
                             onValueChange={(value) =>
                                 apply({
-                                    item_id:
-                                        value === ALL ? null : Number(value),
+                                    item_id: value === ALL ? null : value,
                                 })
                             }
                         >
@@ -64,7 +65,7 @@ export default function RatesReport({
                                 {items.map((item) => (
                                     <SelectItem
                                         key={item.id}
-                                        value={String(item.id)}
+                                        value={item.public_id}
                                     >
                                         {item.name}
                                     </SelectItem>
@@ -73,7 +74,12 @@ export default function RatesReport({
                         </Select>
                     )}
                 </ReportFilters>
-                <RateHistory groups={groups} />
+                {monthly && (
+                    <p className="text-sm text-muted-foreground">
+                        Periods longer than 3 months show one line per month.
+                    </p>
+                )}
+                <RateHistory groups={groups} monthly={monthly} />
             </div>
         </>
     );

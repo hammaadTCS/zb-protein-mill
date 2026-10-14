@@ -56,7 +56,7 @@ it('spec §11.2 the list filters by party, status and search text', function () 
     quickPurchase($owner, $world['parties']['aslam']->id, '2026-01-05', '800', '50');
     quickPurchase($owner, $world['parties']['karim']->id, '2026-01-06', '600', '48');
 
-    $this->actingAs($owner)->get(route('purchases.index', ['party_id' => $world['parties']['karim']->id]))
+    $this->actingAs($owner)->get(route('purchases.index', ['party_id' => $world['parties']['karim']->public_id]))
         ->assertInertia(fn (Assert $page) => $page->where('purchases.total', 1)->where('party.label', 'Karim – 03000000002'));
 
     $this->actingAs($owner)->get(route('purchases.index', ['q' => 'aslam']))

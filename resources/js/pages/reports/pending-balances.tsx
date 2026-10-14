@@ -25,6 +25,7 @@ import { pendingBalances } from '@/routes/reports';
 
 type Row = {
     id: number;
+    public_id: string;
     code: string;
     name: string;
     type: string;
@@ -131,7 +132,7 @@ export default function PendingBalances({
                                         </TableCell>
                                         <TableCell>
                                             <Link
-                                                href={showParty(row.id)}
+                                                href={showParty(row.public_id)}
                                                 className="underline-offset-4 hover:underline"
                                             >
                                                 {row.name}

@@ -129,7 +129,7 @@ final class AuditTrail
         return [
             'type' => str_replace('_', ' ', $log->auditable_type),
             'label' => $label,
-            'url' => $route !== null && $record instanceof Model ? route($route, $record->getKey(), false) : null,
+            'url' => $route !== null && $record instanceof Model ? route($route, $record, false) : null, // BR-SEC-19: by public id
         ];
     }
 }

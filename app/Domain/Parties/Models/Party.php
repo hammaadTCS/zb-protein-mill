@@ -15,6 +15,7 @@ use App\Domain\Payments\Models\Payment;
 use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
 use App\Support\Decimal;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -28,6 +29,7 @@ use Illuminate\Support\Carbon;
  * the first entry (BR-PTY-04); a party is never deleted (BR-PTY-05).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $code
  * @property PartyType $type
@@ -69,6 +71,7 @@ use Illuminate\Support\Carbon;
 class Party extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** The fields a user may fill on the party form (spec §9.2, §11.10). */

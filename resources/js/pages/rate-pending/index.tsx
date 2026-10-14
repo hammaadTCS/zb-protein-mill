@@ -29,6 +29,7 @@ import { rate as saleRate, show as showSale } from '@/routes/sales';
 type Row = {
     type: 'purchase' | 'sale';
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     party: string;
@@ -106,8 +107,8 @@ export default function RatePending({
                                     <Link
                                         href={
                                             row.type === 'sale'
-                                                ? showSale(row.id)
-                                                : showPurchase(row.id)
+                                                ? showSale(row.public_id)
+                                                : showPurchase(row.public_id)
                                         }
                                         className="underline-offset-4 hover:underline"
                                     >
@@ -166,8 +167,8 @@ export default function RatePending({
                     kg={adding.kg}
                     url={
                         adding.type === 'sale'
-                            ? saleRate.url(adding.id)
-                            : purchaseRate.url(adding.id)
+                            ? saleRate.url(adding.public_id)
+                            : purchaseRate.url(adding.public_id)
                     }
                     today={today}
                     onClose={() => setAdding(null)}

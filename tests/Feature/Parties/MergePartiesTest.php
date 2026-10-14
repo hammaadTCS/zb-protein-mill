@@ -98,7 +98,7 @@ it('page 20 and the khata: preview, merge, the merge rows and Merged into', func
     mergePurchase($owner, $aslam, '100');
     mergePurchase($owner, $duplicate, '200');
 
-    $this->actingAs($owner)->get(route('parties.merge', ['source_id' => $duplicate->id, 'target_id' => $aslam->id]))
+    $this->actingAs($owner)->get(route('parties.merge', ['source_id' => $duplicate->public_id, 'target_id' => $aslam->public_id]))
         ->assertInertia(fn (Assert $page) => $page
             ->component('parties/merge')
             ->where('source.balance', ['words' => 'We owe', 'amount' => '10000.00'])
@@ -113,9 +113,9 @@ it('page 20 and the khata: preview, merge, the merge rows and Merged into', func
     $targetRow = collect(PartyKhata::for($aslam->refresh())->rows)->last();
     $sourceRow = collect(PartyKhata::for($duplicate->refresh())->rows)->last();
 
-    expect([$targetRow->description, $targetRow->route, $targetRow->increase])->toBe(['Balance moved from Aslam Bhai ('.$duplicate->code.')', route('parties.show', $duplicate->id, false), '10000.00'])
-        ->and([$sourceRow->description, $sourceRow->route, $sourceRow->decrease, $sourceRow->balance->words])->toBe(['Balance moved to Aslam ('.$aslam->code.')', route('parties.show', $aslam->id, false), '10000.00', 'Settled']);
+    expect([$targetRow->description, $targetRow->route, $targetRow->increase])->toBe(['Balance moved from Aslam Bhai ('.$duplicate->code.')', route('parties.show', $duplicate, false), '10000.00'])
+        ->and([$sourceRow->description, $sourceRow->route, $sourceRow->decrease, $sourceRow->balance->words])->toBe(['Balance moved to Aslam ('.$aslam->code.')', route('parties.show', $aslam, false), '10000.00', 'Settled']);
 
     $this->actingAs($owner)->get(route('parties.show', $duplicate))
-        ->assertInertia(fn (Assert $page) => $page->where('party.merged_into', ['id' => $aslam->id, 'code' => $aslam->code, 'name' => 'Aslam']));
+        ->assertInertia(fn (Assert $page) => $page->where('party.merged_into', ['id' => $aslam->id, 'public_id' => $aslam->public_id, 'code' => $aslam->code, 'name' => 'Aslam']));
 });

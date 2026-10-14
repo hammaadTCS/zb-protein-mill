@@ -102,14 +102,22 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T7.5** Business insights. *Done when:* tests pass.
 - [ ] **T7.6** Backup status page. *Done when:* tests pass. **[Human]** after T8.3: one restore done on staging (runbook §4) and recorded in `docs/release-checks.md`.
 - [x] **T7.7** Acceptance AT-3 to AT-6. *Done when:* all four pass in CI.
-- [ ] **T7.8** Integrity check command. *Done when:* tests pass; the schedule is listed by `php artisan schedule:list`.
+- [x] **T7.8** Integrity check command. *Done when:* tests pass; the schedule is listed by `php artisan schedule:list`.
 
 ## M8: Release and handover  ·  card file `docs/cards/M8.md`
 
-- [ ] **T8.1** Security checklist. *Done when:* every row filled; tests pass.
+- [x] **T8.1** Security checklist. *Done when:* every row filled; tests pass.
 - [ ] **T8.2** Performance check. *Done when:* every report and list loads in under 3 seconds on the measured machine (NFR-02), with the timings and sizes recorded.
 - [ ] **T8.3** Staging server and first deploy [Human + Claude]. *Done when:* staging works from the documents alone; release checks updated.
 - [ ] **T8.4** Client review on staging [Human]. *Done when:* every comment has a decision.
 - [ ] **T8.5** Trial month alongside the Urdu register [Human]. *Done when:* the month closes in the system with zero unexplained differences.
 - [ ] **T8.6** Production server and go-live [Human]. *Done when:* every box is ticked.
 - [ ] **T8.7** Handover to the company [Human]. *Done when:* the handover sheet is signed and stored with the release checks.
+
+## M9: Requested changes before go-live  ·  card file `docs/cards/M9.md` (in `docs/proposals/G-31-m9.patch` until the `[spec-change]` pull request is merged)
+
+- [x] **T9.1** Starter-kit leftovers and log safety. *Done when:* tests pass.
+- [ ] **T9.2** Speed. *Done when:* tests pass; every page in `zb:time-pages` under 3 seconds on the measured machine, recorded. (Built and recorded; two pages are still over 3 seconds on the developer's laptop: see `docs/release-checks.md`, "M9 re-measure".)
+- [ ] **T9.3** Simple dashboard for the Accountant. *Done when:* tests pass; screenshot at 375 px for both roles. (Tests pass; the two screenshots are still to take: this session had no browser.)
+- [x] **T9.4** Long report ranges. *Done when:* tests pass.
+- [x] **T9.5** Public ids in links and filters. *Done when:* tests pass; T-09 passes over every route.

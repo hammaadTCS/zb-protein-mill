@@ -55,6 +55,7 @@ final class ExpenseReport
             ->get()
             ->map(fn (Expense $e): array => [
                 'id' => $e->id,
+                'public_id' => $e->public_id,
                 'date' => $e->entry_date,
                 'voucher' => $e->voucher_no,
                 'category' => $e->category->name,

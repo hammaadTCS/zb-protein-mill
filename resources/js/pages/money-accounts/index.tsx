@@ -35,6 +35,7 @@ type AccountType = 'cash' | 'bank';
 
 type MoneyAccount = {
     id: number;
+    public_id: string;
     name: string;
     type: AccountType;
     bank_name: string | null;
@@ -139,7 +140,7 @@ export default function MoneyAccounts({
                                                 onClick={() =>
                                                     router.post(
                                                         deactivate.url(
-                                                            account.id,
+                                                            account.public_id,
                                                         ),
                                                         {},
                                                         {
@@ -193,7 +194,7 @@ function AccountDialog({
         const options = { preserveScroll: true, onSuccess: onClose };
 
         if (account) {
-            form.put(update.url(account.id), options);
+            form.put(update.url(account.public_id), options);
         } else {
             form.post(store.url(), options);
         }

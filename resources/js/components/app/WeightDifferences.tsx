@@ -21,6 +21,14 @@ export type WeightGroup = {
         our_kg: string;
         difference: string;
     }[];
+    /** BR-RPT-10: one line per month instead of entries, for long ranges. */
+    months?: {
+        month: string;
+        label: string;
+        their_kg: string;
+        our_kg: string;
+        difference: string;
+    }[];
     their_kg: string;
     our_kg: string;
     difference: string;
@@ -29,9 +37,16 @@ export type WeightGroup = {
 
 /**
  * R-11 rows (page 38 and the party profile): their kg against our kg. A positive
- * difference always means kg lost by the business (spec §12.4).
+ * difference always means kg lost by the business (spec §12.4). `monthly`
+ * (BR-RPT-10): each line is a month's total.
  */
-export function WeightDifferences({ groups }: { groups: WeightGroup[] }) {
+export function WeightDifferences({
+    groups,
+    monthly = false,
+}: {
+    groups: WeightGroup[];
+    monthly?: boolean;
+}) {
     const formats = useFormats();
 
     if (groups.length === 0) {
@@ -46,8 +61,14 @@ export function WeightDifferences({ groups }: { groups: WeightGroup[] }) {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Voucher</TableHead>
+                                {monthly ? (
+                                    <TableHead colSpan={2}>Month</TableHead>
+                                ) : (
+                                    <>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Voucher</TableHead>
+                                    </>
+                                )}
                                 <TableHead className="text-right">
                                     Their kg
                                 </TableHead>
@@ -60,6 +81,22 @@ export function WeightDifferences({ groups }: { groups: WeightGroup[] }) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                            {(group.months ?? []).map((month) => (
+                                <TableRow key={month.month}>
+                                    <TableCell colSpan={2}>
+                                        {month.label}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <KgText value={month.their_kg} />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <KgText value={month.our_kg} />
+                                    </TableCell>
+                                    <TableCell className="text-right tabular-nums">
+                                        {month.difference}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
                             {group.entries.map((entry) => (
                                 <TableRow key={entry.voucher}>
                                     <TableCell className="tabular-nums">

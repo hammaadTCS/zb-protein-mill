@@ -69,6 +69,7 @@ class RatePendingController extends Controller
         return [
             'type' => $kind,
             'id' => $entry->id,
+            'public_id' => $entry->public_id,
             'voucher_no' => $entry->voucher_no,
             'entry_date' => $entry->entry_date,
             'party' => (string) $party->getAttribute('name'),

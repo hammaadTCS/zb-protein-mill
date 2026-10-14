@@ -15,8 +15,12 @@ return [
     |
     */
 
+    // Off (T9.2): servers never build or run an SSR bundle (release.yml runs `npm run
+    // build` only), so pages always render in the browser. Left on, a laptop running
+    // the Vite dev server sent every full page load to Vite to render on the server
+    // first: 0.5 to 16 seconds per page instead of a tenth of one.
     'ssr' => [
-        'enabled' => true,
+        'enabled' => false,
         'url' => 'http://127.0.0.1:13714',
         // 'bundle' => base_path('bootstrap/ssr/ssr.mjs'),
 
@@ -64,6 +68,69 @@ return [
     'testing' => [
 
         'ensure_pages_exist' => true,
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | DevTools
+    |--------------------------------------------------------------------------
+    |
+    | The DevTools recorder writes every page's data (party names, amounts) to
+    | storage and serves it under /_inertia/devtools. BR-SEC-17: that data must
+    | not leave the screen, so it is off unless a developer turns it on in a
+    | local .env, and it can never run outside APP_ENV=local. The package turns
+    | it on in every local environment when this key is missing.
+    |
+    */
+
+    'devtools' => [
+
+        'enabled' => env('APP_ENV') === 'local' && (bool) env('INERTIA_DEVTOOLS_ENABLED', false),
+
+        'except' => ['telescope*', 'horizon*', '_inertia/devtools*'],
+
+        'storage' => [
+
+            'path' => storage_path('inertia-devtools'),
+
+            'ttl' => (int) env('INERTIA_DEVTOOLS_TTL_HOURS', 24),
+
+            'prune_interval' => (int) env('INERTIA_DEVTOOLS_PRUNE_INTERVAL_SECONDS', 300),
+
+            'limit' => (int) env('INERTIA_DEVTOOLS_LIMIT', 100),
+
+        ],
+
+        'middleware' => ['web'],
+
+        'gate' => env('INERTIA_DEVTOOLS_GATE'),
+
+        'redact' => [
+
+            'keys' => [
+                'password',
+                'password_confirmation',
+                'current_password',
+                'token',
+                '_token',
+                'access_token',
+                'refresh_token',
+                'secret',
+                'client_secret',
+                'api_key',
+            ],
+
+            'headers' => [
+                'cookie',
+                'set-cookie',
+                'authorization',
+                'proxy-authorization',
+                'x-xsrf-token',
+                'x-csrf-token',
+            ],
+
+        ],
 
     ],
 

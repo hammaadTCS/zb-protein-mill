@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Adjustments\Adjustments;
 use App\Domain\Adjustments\Models\Adjustment;
 use App\Domain\Items\Models\Item;
+use App\Domain\Parties\Models\Party;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\PaymentApproval;
 use App\Domain\Periods\Periods;
@@ -67,11 +68,12 @@ class PurchaseController extends Controller
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();
 
         return Inertia::render('purchases/index', [
-            'filters' => $filters,
+            'filters' => $this->shownFilters($filters),
             'party' => $this->partyOption($filters['party_id']),
             'totals' => ['kg' => (string) ($totals->kg ?? '0.000'), 'amount' => (string) ($totals->amount ?? '0.00')],
             'purchases' => $this->paginated($page, fn (Purchase $p): array => [
                 'id' => $p->id,
+                'public_id' => $p->public_id,
                 'voucher_no' => $p->voucher_no,
                 'entry_date' => $p->entry_date,
                 'party' => $p->party->name,
@@ -90,7 +92,8 @@ class PurchaseController extends Controller
         $this->authorize('create', Purchase::class);
 
         // Opened from a party profile: the supplier is pre-selected (T2.9).
-        $party = $this->partyOption($request->integer('party_id') ?: null);
+        // BR-SEC-19: a party profile opens this page with the party's public id.
+        $party = $this->partyOption(Party::idFromPublic($request->validate(['party_id' => ['nullable', 'string']])['party_id'] ?? null));
 
         return Inertia::render('purchases/create', [
             ...$this->formProps(),
@@ -141,6 +144,7 @@ class PurchaseController extends Controller
         return Inertia::render('purchases/show', [
             'purchase' => [
                 'id' => $purchase->id,
+                'public_id' => $purchase->public_id,
                 'voucher_no' => $purchase->voucher_no,
                 'entry_date' => $purchase->entry_date,
                 'party' => ['id' => $purchase->party->id, 'code' => $purchase->party->code, 'name' => $purchase->party->name],
@@ -192,6 +196,7 @@ class PurchaseController extends Controller
             'party' => $this->partyOption($purchase->party_id),
             'purchase' => [
                 'id' => $purchase->id,
+                'public_id' => $purchase->public_id,
                 'voucher_no' => $purchase->voucher_no,
                 'version' => $purchase->updated_at?->toIso8601String(),
                 'date' => $purchase->entry_date,
@@ -282,6 +287,7 @@ class PurchaseController extends Controller
     {
         return array_values($purchase->adjustments()->orderBy('id')->get()->map(fn (Adjustment $a): array => [
             'id' => $a->id,
+            'public_id' => $a->public_id,
             'voucher_no' => $a->voucher_no,
             'entry_date' => $a->entry_date,
             'amount' => $a->amount,

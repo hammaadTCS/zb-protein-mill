@@ -11,6 +11,7 @@ import { approve, index, reject } from '@/routes/approvals';
 
 type Pending = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     party: string;
@@ -85,7 +86,7 @@ export default function Approvals({ payments }: { payments: Pending[] }) {
                                 size="lg"
                                 onClick={() =>
                                     router.post(
-                                        approve.url(payment.id),
+                                        approve.url(payment.public_id),
                                         {},
                                         { preserveScroll: true },
                                     )
@@ -113,7 +114,7 @@ export default function Approvals({ payments }: { payments: Pending[] }) {
                 onConfirm={(reason) =>
                     rejecting &&
                     router.post(
-                        reject.url(rejecting.id),
+                        reject.url(rejecting.public_id),
                         { reason },
                         {
                             preserveScroll: true,

@@ -1,6 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { MoneyText } from '@/components/app/MoneyText';
 import { PageHeader } from '@/components/app/PageHeader';
+import type { Paginated } from '@/components/app/Pagination';
+import { Pagination } from '@/components/app/Pagination';
 import { PrintHeader } from '@/components/app/PrintHeader';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,26 +29,33 @@ type Row = {
     route: string | null;
 };
 
-/** Page 25 (R-06): opening, every movement with a running balance, closing. */
+/**
+ * Page 25 (R-06): opening, every movement with a running balance, closing.
+ * BR-RPT-09: 100 movements per page; a later page starts with the balance brought
+ * forward, and the closing line and totals always cover the whole range.
+ */
 export default function AccountStatementPage({
     account,
     filters,
     statement,
+    pages,
 }: {
-    account: { id: number; name: string; type: string };
+    account: { id: number; public_id: string; name: string; type: string };
     filters: { from: string; to: string };
     statement: {
         opening: string;
+        brought_forward: string;
         rows: Row[];
         closing: string;
         total_in: string;
         total_out: string;
     };
+    pages: Omit<Paginated<Row>, 'data'>;
 }) {
     const formats = useFormats();
     const apply = (changes: Partial<typeof filters>) =>
         router.get(
-            show.url(account.id, { query: { ...filters, ...changes } }),
+            show.url(account.public_id, { query: { ...filters, ...changes } }),
             {},
             { preserveState: true, replace: true },
         );
@@ -93,9 +102,20 @@ export default function AccountStatementPage({
                     </TableHeader>
                     <TableBody>
                         <TableRow className="font-medium">
-                            <TableCell colSpan={6}>Opening balance</TableCell>
+                            <TableCell colSpan={6}>
+                                {pages.current_page > 1
+                                    ? 'Brought forward'
+                                    : 'Opening balance'}
+                            </TableCell>
                             <TableCell className="text-right">
-                                <MoneyText value={statement.opening} signed />
+                                <MoneyText
+                                    value={
+                                        pages.current_page > 1
+                                            ? statement.brought_forward
+                                            : statement.opening
+                                    }
+                                    signed
+                                />
                             </TableCell>
                         </TableRow>
                         {statement.rows.map((row, i) => (
@@ -148,6 +168,7 @@ export default function AccountStatementPage({
                         </TableRow>
                     </TableFooter>
                 </Table>
+                <Pagination page={pages} />
             </div>
         </>
     );

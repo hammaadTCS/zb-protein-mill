@@ -30,6 +30,7 @@ type Words = { words: string; amount: string };
 
 export type EditedPayment = {
     id: number;
+    public_id: string;
     voucher_no: string;
     version: string;
     date: string;
@@ -165,7 +166,7 @@ export function PaymentForm({
                     confirmed_warnings: confirmed,
                 };
             });
-            form.put(update.url(payment.id), {
+            form.put(update.url(payment.public_id), {
                 onHttpException: (response) => {
                     if (response.status === 409) {
                         const body = response.data as { message?: string };

@@ -35,12 +35,14 @@ type Category = { id: number; name: string; is_quick: boolean };
 export type LinkedEntry = {
     type: 'purchase' | 'sale';
     id: number;
+    public_id: string;
     voucher_no: string;
     label: string;
 };
 
 export type EditedExpense = {
     id: number;
+    public_id: string;
     voucher_no: string;
     version: string;
     date: string;
@@ -249,7 +251,7 @@ export function ExpenseForm({
                     confirmed_warnings: confirmed,
                 };
             });
-            form.put(update.url(expense.id), {
+            form.put(update.url(expense.public_id), {
                 onHttpException: (response) => {
                     if (response.status === 409) {
                         const body = response.data as { message?: string };

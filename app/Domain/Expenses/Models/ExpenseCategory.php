@@ -6,6 +6,7 @@ namespace App\Domain\Expenses\Models;
 
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Ledger\Models\LedgerAccount;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
  * has the same name (spec §8.1).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $name
  * @property int $ledger_account_id
@@ -33,6 +35,7 @@ use Illuminate\Support\Carbon;
 class ExpenseCategory extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

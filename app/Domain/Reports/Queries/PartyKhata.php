@@ -124,7 +124,7 @@ final class PartyKhata
                 increase: null,
                 decrease: null,
                 balance: $before ?? $opening,
-                route: route($model === Sale::class ? 'sales.show' : 'purchases.show', $purchase->id, false),
+                route: route($model === Sale::class ? 'sales.show' : 'purchases.show', $purchase, false),
                 pendingKg: $purchase->kg,
             )]);
         }
@@ -202,7 +202,7 @@ final class PartyKhata
             ->join('parties', 'parties.id', '=', 'journal_lines.party_id')
             ->whereIn('journal_lines.journal_entry_id', $journalIds)
             ->where('journal_lines.party_id', '!=', $party->id)
-            ->get(['journal_lines.journal_entry_id', 'parties.id', 'parties.name', 'parties.code']);
+            ->get(['journal_lines.journal_entry_id', 'parties.id', 'parties.public_id', 'parties.name', 'parties.code']);
         $rows = [];
 
         foreach ($others as $other) {
@@ -210,7 +210,7 @@ final class PartyKhata
             $rows[(int) $other->journal_entry_id] = [
                 'voucher' => null,
                 'description' => ($into ? 'Balance moved to ' : 'Balance moved from ')."{$other->name} ({$other->code})",
-                'route' => route('parties.show', (int) $other->id, false),
+                'route' => route('parties.show', (string) $other->public_id, false), // BR-SEC-19
             ];
         }
 

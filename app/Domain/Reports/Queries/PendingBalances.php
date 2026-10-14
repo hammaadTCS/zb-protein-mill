@@ -22,7 +22,7 @@ final class PendingBalances
     public const SECTIONS = ['Owes us', 'We owe', 'Advance'];
 
     /**
-     * @return array<string, array{rows: list<array{id: int, code: string, name: string, type: string, words: string, amount: string, pending_kg: string, advance_age_days: int|null, overdue: string|null}>, total: string}>
+     * @return array<string, array{rows: list<array{id: int, public_id: string, code: string, name: string, type: string, words: string, amount: string, pending_kg: string, advance_age_days: int|null, overdue: string|null}>, total: string}>
      */
     public static function asOf(string $date, ?PartyType $type = null): array
     {
@@ -49,6 +49,9 @@ final class PendingBalances
             ->orderBy('code')
             ->get();
 
+        // Overdue for every buyer on the report, in one query (spec §12.6, T9.2).
+        $overdue = Ageing::overdueMany($parties->filter(fn (Party $party): bool => $party->type === PartyType::Buyer), $date);
+
         foreach ($parties as $party) {
             $balance = $party->balanceOfNet((string) $nets[$party->id], $pendingKg[$party->id] ?? '0.000');
 
@@ -58,6 +61,7 @@ final class PendingBalances
 
             $sections[$balance->words]['rows'][] = [
                 'id' => $party->id,
+                'public_id' => $party->public_id,
                 'code' => $party->code,
                 'name' => $party->name,
                 'type' => $party->type->value,
@@ -65,7 +69,7 @@ final class PendingBalances
                 'amount' => $balance->amount,
                 'pending_kg' => $balance->pendingKg,
                 'advance_age_days' => $balance->words === 'Advance' ? Ageing::advanceAgeDays($party, $date) : null,
-                'overdue' => $party->type === PartyType::Buyer && $balance->words === 'Owes us' ? Ageing::overdueFor($party, $date) : null,
+                'overdue' => $party->type === PartyType::Buyer && $balance->words === 'Owes us' ? $overdue[$party->id] : null,
             ];
             $sections[$balance->words]['total'] = Decimal::add($sections[$balance->words]['total'], $balance->amount);
         }

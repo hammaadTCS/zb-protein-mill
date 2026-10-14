@@ -39,6 +39,7 @@ type PartyFields = {
 
 type EditedParty = {
     id: number;
+    public_id: string;
     code: string;
     status: 'active' | 'inactive';
     has_entries: boolean;
@@ -94,7 +95,7 @@ export default function PartyForm({ party }: { party: EditedParty | null }) {
         const options = { preserveScroll: true, onHttpException };
 
         if (party) {
-            form.put(update.url(party.id), options);
+            form.put(update.url(party.public_id), options);
         } else {
             form.post(store.url(), options);
         }
@@ -249,8 +250,8 @@ export default function PartyForm({ party }: { party: EditedParty | null }) {
                             onClick={() =>
                                 router.post(
                                     party.status === 'active'
-                                        ? deactivate.url(party.id)
-                                        : activate.url(party.id),
+                                        ? deactivate.url(party.public_id)
+                                        : activate.url(party.public_id),
                                 )
                             }
                         >

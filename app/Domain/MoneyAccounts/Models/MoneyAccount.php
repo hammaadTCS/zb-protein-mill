@@ -7,6 +7,7 @@ namespace App\Domain\MoneyAccounts\Models;
 use App\Domain\Ledger\LedgerBalance;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\MoneyAccounts\Enums\MoneyAccountType;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
  * account (BR-ACC-01).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $name
  * @property MoneyAccountType $type
@@ -38,6 +40,7 @@ use Illuminate\Support\Carbon;
 class MoneyAccount extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

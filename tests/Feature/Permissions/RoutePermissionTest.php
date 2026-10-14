@@ -166,7 +166,7 @@ function applicationRoutes(): array
  * One record for every route parameter, so model binding finds it and the request
  * reaches the permission check.
  *
- * @return array<string, int>
+ * @return array<string, int|string>
  */
 function routeParameters(User $owner): array
 {
@@ -185,12 +185,13 @@ function routeParameters(User $owner): array
     $transfer = app(CreateTransfer::class)->handle($owner, ['idempotency_key' => $key(), 'date' => '2026-01-05', 'from_account_id' => $world['accounts']['hbl']->id, 'to_account_id' => $cash, 'amount' => '1000']);
     $adjustment = app(CreateAdjustment::class)->handle($owner, $sale, ['idempotency_key' => $key(), 'date' => '2026-01-05', 'amount' => '100', 'reason' => 'quality', 'note' => 'Agreed']);
 
+    // BR-SEC-19: routes name records by public id.
     return [
-        'purchase' => $purchase->id, 'sale' => $sale->id, 'payment' => $payment->id, 'expense' => $expense->id,
-        'partnerTransaction' => $partner->id, 'transfer' => $transfer->id, 'adjustment' => $adjustment->id,
-        'party' => $world['parties']['aslam']->id, 'moneyAccount' => $cash, 'category' => $category->id,
-        'item' => (int) $item('WOOD'), 'user' => User::factory()->create()->assignRole(RolesAndPermissionsSeeder::ACCOUNTANT)->id,
-        'attachment' => 999999, // none exists: the attachment check is the record's own (404 for both users)
+        'purchase' => $purchase->public_id, 'sale' => $sale->public_id, 'payment' => $payment->public_id, 'expense' => $expense->public_id,
+        'partnerTransaction' => $partner->public_id, 'transfer' => $transfer->public_id, 'adjustment' => $adjustment->public_id,
+        'party' => $world['parties']['aslam']->public_id, 'moneyAccount' => $world['accounts']['cash']->public_id, 'category' => $category->public_id,
+        'item' => Item::query()->where('code', 'WOOD')->value('public_id'), 'user' => User::factory()->create()->assignRole(RolesAndPermissionsSeeder::ACCOUNTANT)->public_id,
+        'attachment' => (string) Str::uuid(), // none exists: the attachment check is the record's own (404 for both users)
         'period' => '2026-01', // a month (T7.2 reopen)
     ];
 }

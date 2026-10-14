@@ -11,6 +11,7 @@ import { cancel } from '@/routes/adjustments';
 
 export type AdjustmentRow = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     amount: string;
@@ -77,7 +78,7 @@ export function AdjustmentList({ rows }: { rows: AdjustmentRow[] }) {
                 onConfirm={(reason) =>
                     cancelling &&
                     router.post(
-                        cancel.url(cancelling.id),
+                        cancel.url(cancelling.public_id),
                         { reason },
                         {
                             preserveScroll: true,

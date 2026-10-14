@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Parties\Models\Party;
 use App\Domain\Partners\Actions\CancelPartnerTransaction;
 use App\Domain\Partners\Actions\CreatePartnerTransaction;
 use App\Domain\Partners\Actions\UpdatePartnerTransaction;
@@ -60,11 +61,12 @@ class PartnerTransactionController extends Controller
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();
 
         return Inertia::render('partners/index', [
-            'filters' => [...$filters, 'type' => $type],
+            'filters' => $this->shownFilters([...$filters, 'type' => $type]),
             'party' => $this->partyOption($filters['party_id']),
             'totals' => ['invested' => (string) ($totals->invested ?? '0.00'), 'withdrawn' => (string) ($totals->withdrawn ?? '0.00')],
             'entries' => $this->paginated($page, fn (PartnerTransaction $t): array => [
                 'id' => $t->id,
+                'public_id' => $t->public_id,
                 'voucher_no' => $t->voucher_no,
                 'entry_date' => $t->entry_date,
                 'type' => $t->type->value,
@@ -82,7 +84,8 @@ class PartnerTransactionController extends Controller
     {
         $this->authorize('create', PartnerTransaction::class);
 
-        $party = $this->partyOption($request->integer('party_id') ?: null);
+        // BR-SEC-19: a party profile opens this page with the party's public id.
+        $party = $this->partyOption(Party::idFromPublic($request->validate(['party_id' => ['nullable', 'string']])['party_id'] ?? null));
 
         return Inertia::render('partners/create', [
             'today' => Today::date(),
@@ -111,6 +114,7 @@ class PartnerTransactionController extends Controller
             'party' => $this->partyOption($partnerTransaction->party_id),
             'entry' => [
                 'id' => $partnerTransaction->id,
+                'public_id' => $partnerTransaction->public_id,
                 'voucher_no' => $partnerTransaction->voucher_no,
                 'version' => $partnerTransaction->updated_at?->toIso8601String(),
                 'date' => $partnerTransaction->entry_date,
@@ -151,15 +155,15 @@ class PartnerTransactionController extends Controller
         $input = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d'],
-            'party_id' => ['nullable', 'integer'],
+            'party_id' => ['nullable', 'string'],
         ]);
         $start = Settings::get(SettingKeys::SYSTEM_START_DATE);
         $from = $input['from'] ?? (is_string($start) ? $start : substr(Today::date(), 0, 8).'01');
         $to = $input['to'] ?? Today::date();
-        $partyId = isset($input['party_id']) ? (int) $input['party_id'] : null;
+        $partyId = Party::idFromPublic($input['party_id'] ?? null);
 
         return Inertia::render('partners/statement', [
-            'filters' => ['from' => $from, 'to' => $to, 'party_id' => $partyId],
+            'filters' => $this->shownFilters(['from' => $from, 'to' => $to, 'party_id' => $partyId]),
             'party' => $this->partyOption($partyId),
             'rows' => PartnerStatement::between($from, $to, $partyId),
         ]);

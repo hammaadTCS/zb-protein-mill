@@ -32,6 +32,7 @@ import { create, index, show } from '@/routes/payments';
 
 type Row = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     direction: 'paid' | 'received';
@@ -45,7 +46,7 @@ type Row = {
 type Filters = {
     from: string;
     to: string;
-    party_id: number | null;
+    party_id: string | null;
     status: string;
     q: string;
     direction: string;
@@ -134,7 +135,7 @@ export default function Payments({
                         value={party}
                         placeholder="All parties"
                         onChange={(picked) =>
-                            apply({ party_id: picked?.id ?? null })
+                            apply({ party_id: picked?.public_id ?? null })
                         }
                     />
                     <Select
@@ -200,7 +201,9 @@ export default function Payments({
                             <TableRow
                                 key={row.id}
                                 className="cursor-pointer"
-                                onClick={() => router.visit(show.url(row.id))}
+                                onClick={() =>
+                                    router.visit(show.url(row.public_id))
+                                }
                             >
                                 <TableCell className="tabular-nums">
                                     {formatDate(
@@ -210,7 +213,7 @@ export default function Payments({
                                 </TableCell>
                                 <TableCell className="tabular-nums">
                                     <Link
-                                        href={show(row.id)}
+                                        href={show(row.public_id)}
                                         className="underline-offset-4 hover:underline"
                                     >
                                         {row.voucher_no}

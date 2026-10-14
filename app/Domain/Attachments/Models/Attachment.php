@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Attachments\Models;
 
 use App\Domain\Attachments\Enums\AttachmentKind;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,6 +19,7 @@ use Illuminate\Support\Carbon;
  * Stored on the private `attachments` disk under a random name.
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $attachable_type
  * @property int $attachable_id
@@ -37,6 +39,7 @@ use Illuminate\Support\Carbon;
 class Attachment extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /**

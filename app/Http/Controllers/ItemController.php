@@ -27,6 +27,7 @@ class ItemController extends Controller
             ->get()
             ->map(fn (Item $item): array => [
                 'id' => $item->id,
+                'public_id' => $item->public_id,
                 'code' => $item->code,
                 'name' => $item->name,
                 'type' => $item->type->value,

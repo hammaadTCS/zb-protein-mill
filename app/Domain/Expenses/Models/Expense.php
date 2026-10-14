@@ -11,6 +11,7 @@ use App\Domain\Purchases\Models\Purchase;
 use App\Domain\Sales\Models\Sale;
 use App\Models\User;
 use App\Support\EntryStatus;
+use App\Support\HasPublicId;
 use App\Support\NeverDeleted;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,7 @@ use Illuminate\Support\Carbon;
  * A running cost (spec §9.3, glossary "Expense"), always with a note (BR-EXP-02).
  *
  * @property int $id
+ * @property string $public_id
  * @property int $company_id
  * @property string $voucher_no
  * @property string $entry_date
@@ -61,6 +63,7 @@ use Illuminate\Support\Carbon;
 class Expense extends Model
 {
     use BelongsToCompany;
+    use HasPublicId;
     use NeverDeleted;
 
     /** @var array<string, mixed> */

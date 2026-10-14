@@ -66,7 +66,7 @@ it('expense list filters by category and shows the note in each row', function (
     pagesExpense($owner, 'Food', '2500', $cash, 'Lunch for staff');
     pagesExpense($owner, 'Tea', '300', $cash, 'Evening tea');
 
-    $this->actingAs($owner)->get(route('expenses.index', ['category_id' => ExpenseCategory::query()->where('name', 'Tea')->value('id')]))
+    $this->actingAs($owner)->get(route('expenses.index', ['category_id' => ExpenseCategory::query()->where('name', 'Tea')->value('public_id')]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('expenses/index')
@@ -98,7 +98,7 @@ it('expense detail shows the link, the change history and journal lines for the 
             ->component('expenses/show')
             ->where('expense.voucher_no', 'EXP-000001')
             ->where('expense.payment_mode_label', 'Paid')
-            ->where('expense.linked', ['type' => 'sale', 'id' => $sale->id, 'voucher_no' => 'SAL-000001', 'label' => 'SAL-000001 · ABC Feeds'])
+            ->where('expense.linked', ['type' => 'sale', 'id' => $sale->id, 'public_id' => $sale->public_id, 'voucher_no' => 'SAL-000001', 'label' => 'SAL-000001 · ABC Feeds'])
             ->where('history.0.action', 'Created')
             ->has('journal', 2));
 
@@ -116,7 +116,7 @@ it('BR-EXP-08 link lookup finds an active purchase or sale by voucher number', f
 
     $this->actingAs($owner)->getJson(route('expenses.link-lookup', ['voucher_no' => 'sal-000001']))
         ->assertOk()
-        ->assertExactJson(['type' => 'sale', 'id' => $sale->id, 'voucher_no' => 'SAL-000001', 'label' => 'SAL-000001 · ABC Feeds']);
+        ->assertExactJson(['type' => 'sale', 'id' => $sale->id, 'public_id' => $sale->public_id, 'voucher_no' => 'SAL-000001', 'label' => 'SAL-000001 · ABC Feeds']);
 
     expect($this->actingAs($owner)->getJson(route('expenses.link-lookup', ['voucher_no' => 'PUR-000009']))->getContent())->toBe('null');
 });

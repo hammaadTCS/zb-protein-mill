@@ -38,6 +38,7 @@ import {
 
 type UserRow = {
     id: number;
+    public_id: string;
     name: string;
     email: string;
     role: string;
@@ -110,7 +111,7 @@ export default function Users({
                                         onValueChange={(value) => {
                                             setError(null);
                                             router.put(
-                                                updateRole.url(user.id),
+                                                updateRole.url(user.public_id),
                                                 { role: value },
                                                 {
                                                     preserveScroll: true,
@@ -174,7 +175,9 @@ export default function Users({
                                                 onClick={() => {
                                                     setError(null);
                                                     router.post(
-                                                        disable.url(user.id),
+                                                        disable.url(
+                                                            user.public_id,
+                                                        ),
                                                         {},
                                                         {
                                                             preserveScroll: true,
@@ -191,7 +194,9 @@ export default function Users({
                                                 variant="outline"
                                                 onClick={() =>
                                                     router.post(
-                                                        enable.url(user.id),
+                                                        enable.url(
+                                                            user.public_id,
+                                                        ),
                                                         {},
                                                         {
                                                             preserveScroll: true,
@@ -361,7 +366,7 @@ function ResetPasswordDialog({
                     className="grid gap-4"
                     onSubmit={(event) => {
                         event.preventDefault();
-                        form.put(resetPassword.url(user.id), {
+                        form.put(resetPassword.url(user.public_id), {
                             preserveScroll: true,
                             onSuccess: onClose,
                         });

@@ -28,6 +28,7 @@ class MoneyAccountController extends Controller
             ->get()
             ->map(fn (MoneyAccount $account): array => [
                 'id' => $account->id,
+                'public_id' => $account->public_id,
                 'name' => $account->name,
                 'type' => $account->type->value,
                 'bank_name' => $account->bank_name,

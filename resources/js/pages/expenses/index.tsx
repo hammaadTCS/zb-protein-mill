@@ -31,6 +31,7 @@ import { create, index, show } from '@/routes/expenses';
 
 type Row = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     category: string;
@@ -44,10 +45,10 @@ type Row = {
 type Filters = {
     from: string;
     to: string;
-    party_id: number | null;
+    party_id: string | null;
     status: string;
     q: string;
-    category_id: number | null;
+    category_id: string | null;
 };
 
 const ALL = 'all';
@@ -69,7 +70,7 @@ export default function Expenses({
     expenses: Paginated<Row>;
     filters: Filters;
     party: PartyOption | null;
-    categories: { id: number; name: string }[];
+    categories: { id: number; public_id: string; name: string }[];
     total: string;
 }) {
     const can = useCan();
@@ -120,15 +121,10 @@ export default function Expenses({
                         onChange={(e) => apply({ to: e.target.value })}
                     />
                     <Select
-                        value={
-                            filters.category_id
-                                ? String(filters.category_id)
-                                : ALL
-                        }
+                        value={filters.category_id ? filters.category_id : ALL}
                         onValueChange={(value) =>
                             apply({
-                                category_id:
-                                    value === ALL ? null : Number(value),
+                                category_id: value === ALL ? null : value,
                             })
                         }
                     >
@@ -140,7 +136,7 @@ export default function Expenses({
                             {categories.map((category) => (
                                 <SelectItem
                                     key={category.id}
-                                    value={String(category.id)}
+                                    value={category.public_id}
                                 >
                                     {category.name}
                                 </SelectItem>
@@ -152,7 +148,7 @@ export default function Expenses({
                         value={party}
                         placeholder="All parties"
                         onChange={(picked) =>
-                            apply({ party_id: picked?.id ?? null })
+                            apply({ party_id: picked?.public_id ?? null })
                         }
                     />
                     <Select
@@ -206,7 +202,9 @@ export default function Expenses({
                             <TableRow
                                 key={row.id}
                                 className="cursor-pointer"
-                                onClick={() => router.visit(show.url(row.id))}
+                                onClick={() =>
+                                    router.visit(show.url(row.public_id))
+                                }
                             >
                                 <TableCell className="tabular-nums">
                                     {formatDate(
@@ -216,7 +214,7 @@ export default function Expenses({
                                 </TableCell>
                                 <TableCell className="tabular-nums">
                                     <Link
-                                        href={show(row.id)}
+                                        href={show(row.public_id)}
                                         className="underline-offset-4 hover:underline"
                                     >
                                         {row.voucher_no}

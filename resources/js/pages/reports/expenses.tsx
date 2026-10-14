@@ -29,12 +29,13 @@ import { expenses as expenseReport } from '@/routes/reports';
 type Filters = {
     from: string;
     to: string;
-    category_id: number | null;
-    party_id: number | null;
+    category_id: string | null;
+    party_id: string | null;
 };
 
 type Row = {
     id: number;
+    public_id: string;
     date: string;
     voucher: string;
     category: string;
@@ -55,7 +56,7 @@ export default function ExpenseReportPage({
 }: {
     filters: Filters;
     party: PartyOption | null;
-    categories: { id: number; name: string }[];
+    categories: { id: number; public_id: string; name: string }[];
     report: {
         totals: { category: string; amount: string }[];
         total: string;
@@ -99,15 +100,10 @@ export default function ExpenseReportPage({
                         onChange={(e) => apply({ to: e.target.value })}
                     />
                     <Select
-                        value={
-                            filters.category_id
-                                ? String(filters.category_id)
-                                : ALL
-                        }
+                        value={filters.category_id ? filters.category_id : ALL}
                         onValueChange={(value) =>
                             apply({
-                                category_id:
-                                    value === ALL ? null : Number(value),
+                                category_id: value === ALL ? null : value,
                             })
                         }
                     >
@@ -119,7 +115,7 @@ export default function ExpenseReportPage({
                             {categories.map((category) => (
                                 <SelectItem
                                     key={category.id}
-                                    value={String(category.id)}
+                                    value={category.public_id}
                                 >
                                     {category.name}
                                 </SelectItem>
@@ -131,7 +127,7 @@ export default function ExpenseReportPage({
                         value={party}
                         placeholder="All parties"
                         onChange={(picked) =>
-                            apply({ party_id: picked?.id ?? null })
+                            apply({ party_id: picked?.public_id ?? null })
                         }
                     />
                 </div>
@@ -195,7 +191,7 @@ export default function ExpenseReportPage({
                                     </TableCell>
                                     <TableCell className="tabular-nums">
                                         <Link
-                                            href={showExpense(row.id)}
+                                            href={showExpense(row.public_id)}
                                             className="underline-offset-4 hover:underline"
                                         >
                                             {row.voucher}

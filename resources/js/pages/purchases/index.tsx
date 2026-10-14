@@ -33,6 +33,7 @@ import { create, index, show } from '@/routes/purchases';
 
 type Row = {
     id: number;
+    public_id: string;
     voucher_no: string;
     entry_date: string;
     party: string;
@@ -47,7 +48,7 @@ type Row = {
 type Filters = {
     from: string;
     to: string;
-    party_id: number | null;
+    party_id: string | null;
     status: string;
     q: string;
 };
@@ -120,7 +121,7 @@ export default function Purchases({
                         value={party}
                         placeholder="All suppliers"
                         onChange={(picked) =>
-                            apply({ party_id: picked?.id ?? null })
+                            apply({ party_id: picked?.public_id ?? null })
                         }
                     />
                     <Select
@@ -181,7 +182,9 @@ export default function Purchases({
                             <TableRow
                                 key={row.id}
                                 className="cursor-pointer"
-                                onClick={() => router.visit(show.url(row.id))}
+                                onClick={() =>
+                                    router.visit(show.url(row.public_id))
+                                }
                             >
                                 <TableCell className="tabular-nums">
                                     {formatDate(
@@ -191,7 +194,7 @@ export default function Purchases({
                                 </TableCell>
                                 <TableCell className="tabular-nums">
                                     <Link
-                                        href={show(row.id)}
+                                        href={show(row.public_id)}
                                         className="underline-offset-4 hover:underline"
                                     >
                                         {row.voucher_no}

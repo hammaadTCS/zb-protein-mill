@@ -1,5 +1,7 @@
 # ADR-0008: Security headers in nginx; CSP with a per-request nonce in the app
 
+**Status:** Replaced by ADR-0013 (server-file part only; the CSP-with-nonce decision stands).
+
 **Status:** Accepted (BR-SEC-14).
 
 **Context.** The starter kit's root view has one inline script (dark mode) and one inline style. Inertia 3 puts page data in a `<script type="application/json">`, which a Content Security Policy does not block. React and Radix set inline `style` attributes.

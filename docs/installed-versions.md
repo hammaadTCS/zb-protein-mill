@@ -18,7 +18,8 @@ Installing laravel/react-starter-kit (dev-main 717b8f55aefd82d25d4119eaebdc8e3a7
 | Composer | 2.8.12 |
 | Node.js | 22.22.0 |
 | npm | 10.9.4 |
-| PostgreSQL | 16 (cloud session); `psql -h 127.0.0.1 -U zb_test -d zb_mill_test -c 'select 1'` works |
+| MariaDB | 11.8 (cloud session, the version of record); test database `zb_mill_test`, dev database `zb_mill_dev`, one user with a password in `.env` |
+| PHP (Hostinger host) | 8.5 (LiteSpeed) |
 
 ## Packages
 

@@ -13,7 +13,7 @@ How to use this file:
 ## 1. First task: T0.1 (paste exactly)
 
 ```text
-Task: T0.1 – Laravel app, React starter kit, Pest, PostgreSQL, CI.
+Task: T0.1 – Laravel app, React starter kit, Pest, MariaDB 11.8, CI.
 
 Read CLAUDE.md, then docs/cards/M0.md section "T0.1" completely, then
 docs/stack-baseline.md and docs/conventions.md.
@@ -35,7 +35,7 @@ names, commands), stop and report exactly what you saw. Do not work around it.
 
 Done when (from the card): composer install, npm ci, npm run build, php artisan migrate,
 php artisan test, vendor/bin/pint --test, vendor/bin/phpstan analyse, npm run check,
-npm run types:check and bash scripts/secret-scan.sh all pass, on PostgreSQL, and
+npm run types:check and bash scripts/secret-scan.sh all pass, on MariaDB 11.8, and
 docs/installed-versions.md exists. Then run bash scripts/check-all.sh until it prints
 ALL CHECKS PASSED.
 

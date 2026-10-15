@@ -52,15 +52,15 @@ A hook blocks your edits to these files, and `scripts/check-all.sh` and CI fail 
 
 ## Stack (facts in `docs/stack-baseline.md`)
 
-Laravel 13 from the official React starter kit: Inertia 3, React 19, TypeScript, Tailwind 4, shadcn/ui, **Wayfinder** for routes in React (no Ziggy, no `route()` helper), **vite-plus** for build, lint, format and front-end tests (no ESLint, no separate Vitest), Larastan level 7 and Pint (already in the kit), **Pest 4**. PostgreSQL (16 in cloud sessions and on the laptop, 18 on servers). PHP 8.3 in cloud sessions and on the laptop (Linux Mint 22), 8.5 on servers; `composer.json` keeps `platform.php` at 8.3.6 so one lock file works everywhere.
+Laravel 13 from the official React starter kit: Inertia 3, React 19, TypeScript, Tailwind 4, shadcn/ui, **Wayfinder** for routes in React (no Ziggy, no `route()` helper), **vite-plus** for build, lint, format and front-end tests (no ESLint, no separate Vitest), Larastan level 7 and Pint (already in the kit), **Pest 4**. **MariaDB 11.8** everywhere — cloud sessions, the laptop (Linux Mint 22), CI and the host (the MySQL family; the old PostgreSQL VPS is gone). PHP 8.3 in cloud sessions and on the laptop, 8.5 on the host; `composer.json` keeps `platform.php` at 8.3.6 so one lock file works everywhere.
 
-Packages are added only by the task whose card names them: `pestphp/pest` + `pestphp/pest-plugin-laravel` and `@fontsource/ibm-plex-sans` (T0.1), `spatie/laravel-permission` (T1.3), `brick/money` (T1.7), `barryvdh/laravel-dompdf` (T6.10). No other package without asking. Never install Laravel Boost (it writes its own `CLAUDE.md`). There is no backup package: backups are server scripts in `infra/`.
+Packages are added only by the task whose card names them: `pestphp/pest` + `pestphp/pest-plugin-laravel` and `@fontsource/ibm-plex-sans` (T0.1), `spatie/laravel-permission` (T1.3), `brick/money` (T1.7), `barryvdh/laravel-dompdf` (T6.10). No other package without asking. Never install Laravel Boost (it writes its own `CLAUDE.md`). There is no backup package: backups are the application commands `zb:backup` and `zb:restore` (T10.6).
 
 ## Non-negotiable rules
 
-1. **No float anywhere for money, kg or rate** (conventions §3). Database `numeric`, PHP `BigDecimal` through `App\Support\Decimal`, strings in JSON, no `parseFloat` in React.
-2. **Only `PostingService` writes journal rows.** Debits equal credits. Posting rules PR-01 to PR-27 are the only postings.
-3. **Nothing is deleted.** Edit = reversal + new journal; cancel = reversal + reason. Never disable or bypass database triggers.
+1. **No float anywhere for money, kg or rate** (conventions §3). Database `DECIMAL` (`numeric` is its synonym), PHP `BigDecimal` through `App\Support\Decimal`, strings in JSON, no `parseFloat` in React.
+2. **Only `PostingService` writes journal rows.** Debits equal credits. Posting rules PR-01 to PR-28 are the only postings. At the end of the saving transaction it writes the entry's seal row (BR-LED-11); the database refuses the entry when the seal does not match.
+3. **Nothing is deleted.** Edit = reversal + new journal; cancel = reversal + reason. Never disable or bypass database triggers or the seal-row trigger.
 4. **One database transaction per save**, in the order of conventions §2, with the idempotency key on creates (§2a).
 5. **The server is the truth** for amounts and balances. Browser totals are ignored.
 6. **Permissions are checked on the server** for every route and action.
@@ -71,10 +71,11 @@ Packages are added only by the task whose card names them: `pestphp/pest` + `pes
 11. **Interface words only from `docs/glossary.md`.**
 12. **Logo only on the login page and in PDFs.**
 13. **Security in code** (conventions §12): `env()` only in `config/`; no personal data, amounts or secrets in logs; no scripts, styles, fonts or calls to other sites; inline Blade scripts carry the CSP nonce; migrations must work with the previous release.
+14. **Portable SQL only — the database is MariaDB** (conventions §14). Never write PostgreSQL-only SQL: no `::cast`, `ilike`, `FILTER (WHERE …)`, `pg_*` functions, `to_char`, `ON CONFLICT` or `SET CONSTRAINTS`. Use `CAST(… AS DECIMAL(…))`, `LIKE` (the column's collation decides case), `CASE WHEN`, `DATE_FORMAT(…, '%Y-%m')` and `DATEDIFF()` — never subtract dates (`20261101 − 20261031` is 70, not 1). Compare a key only with a value of its own type; state the NULL order in every sort on a column that can be empty. `scripts/guard.sh` fails on the PostgreSQL-only forms.
 
 ## Tests and checks
 
-- PostgreSQL only, never SQLite. Test role `zb_test`, password `local_test_only`. In cloud sessions `scripts/cloud-session-start.sh` (SessionStart hook) starts PostgreSQL, creates both databases, installs packages when the app exists, and creates `.env` from `.env.example` when it is missing; on the laptop `scripts/setup-local.sh` does the same once. Tests use `zb_mill_test` (set in `phpunit.xml`); the app's `.env` uses `zb_mill_dev`. If PostgreSQL is not ready, run `bash scripts/cloud-session-start.sh` again; if it still fails, stop and report.
+- **MariaDB only, never SQLite and never PostgreSQL.** One version of record everywhere: **MariaDB 11.8**, with the connection settings in `docs/conventions.md` §14 (`READ COMMITTED`, strict `sql_mode`, `+00:00`, InnoDB, `utf8mb4`). The application refuses to start on an older MariaDB or wrong settings (T10.1). In cloud sessions `scripts/cloud-session-start.sh` (SessionStart hook) installs and starts MariaDB, creates both databases and its user, installs packages when the app exists, and creates `.env` from `.env.example` when it is missing; on the laptop `scripts/setup-local.sh` does the same once. Tests use `zb_mill_test` (set in `phpunit.xml`); the app's `.env` uses `zb_mill_dev`; the local database user and password are in `docs/environments.md` and `.env.example` (test values only). If MariaDB is not ready, run `bash scripts/cloud-session-start.sh` again; if it still fails, stop and report.
 - Write the test first for anything that posts money; assert exact journal lines and exact strings.
 - Acceptance tests load `docs/acceptance/*.json`; never copy numbers into test code.
 - Wayfinder's TypeScript route files are generated, not committed: run `npm run build` (or `php artisan wayfinder:generate --with-form`) before `npm run types:check`.

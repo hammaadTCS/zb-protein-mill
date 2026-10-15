@@ -1,5 +1,7 @@
 # ADR-0002: Double-entry ledger enforced by the database
 
+**Status:** Replaced by ADR-0016.
+
 **Status:** Accepted (D-23, spec §8 and §9.7).
 
 **Context.** The system's main promise is that debits equal credits and history is never altered. Code can have bugs; a future developer can bypass a service class.

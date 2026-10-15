@@ -14,9 +14,9 @@ Browser (React pages via Inertia)
 Reports: money from the ledger, kg from the business tables
 ```
 
-- **One Laravel 13 application and one PostgreSQL database** (ADR-0001), split into modules under `app/Domain/` (Parties, Items, MoneyAccounts, Purchases, Sales, Adjustments, Payments, Expenses, Partners, Transfers, OpeningBalances, Ledger, Periods, Checks, Reports, Insights, Settings, Audit, Numbering). Folder list: spec §6.
+- **One Laravel 13 application and one MariaDB database** (ADR-0001), split into modules under `app/Domain/` (Parties, Items, MoneyAccounts, Purchases, Sales, Adjustments, Payments, Expenses, Partners, Transfers, OpeningBalances, Ledger, Periods, Checks, Reports, Insights, Settings, Audit, Numbering). Folder list: spec §6.
 - **Thin controllers, fat Actions.** Every use case is one Action class with one `handle(User $user, ...)` method (`CreatePurchase`, `AddPurchaseRate`, `CancelPurchase` …). A future mobile API can reuse the same Actions (NFR-09).
-- **No queue worker, no Redis** (ADR-0004): `QUEUE_CONNECTION=sync`. Scheduled jobs (the daily integrity check) run from the Laravel scheduler, started every minute by a systemd timer on the server.
+- **No queue worker, no Redis** (ADR-0004): `QUEUE_CONNECTION=sync`. Scheduled jobs (the daily integrity check, `zb:backup`, the health check) run from the Laravel scheduler, started every minute by **one hPanel cron job** on the host (`php artisan schedule:run`, D-7).
 - **Every business record has a `company_id`**, and every query is filtered by the user's company automatically (BR-GEN-01). This leaves room for a second plant later (NFR-10).
 
 ## 2. What happens on every save (conventions §2)
@@ -36,9 +36,9 @@ If any step fails, **everything rolls back**: no half-saved record, no used vouc
 
 ## 3. Accounting core
 
-- **Double entry.** Every money event becomes one journal entry whose debits equal its credits. The 27 posting rules (PR-01 to PR-27, spec §8.3) are the only ways money is posted. Each rule is a named builder in `App\Domain\Ledger\PostingRules`.
+- **Double entry.** Every money event becomes one journal entry whose debits equal its credits. The 28 posting rules (PR-01 to PR-28, spec §8.3) are the only ways money is posted. Each rule is a named builder in `App\Domain\Ledger\PostingRules`.
 - **One writer.** Only `PostingService` creates journal entries and lines. The models refuse to be created any other way (conventions §6).
-- **Balanced, twice.** PHP checks debit = credit. A deferred database trigger checks it again before the transaction commits (BR-LED-03).
+- **Balanced, twice.** PHP checks debit = credit. At the end of the same transaction `PostingService` writes the entry's **seal row** into `journal_seals`, and a `BEFORE INSERT` trigger on that table re-sums the entry's lines and refuses the whole save when they are fewer than two or debit ≠ credit (BR-LED-03, BR-LED-11). This is the MariaDB replacement for the deferred constraint trigger (D-45, ADR-0016).
 - **Party sub-ledger.** Every line on a control account (1200 Buyers, 1300 Employees, 2000 Suppliers, 2100 Other, 3000/3100 Partners) carries the party, so every khata adds up to its control account (BR-LED-04).
 - **Never edited, never deleted.** An edit is a reversal (PR-25) plus a new journal; a cancel is a reversal plus a reason. Closed months are locked; late changes go in the open month as corrections (BR-LED-08, BR-LED-09, BR-MEC-07).
 - **Rate decided later.** A rate-pending purchase or sale creates no journal until the rate is added (BR-LED-06).
@@ -48,28 +48,23 @@ If any step fails, **everything rolls back**: no half-saved record, no used vouc
 
 | Layer | Rule |
 | --- | --- |
-| Database | `numeric(16,2)` money, `numeric(14,3)` kg, `numeric(14,4)` rate |
+| Database | `DECIMAL(16,2)` money, `DECIMAL(14,3)` kg, `DECIMAL(14,4)` rate (`numeric` is MariaDB's synonym for `decimal`) |
 | PHP | `Brick\Math\BigDecimal` through `App\Support\Decimal` only, rounding `HALF_UP`, at the step set by `amount_rounding` |
 | JSON | always strings |
 | Forbidden | `float`, `(float)`, `round()`, `number_format()`, and `+ - * /` on money strings (NFR-06). `scripts/guard.sh` searches for these |
 
-## 5. Database design and protections (spec §9, ADR-0002, ADR-0007)
+## 5. Database design and protections (spec §9, ADR-0002 replaced by ADR-0016, ADR-0007 replaced by ADR-0014)
 
-- 27 tables plus the permission tables; exact names and columns in spec §9. Common columns: `id`, `company_id`, `created_by`, `updated_by`, timestamps in UTC.
+- 27 tables plus the permission tables; exact names and columns in spec §9. Common columns: `id`, `company_id`, `created_by`, `updated_by`, timestamps in UTC (`DATETIME(3)`).
 - Transaction tables also carry `voucher_no`, `entry_date`, `status`, cancel fields, `journal_entry_id` and `idempotency_key` (unique per company).
+- **Connection settings enforced in code** (`config/database.php`, conventions §14a): the connection is `mysql` (MariaDB), with `READ COMMITTED` isolation, a strict `sql_mode` that includes `ONLY_FULL_GROUP_BY`, `time_zone = '+00:00'`, engine `InnoDB` and `utf8mb4`/`utf8mb4_unicode_ci`. They are set by the app on every connection, never trusted from the host, whose own server defaults have no strict mode and no `ONLY_FULL_GROUP_BY`.
+- **Raw SQL is MariaDB only** (`scripts/guard.sh` fails on the PostgreSQL-only forms, conventions §14b): `CAST(… AS DECIMAL(…))` not `::numeric`, `LIKE` not `ilike`, `CASE WHEN` not `FILTER (WHERE …)`, `DATE_FORMAT` not `to_char`, `DATEDIFF()` never date subtraction, `FOR UPDATE`/`FOR SHARE` on a `company_locks` row not `pg_advisory_xact_lock`, MariaDB error `1062` not SQLSTATE `23505`, and every key compared only with a value of its own type.
 - **Database triggers:**
   - block UPDATE and DELETE on journal entries, journal lines, audit logs, rate changes and period events;
   - block DELETE on every master and transaction table;
-  - a deferred balance check on journal lines.
-- **Three database roles** with no passwords. They connect only through the local socket (peer authentication), and PostgreSQL listens on no network address:
-
-  | Role | Used for | Can |
-  | --- | --- | --- |
-  | `zb_app` | The app | Read, insert, update |
-  | `zb_migrator` | Deploys only | Owns the schema; runs migrations and `SystemDataSeeder` |
-  | `zb_backup` | Backups | Read only |
-
-  `zb_app` cannot change structure, disable triggers, truncate, or delete business rows (BR-SEC-12). CI proves this on every run from T1.11.
+  - a `BEFORE INSERT` trigger on `journal_seals` that re-sums the entry's lines and refuses the save when they are fewer than two or debit ≠ credit (BR-LED-11, D-45).
+- **One database user** with all rights on its own database only (ADR-0014): the host cannot make a second, lower-rights user, so the VPS's three-role split is not possible. The password is a strong random value in `.env` outside the web folder and is never in the repository, CI or a Claude session (BR-SEC-12). Because that one user can in principle change or drop the protections, the compensating controls are the daily `zb:verify` books check (BR-OPS-08), the off-site backups (BR-OPS-01) and the paper register kept by the other partner. Trigger creation depends on `trust_function_creators` and the binary log staying off, and `zb:verify` refuses to run when a protection trigger is missing.
+- **Startup check** (`zb:db-check`, run on boot and by `zb:verify`, T10.1): the system refuses to run when the server is MariaDB older than 10.2, when a table is not InnoDB, when the session `sql_mode` has no strict mode, when the time zone is not `+00:00`, or when a protection trigger is missing. The message names the failing item.
 - **Two people editing the same entry:** the second save is refused with "This entry was changed by another user. Reload." (BR-GEN-09).
 - **Migrations always work with the previous release** (BR-OPS-10): add first, stop using later, remove last. A rollback switches code only, never the database.
 
@@ -108,23 +103,25 @@ This section answers: "Is every entry saved, every time, and can we get it back?
 | A save half-finishes (power cut, crash, error) | One transaction per save: all or nothing | conventions §2 |
 | A double tap or retry on a slow phone saves twice | One-time `idempotency_key` per form; a repeat returns the first entry | BR-GEN-11, ADR-0011 |
 | Two users overwrite each other | The second save is refused | BR-GEN-09 |
-| Someone deletes or edits history | Nothing is ever deleted; corrections are reversals; database triggers refuse deletes and journal edits even for hand-written SQL by the app's role | BR-GEN-03, ADR-0002 |
-| A bug posts an unbalanced or wrong journal | PHP check plus database trigger; acceptance tests with fixed numbers on every change | BR-LED-03, AT-1 to AT-6 |
-| Something wrong slips through anyway | `zb:verify` runs every day: journals balance, trial balance equal, voucher numbers without gaps, khatas add up. Any failure alerts you | BR-OPS-08 |
+| Someone deletes or edits history | Nothing is ever deleted; corrections are reversals; database triggers refuse deletes and journal edits. The one database user could in principle drop the triggers, so `zb:verify` re-checks every day and the off-site backups and paper register are the compensating controls | BR-GEN-03, BR-SEC-12, ADR-0016 |
+| A bug posts an unbalanced or wrong journal | PHP check plus the seal-row trigger; acceptance tests with fixed numbers on every change | BR-LED-03, BR-LED-11, AT-1 to AT-6 |
+| Something wrong slips through anyway | `zb:verify` runs every day: journals balance, every seal row matches its entry, trial balance equal, voucher numbers without gaps, khatas add up, and the database settings are right. Any failure alerts you | BR-OPS-08 |
 | Who changed what | Permanent audit log | BR-AUD-01, BR-AUD-02 |
-| The server dies, is hacked or is deleted | **Encrypted database backup every hour** and uploads every day, stored **off the server** with a key that **cannot delete** them. The server cannot read its own backups (public-key encryption; the private key is kept offline by two people) | BR-OPS-01 to 03, ADR-0006 |
+| The host dies, is hacked or is deleted | **Encrypted database and uploads backup daily**, with a monthly long-keep copy, stored **off the host** with a key that **cannot delete** them. The host cannot read its own backups (public-key encryption; the private key is kept offline by two people) | BR-OPS-01 to 03, ADR-0015 |
 | A backup that does not restore | A restore is tested on staging **every month**, and a full rebuild drill is done before go-live and yearly | BR-OPS-04, BR-OPS-05 |
-| How much can be lost | At most **1 hour** of entries; running again on a new server within **4 hours** (targets the client confirms, O-36) | BR-OPS-05 |
-| A failed backup nobody notices | Each backup pings a monitor; a missing ping alerts within 2 hours (database) or 26 hours (uploads); the Backup status page shows the last success | BR-OPS-07 |
+| How much can be lost | At most **1 day** of entries; running again on a new host within **4 hours** (owner's decision, O-36) | BR-OPS-05 |
+| A failed backup nobody notices | Each backup pings a monitor; a missing or failed ping alerts within 26 hours; the Backup status page shows the last success and the last error | BR-OPS-07 |
 | A bad release | Database backup before every deploy; automatic switch back if the health check fails; one-command rollback | BR-OPS-10, ADR-0005 |
 
 The data on your laptop is **test data only**, so it needs no backup. Your code lives on GitHub: every merged pull request is stored there.
+
+Backups are the application commands `zb:backup` (dump → gzip → encrypt with **sodium** to the backup public key → upload with the upload-only key) and `zb:restore` (download → decrypt → load; used on staging for the monthly restore test). Both are driven by the scheduler and documented in `docs/operations/`.
 
 ## 9. System data and seeders (BR-OPS-11)
 
 | Seeder | Runs where | What it does |
 | --- | --- | --- |
-| `SystemDataSeeder` | Every server deploy, as `zb_migrator`, right after the migrations | Adds what is missing: the company, every settings key (OPEN values stay empty), roles and permissions (exactly spec §7), system ledger accounts (spec §8.1) and the four items. Never changes saved data, never creates users or test data |
+| `SystemDataSeeder` | Every host deploy, right after the migrations | Adds what is missing: the company, every settings key (OPEN values stay empty), roles and permissions (exactly spec §7), system ledger accounts (spec §8.1) and the four items. Never changes saved data, never creates users or test data |
 | `DatabaseSeeder` | Cloud sessions, laptop and tests only | Refuses to run in production. Calls `SystemDataSeeder`, the test settings and the test user `test@example.com` (Owner role, local only) |
 | `TestSettingsSeeder`, `DemoSeeder`, `PerformanceSeeder` | Cloud sessions, laptop and tests only | Test values (conventions §11), demo data from AT-1, a large performance data set. All refuse production |
 
@@ -134,12 +131,12 @@ The first real user is created on the server with `php artisan zb:create-owner`.
 
 | Kind | Where | What |
 | --- | --- | --- |
-| Feature and unit tests | `tests/Feature/<Module>/`, `tests/Unit/` | Pest 4 on **PostgreSQL** (never SQLite). Each test name starts with its rule ID. Money compared as exact strings |
+| Feature and unit tests | `tests/Feature/<Module>/`, `tests/Unit/` | Pest 4 on **MariaDB 11.8** (never SQLite, never PostgreSQL). Each test name starts with its rule ID. Money compared as exact strings |
 | Acceptance tests | `tests/Acceptance/` | Load `docs/acceptance/*.json` and run every entry through the real Actions. Expected numbers are never copied into code |
 | Architecture tests | `tests/Arch/` | From T0.3: only the Ledger, Reports and Insights modules touch journal models, only Ledger code and Actions call PostingService, controllers never use `DB` or build journal lines, no `floatval`/`round`, strict types, no soft deletes, no debugging helpers |
 | Static analysis and style | Larastan level 7, Pint | Every task |
-| Guards | `scripts/guard.sh`, `scripts/secret-scan.sh` | Forbidden patterns, secrets |
-| Database privileges | CI, from T1.11 | The app's role really cannot delete, truncate or alter |
+| Guards | `scripts/guard.sh`, `scripts/secret-scan.sh` | Forbidden patterns (including PostgreSQL-only SQL, conventions §14b), secrets |
+| Database settings and rules | `zb:db-check` (part of `zb:verify`), the schema-refusal tests | The server is MariaDB 11.8, every table is InnoDB, the session settings are strict/UTC, every protection trigger is present, and an unbalanced entry or an edit/delete is refused |
 | Everything at once | `bash scripts/check-all.sh` | Same order as CI |
 
 Rule for everyone: **never change or delete an existing test to make it pass.** A failing old test means the new code is wrong or a rule changed through a `[spec-change]`.

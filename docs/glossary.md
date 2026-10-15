@@ -105,3 +105,15 @@ The plain "Cancel" link that closes a dialog without saving is labelled **Close*
 ## 5. Words never used anywhere in the interface
 
 Profit (except inside the banner above), Loss, Debit, Credit (except on the Trial balance page and owner-only journal lines), Accounts payable, Accounts receivable, Customer, Vendor, Invoice, Bill, Cheque, Loan, Stock, Inventory, Delete, Void.
+
+## 6. Internal and operations terms (never shown on screen)
+
+These are code and operations words, not interface labels. They are recorded so documents and code use one name.
+
+| Term | Code identifier | Meaning |
+| --- | --- | --- |
+| Seal row | `journal_seals` | One row written per journal entry at the end of its save; the database refuses the whole save when the entry has fewer than two lines or its debit does not equal its credit (BR-LED-11, §9.7) |
+| Daily backup | `zb:backup` (daily) | Encrypted copy of the database and uploads, made once a day and kept 35 days (BR-OPS-01) |
+| Monthly backup | `zb:backup` (monthly) | Encrypted copy made on the 1st of each month and kept 7 years (BR-OPS-01) |
+| Release | `releases/<version>`, `current` | One deployed version folder; the `current` link points at the live one (BR-OPS-10) |
+| Roll-back | `zb-deploy-release --rollback` | Repoints `current` to the previous release; one command (BR-OPS-10) |

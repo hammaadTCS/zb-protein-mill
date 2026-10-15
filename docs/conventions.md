@@ -51,6 +51,7 @@ Controller (thin)
        5. VoucherNumberService::next('<PREFIX>')     (BR-GEN-05)
        6. save the business record (with idempotency_key on creates)
        7. PostingService::post(...) if it has an amount and is approved
+          (PostingService writes the entry's seal row at the end, BR-LED-11)
        8. AuditLogger::log(...)
   -> Controller redirects with a flash message that includes the voucher number
 ```
@@ -68,7 +69,7 @@ Controller (thin)
 
 ## 3. Money, kg and rate
 
-- Database: `numeric(16,2)` money, `numeric(14,3)` kg, `numeric(14,4)` rate. In Laravel migrations: `$table->decimal('amount', 16, 2)`, `$table->decimal('kg', 14, 3)`, `$table->decimal('rate', 14, 4)`.
+- Database: `DECIMAL(16,2)` money, `DECIMAL(14,3)` kg, `DECIMAL(14,4)` rate (`numeric` is MariaDB's synonym for `decimal`). In Laravel migrations: `$table->decimal('amount', 16, 2)`, `$table->decimal('kg', 14, 3)`, `$table->decimal('rate', 14, 4)`.
 - Eloquent casts: `'amount' => 'decimal:2'`, `'kg' => 'decimal:3'`, `'rate' => 'decimal:4'`. These give **strings**.
 - PHP arithmetic uses `Brick\Math\BigDecimal` only (installed with `brick/money`). Rounding mode is always `RoundingMode::HALF_UP`.
 - `App\Support\Decimal` is the only helper for money maths. It must contain at least:
@@ -102,8 +103,8 @@ Warnings are not errors. One mechanism for all of them (unusual rate, duplicate 
 - `PostingService::post(PostingRequest $request): JournalEntry` and `PostingService::reverse(JournalEntry $original, string $postingDate, string $description): JournalEntry`.
 - `PostingRequest` fields: `postingDate` (Y-m-d), `sourceType` (morph alias string, see §7), `sourceId` (int), `description` (string), `lines` (list of `PostingLine`).
 - `PostingLine` fields: `accountCode` (string, for example `'2000'`) **or** `ledgerAccountId` (int), `side` (`debit`|`credit`), `amount` (string, 2 decimals, > 0), `partyId` (?int), `itemId` (?int).
-- After inserting the lines, PostingService runs `SET CONSTRAINTS journal_balance_check IMMEDIATE` so the database balance check runs inside the same transaction (this also makes the check work inside tests, which never commit).
-- Posting rules PR-01 to PR-27 are implemented as named static builders in `App\Domain\Ledger\PostingRules` (one method per rule ID, for example `PostingRules::pr01PurchaseFixedRate(Purchase $p): PostingRequest`). Each method has a doc comment quoting the rule ID and the debit/credit from spec §8.3.
+- After inserting the lines, PostingService inserts the entry's **seal row** into `journal_seals` (`line_count`, `total_debit`, `total_credit`). A `BEFORE INSERT` trigger on `journal_seals` re-sums that entry's lines and refuses the whole save with `SIGNAL SQLSTATE '45000'` when there are fewer than two lines or debit ≠ credit. This replaces the old `SET CONSTRAINTS journal_balance_check IMMEDIATE` and makes the balance check run inside the same transaction (BR-LED-03, BR-LED-11, D-45).
+- Posting rules PR-01 to PR-28 are implemented as named static builders in `App\Domain\Ledger\PostingRules` (one method per rule ID, for example `PostingRules::pr01PurchaseFixedRate(Purchase $p): PostingRequest`), including `partyMerge()` for PR-28. Each method has a doc comment quoting the rule ID and the debit/credit from spec §8.3.
 
 ## 7. Morph aliases (`source_type`, `auditable_type`, `attachable_type`)
 
@@ -160,7 +161,7 @@ Use `Relation::enforceMorphMap` in `AppServiceProvider` with exactly these alias
 
 ## 11. Tests
 
-- Pest 4, on PostgreSQL (test role `zb_test`, database `zb_mill_test`; never the production role names). Use `RefreshDatabase`.
+- Pest 4, on **MariaDB 11.8** (the same version as production; database `zb_mill_test`, the local database user from `docs/environments.md`). Never SQLite, never PostgreSQL. Use `RefreshDatabase`.
 - Seed in every feature test: `SystemDataSeeder` (company, settings keys, roles and permissions, system ledger accounts, items, as far as the tasks so far have built them; BR-OPS-11), then the test settings (`TestSettingsSeeder`). Put this in `tests/Pest.php` with `beforeEach`. Never seed test data from `SystemDataSeeder`.
 - Helpers in `tests/Pest.php`: `owner(): User`, `accountant(): User`, `freezeToday(string $ymd)`, `ledgerBalance(string $code, ?Party $party = null): string` (debit minus credit), `partyBalance(Party $p): array{words: string, amount: string}`.
 - Money assertions compare **exact strings**, for example `expect($cash)->toBe('21900.00')`.
@@ -196,8 +197,8 @@ Tests for a specific limit rule override the one setting they test inside that t
 ## 12. Security and operations in code
 
 - **Config:** call `env()` only inside `config/*.php`. Servers cache the configuration, so `env()` elsewhere returns null in production.
-- **Database connections:** `pgsql` (web role) for everything; `pgsql_migrator` exists only for `migrate --database=pgsql_migrator` during deploys (T1.11). Code never selects a connection by name.
-- **Never** disable, drop or bypass database triggers, use `SET session_replication_role`, or run `TRUNCATE` in application code. Tests that must plant bad data for `zb:verify` do it in the test only, through the test role.
+- **Database connections:** one `mysql` connection (MariaDB) used by everything, configured in `config/database.php` with the session settings of §14 enforced in code. There is no separate migration connection and no `pgsql`/`pgsql_migrator` connection. Code never selects a connection by name and never uses SQLite.
+- **Never** disable, drop or bypass database triggers or the seal-row trigger; never use `INSERT IGNORE`/`DELETE`/`TRUNCATE` to sidestep a protection. Tests that must plant bad data for `zb:verify` do it in the test only.
 - **Migrations work with the previous release** (BR-OPS-10): add tables and nullable or defaulted columns first; stop using a column in one release and remove it in a later one; never rename in place (add new, copy, switch, remove later). Every migration has a working `down()` for development, but production never runs it.
 - **Housekeeping deletes:** the only allowed deletes are framework housekeeping (sessions, cache). Ending a user's sessions goes through `App\Support\Sessions::endFor(User $user, ?string $exceptSessionId = null)`, whose delete line carries `// guard:allow sessions are housekeeping (BR-SEC-13)`.
 - **Logs:** log record type and ID, never personal data, amounts, passwords, tokens or request bodies (BR-SEC-17). `Log::warning('purchase {id} rate change refused', ['id' => $id])`.
@@ -218,3 +219,48 @@ Tests for a specific limit rule override the one setting they test inside that t
 - `env()` outside `config/`; disabling or bypassing database triggers; hand-written SQL that changes production data.
 
 `scripts/guard.sh` checks many of these automatically in CI. A line that must break a guard rule for a reviewed reason carries the comment `guard:allow <reason>`; every such line is reviewed by the human.
+
+## 14. SQL and the database (MariaDB)
+
+The database is **MariaDB 11.8** everywhere — cloud sessions, the laptop, CI and the host (D-1, D-41). It is the MySQL family, not PostgreSQL. Everything below is binding for every migration and raw query.
+
+### 14a. Connection settings (enforced in code, never trusted from the server)
+
+`config/database.php` sets, on every connection:
+
+- `strict => true`, which sets the session `sql_mode` to `STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY` (the shared host's own default has no strict mode and no `ONLY_FULL_GROUP_BY`).
+- the transaction isolation `READ COMMITTED` (the host's server default, set explicitly so a hosting change cannot alter behaviour; Q-5);
+- the connection time zone `+00:00` (`time_zone`), so `now()`/`UTC_TIMESTAMP()` agree with the `DATETIME(3)` columns stored in UTC;
+- the engine `InnoDB` and charset `utf8mb4` (default collation `utf8mb4_unicode_ci`).
+
+A startup check (part of `zb:verify`, T10.1) refuses to run when the server is MariaDB older than 10.2, when a table is not InnoDB, when the session `sql_mode` has no strict mode, when the time zone is not `+00:00`, or when a protection trigger is missing.
+
+### 14b. Portable SQL (guard-enforced)
+
+Never write PostgreSQL-only SQL. `scripts/guard.sh` and a test fail on the old forms:
+
+| Never (PostgreSQL) | Use instead (MariaDB) |
+| --- | --- |
+| `::numeric(16,2)`, `::text`, any `::cast` | `CAST(… AS DECIMAL(16,2))`, `CAST(… AS CHAR)`; the **same precision** so result strings stay byte-identical |
+| `ilike` | `LIKE` (the column's collation decides case) |
+| `SUM(…) FILTER (WHERE …)` | `SUM(CASE WHEN … THEN … END)` |
+| `to_char(date, 'YYYY-MM')` | `DATE_FORMAT(date, '%Y-%m')` |
+| date subtraction (`a - b` on dates) | `DATEDIFF(a, b)` — **never subtract dates** (`20261101 − 20261031 = 70`, not 1; Q-1) |
+| `ON CONFLICT … DO NOTHING` | `INSERT … ON DUPLICATE KEY UPDATE` or a caught duplicate-key error |
+| `SET CONSTRAINTS … IMMEDIATE` | the seal row (BR-LED-11) |
+| `pg_advisory_xact_lock(_shared)`, any `pg_*` | one `company_locks` row per company, `FOR UPDATE` (exclusive) or `FOR SHARE` (shared) inside the same transaction (Q-4) |
+| PostgreSQL SQLSTATE `23505` | MariaDB error `1062` / SQLSTATE `23000` (Q-11) |
+| `(VALUES …)` CTE | `UNION ALL` selects |
+| comparing a key with a value of another type | cast both sides to the key's own type — MySQL turns `'12abc' = 12` into true (Q-12) |
+
+### 14c. Collation and ordering
+
+- Columns with a **unique rule** (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the binary collation **`utf8mb4_bin`**, so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
+- **Every `ORDER BY` on a column that can be empty states the NULL order explicitly** (`ORDER BY code IS NULL, code` style), because MariaDB sorts `NULL` first where PostgreSQL sorted it last (Q-2). A guard rule and a test check report order.
+
+### 14d. Types
+
+- Money `DECIMAL(16,2)`, kg `DECIMAL(14,3)`, rate `DECIMAL(14,4)` (`numeric` is the synonym). Precise decimals with too many digits are **rounded silently** by MariaDB, so the app refuses them before saving (`Decimal` helpers, Q-10) exactly as the PostgreSQL error did.
+- Timestamps are `DATETIME(3)`, always UTC. There is no `timestamptz`; there are no partial indexes (`UNIQUE … WHERE …`) — a plain unique index on a nullable column is used instead (MariaDB allows many `NULL`s; Q-8).
+- `json` columns are MariaDB's `JSON` (a `LONGTEXT` with a validity check), not PostgreSQL's `jsonb`.
+- `public_id` is a `uuid` column with `DEFAULT gen_random_uuid()` (MariaDB 11.8), unique.

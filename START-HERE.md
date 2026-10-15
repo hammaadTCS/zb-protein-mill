@@ -1,6 +1,6 @@
 # Start here – ZB Poultry Protein Mill Accounts System (pack v4.1)
 
-This folder is the whole project before any code exists: the client's requirements, the technical specification, 74 small tasks with exact instructions, the rules Claude must follow, the server and backup design, and the scripts that keep everything safe.
+This folder is the whole project before any code exists: the client's requirements, the technical specification, 74 small tasks with exact instructions, the rules Claude must follow, the shared-hosting and backup design, and the scripts that keep everything safe.
 
 **How the work runs:**
 1. **Claude Code builds** each task in the cloud (claude.ai/code) and opens a pull request on GitHub.
@@ -30,7 +30,7 @@ cd ~/Projects/zb-protein-mill
 bash scripts/setup-local.sh
 ```
 
-It installs what you need to **pull, run and test** the app: Git, the GitHub CLI, PHP 8.3 with its extensions, Composer, PostgreSQL, Node.js 22 and Python 3.
+It installs what you need to **pull, run and test** the app: Git, the GitHub CLI, PHP 8.3 with its extensions, Composer, MariaDB 11.8, Node.js 22 and Python 3.
 
 It also creates the **test** login `zb_test` / `local_test_only` and two databases:
 - `zb_mill_test`: the automated tests use it, and it is wiped on every test run;
@@ -71,7 +71,7 @@ Keep the repository **private**: it describes the client's business. GitHub Free
 1. Go to **claude.ai/code** and sign in.
 2. **Connect GitHub** when asked, and approve.
 3. **Install the Claude GitHub App** (github.com/apps/claude). Choose **Only select repositories** → `zb-protein-mill`. Without it, Claude cannot open a private repository.
-4. **Environment:** keep the one called **Default**, with network access **Trusted**. It already allows Packagist, GitHub and npm, which is all the project needs. You add **no** environment variables and **no** setup script: the project's own start script prepares every session (PostgreSQL, both test databases, packages).
+4. **Environment:** keep the one called **Default**, with network access **Trusted**. It already allows Packagist, GitHub and npm, which is all the project needs. You add **no** environment variables and **no** setup script: the project's own start script prepares every session (MariaDB 11.8, both test databases, packages).
 5. Leave **Auto-fix** off on pull requests. You decide every change.
 
 ## Step 5 – Send the client document (now; it runs alongside the build)
@@ -184,16 +184,16 @@ The code for the new rule is then built as a normal task (Step 7).
 
 An answer that is only a value (an approval limit, a start date) is a setting: the Owner enters it on the Settings page after T5.1. Write it into spec §4 the same way.
 
-## Step 10 – Later: servers, trial month, go-live
+## Step 10 – Later: hosting, trial month, go-live
 
-None of this is needed until task T8.3. Start opening the company's accounts (server, domain, backup storage, monitoring) during M5–M6, because that can take days.
+None of this is needed until task T8.3. Start opening the company's accounts (hosting, domain, backup storage, monitoring) during M5–M6, because that can take days.
 
 | When | What | Guide |
 | --- | --- | --- |
-| T8.3 | Build the **staging** server, make the first release, prove a backup restores | `docs/operations/server-setup.md` |
-| Each release | CI on `main` green → `git tag v1.0.0 && git push origin v1.0.0` → GitHub builds the release → `bash infra/local/ship-release.sh v1.0.0 <admin>@<server>` | `docs/operations/runbook.md` §2 |
+| T8.3 | Set up the **staging** subdomain, make the first release, prove a backup restores | `docs/operations/server-setup.md` |
+| Each release | CI on `main` green → `git tag v1.0.0 && git push origin v1.0.0` → GitHub builds the release → `bash infra/hostinger/ship-release.sh v1.0.0 <domain>` | `docs/operations/runbook.md` §2 |
 | T8.4 | Client reviews staging (test data only) | card T8.4 |
-| T8.5 | Build **production**, run one real month beside the Urdu register | cards T8.5, T8.6 |
+| T8.5 | Set up **production**, run one real month beside the Urdu register | cards T8.5, T8.6 |
 | T8.6 | Go-live checklist | spec §19.2 |
 | T8.7 | Handover to the company | `docs/operations/handover.md` |
 
@@ -210,7 +210,7 @@ Claude never touches a server. Only you deploy.
 | **Plan first**: nothing changes until you approve | Surprises |
 | **Protection hook**: blocks Claude from protected files, from changing or pushing `main`, from tags, merges and releases | Claude changing the rules, or code reaching `main` without you |
 | **Acceptance numbers** that tests load from `docs/acceptance/` | "Adjusting" expected results |
-| **Checks on every pull request**: PHP 8.3 and 8.5, PostgreSQL 18, guards, secret scan, protected files | Broken code |
+| **Checks on every pull request**: PHP 8.3 and 8.5, MariaDB 11.8, guards, secret scan, protected files | Broken code |
 | **Main guard** on every push to `main` (GitHub e-mails you if it fails) | Anything that reached `main` without a pull request, or a rule change without `[spec-change]` |
 | **Release gate**: releases are built only from a commit whose CI on `main` is green | Broken code reaching a server |
 | **You**: reading every plan and diff, merging only when all checks are green, testing screens | What no tool can catch |
@@ -230,7 +230,7 @@ Create the pull request only when Claude has finished; every push to an open pul
 | Situation | What to do |
 | --- | --- |
 | `setup-local.sh` says MISSING | Read its message, fix that item, run it again |
-| Claude's session says PostgreSQL is not ready | Ask Claude: "Run bash scripts/cloud-session-start.sh again and report the result" |
+| Claude's session says MariaDB is not ready | Ask Claude: "Run bash scripts/cloud-session-start.sh again and report the result" |
 | Claude asks a question the documents do not answer | Answer it; if it changes a rule, do a `[spec-change]` (Step 9) first |
 | An old test fails | `docs/prompts.md` → "An old test fails". Claude must not edit the old test |
 | Claude built more than the card | `docs/prompts.md` → "Claude built more than the card" |
@@ -247,7 +247,7 @@ Create the pull request only when Claude has finished; every push to an open pul
 - Get the client's answers and signature.
 - Read every plan and diff; merge only when every check is green; test screens on a real phone.
 - Make every `[spec-change]`.
-- Open the company's accounts, build the servers, keep the keys, deploy, prove that a backup restores.
+- Open the company's accounts, set up the hosting, keep the keys, deploy, prove that a backup restores.
 - Run the trial month beside the Urdu register, and the handover.
 
 **Never** put real client data, real passwords or server details into this repository, a test, a Claude prompt or the cloud environment's settings. Test values only.

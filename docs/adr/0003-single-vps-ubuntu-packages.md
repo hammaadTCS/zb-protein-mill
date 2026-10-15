@@ -1,5 +1,7 @@
 # ADR-0003: One VPS, Ubuntu 26.04 LTS, distribution packages, no containers
 
+**Status:** Replaced by ADR-0013.
+
 **Status:** Accepted (11 October 2026). Server provider, size and region are O-34.
 
 **Context.** Two users, modest volume (NFR-02), one developer who will hand the system to the company. Facts (`docs/stack-baseline.md`): Ubuntu 26.04 is supported until May 2031 and ships PHP 8.5 (security until end of 2029) and PostgreSQL 18 (until November 2030). Ubuntu 24.04 ships PHP 8.3, whose upstream security support ends December 2027.

@@ -6,7 +6,7 @@ The goal: after handover the business owns everything, can keep running without 
 
 | Account | Owner of record | Two-factor on | Second person with access | Done |
 | --- | --- | --- | --- | --- |
-| VPS provider (production + staging) | Company | ☐ | ☐ | ☐ |
+| Hostinger shared-hosting account (production + staging) | Company | ☐ | ☐ | ☐ |
 | Domain registrar and DNS | Company | ☐ | ☐ | ☐ |
 | Backup storage | Company | ☐ | ☐ | ☐ |
 | Monitoring service | Company | ☐ | ☐ | ☐ |
@@ -22,9 +22,9 @@ If any account was opened in your name, transfer it now (most providers support 
 | Backup private key (S-02) | Owner (sealed paper) | Company's second person (password manager) | ☐ |
 | `APP_KEY` production (S-01) | Owner (sealed paper) | Password manager | ☐ |
 | `APP_KEY` staging | Password manager | — | ☐ |
-| Server admin access (SSH key + sudo) | You (until support ends) | The company's IT person or next developer | ☐ |
+| Hosting account access (SSH key + hPanel login) | You (until support ends) | The company's IT person or next developer | ☐ |
 
-After support ends: remove your SSH key from the servers, leave the GitHub organisation, and hand over your password-manager entries. The company changes every secret you knew (`runbook.md` §8).
+After support ends: remove your SSH key from the hosting account, leave the GitHub organisation, and hand over your password-manager entries. The company changes every secret you knew (`runbook.md` §8).
 
 ## 3. Documents handed over
 

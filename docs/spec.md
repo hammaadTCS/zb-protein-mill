@@ -129,13 +129,14 @@ Every decision below is binding for version 1. The "Rules" column points to the 
 | D-35 | Entry slip and party statement can be shared as PDF | A | Section 13 |
 | D-36 | Business insights: kg ratio, wood per kg, rate gap, rough cost per kg, supplier and buyer comparison | A | Section 12 |
 | D-37 | Every record carries a company ID so a second plant can be added later | A | BR-GEN-01 |
-| D-38 | Framework: Laravel 13 with the official React starter kit (Inertia, React 19, TypeScript, Tailwind 4, shadcn/ui), PostgreSQL | A | Section 5 |
+| D-38 | Framework: Laravel 13 with the official React starter kit (Inertia, React 19, TypeScript, Tailwind 4, shadcn/ui), MariaDB (see D-41) | A | Section 5 |
 | D-39 | Server always recalculates totals and balances. The browser only shows them | A | BR-GEN-06 |
-| D-40 | Automatic encrypted off-site backups: database every hour, uploads daily (A for automatic backups, P for frequency and method) | A + P | BR-SEC-08, BR-OPS-01 to BR-OPS-05 |
-| D-41 | One VPS on Ubuntu 26.04 LTS with Ubuntu's PHP 8.5 and PostgreSQL 18; scripted setup (ADR-0003) | P | BR-SEC-10, §18 |
+| D-40 | Automatic encrypted off-site backups: database and uploads **daily** (kept 35 days) and **monthly** (kept 7 years) (A for automatic backups, P for frequency and method). At most one day of entries can be lost (O-36) | A + P | BR-SEC-08, BR-OPS-01 to BR-OPS-05 |
+| D-41 | The live system runs on the business's existing **Hostinger "Unlimited" shared hosting** account (a shared server, not a VPS): PHP 8.5 and **MariaDB 11.8**; the application lives in a folder **outside `public_html`**; one-command scripted deploy (ADR-0003 replaced by ADR-0013) | P | BR-SEC-10, §18 |
 | D-42 | Releases are built by CI from version tags and deployed by a person; no server credentials in GitHub or Claude; rollback in one command (ADR-0005) | P | BR-OPS-10, §18.2 |
-| D-43 | Database access by Unix-socket peer authentication with three roles and no passwords (ADR-0007) | P | BR-SEC-12 |
+| D-43 | Database access with **one application user and a password**, kept in `.env` outside the web folder (the host gives one all-rights database user, so the VPS's three separate roles are not possible). The daily `zb:verify` books check, off-site backups and the paper register are the controls (ADR-0007 replaced by ADR-0014) | P | BR-SEC-12 |
 | D-44 | Forms use Inertia's `useForm`; server validation is the only validation that counts | P | §5, §15.4 |
+| D-45 | The database refuses an unbalanced journal entry through a **seal row** written per entry (BR-LED-11), because MariaDB has no deferred constraint trigger (ADR-0016) | P | BR-LED-03, BR-LED-11, §9.7 |
 
 ## 4. Open items register
 
@@ -199,7 +200,7 @@ Every decision below is binding for version 1. The "Rules" column points to the 
 
 ## 5. Technology stack
 
-The system is built on Laravel 13 using the official Laravel React starter kit, with PostgreSQL as the database (D-38). Exact package versions are pinned at install time in `composer.lock` and `package-lock.json`.
+The system is built on Laravel 13 using the official Laravel React starter kit, with MariaDB as the database (D-38, D-41). Exact package versions are pinned at install time in `composer.lock` and `package-lock.json`.
 
 ### Backend
 
@@ -208,12 +209,13 @@ The system is built on Laravel 13 using the official Laravel React starter kit, 
 | Framework | Laravel 13 | A | Requires PHP 8.3 or newer. Bug fixes for 18 months and security fixes for 2 years per release ([Laravel release notes](https://laravel.com/docs/13.x/releases)) |
 | Support window | Laravel 13 security fixes until Q1 2028 | Fact | Released 17 March 2026 ([Laravel News](https://laravel-news.com/index.php/laravel-13-released)). Plan an upgrade to the next major version within that window |
 | Language | PHP 8.3 minimum; servers run **PHP 8.5** (security support until 31 Dec 2029) | Fact + P | Laravel 13 supports 8.3 to 8.5. Lock file resolved for 8.3 so cloud sessions, the laptop (Linux Mint 22) and the servers share it (ADR-0009) |
-| Database | PostgreSQL 18 on servers (16+ supported) | P | Exact `numeric` type, check constraints, triggers for immutability. PostgreSQL 18 is supported until 14 Nov 2030 |
+| Database | **MariaDB 11.8** on servers and everywhere (the MySQL family) | P | Exact `DECIMAL` type, `CHECK` constraints (MariaDB 10.2+), triggers for immutability, the seal-row balance check (BR-LED-11). One version of record everywhere: laptop, cloud sessions, CI and the host (D-1, §18.1) |
+| Database library | PHP 8.5 `mysqli`/`pdo_mysql`, InnoDB, `utf8mb4` | P | Provided by the host; `utf8mb4` handles Urdu and emoji |
 | Login | Laravel Fortify (included in the starter kit) | Fact | Starter kits use Fortify for authentication ([Laravel starter kits](https://laravel.com/docs/master/starter-kits)) |
 | Roles and permissions | `spatie/laravel-permission` | P | Roles and permissions stored in the database (A) |
 | Money calculations | `brick/money` (or PHP `bcmath`) | P | PHP float numbers are not exact. Never use float for money |
 | PDF | `barryvdh/laravel-dompdf` | P | Runs in PHP, no browser or Node.js needed on the server |
-| Backups | Server scripts: `pg_dump` + `age` (public-key encryption) + `rclone` (ADR-0006) | P | The server cannot read or delete its own backups. Replaces `spatie/laravel-backup` |
+| Backups | Application command `zb:backup`: `mariadb-dump` + gzip + `sodium` encryption + upload to object storage (worked example: Backblaze B2, upload-only key) (ADR-0015). The application runs the schedule; no server timer | P | The server cannot read or delete its own backups. Replaces the VPS `pg_dump`+`age`+`rclone` scripts (ADR-0006) |
 | Audit log | Own `audit_logs` table | P | Full control, write-only, protected by database trigger |
 | Tests | Pest 4 (`^4.7`) on PHPUnit 12 | P | Pest 5 needs PHP 8.4 (ADR-0009). Static analysis: Larastan level 7 (in the kit) |
 | File storage | Laravel private disk (not public) | P | Slip and receipt photos are served only to logged-in users |
@@ -237,11 +239,11 @@ The system is built on Laravel 13 using the official Laravel React starter kit, 
 
 ### Node.js
 
-Node.js is used only to build the frontend files (`npm run build`). The live server runs PHP and PostgreSQL only. The release archive is built by CI (GitHub Actions) from a version tag and deployed by a person (D-42, §18.2).
+Node.js is used only to build the frontend files (`npm run build`). The live server runs PHP and MariaDB only. The release archive is built by CI (GitHub Actions) from a version tag and deployed by a person (D-42, §18.2).
 
 ## 6. Architecture and code structure
 
-One Laravel application, one PostgreSQL database, split into modules. Only one class, the Posting Service, may write to the ledger (A, P for naming).
+One Laravel application, one MariaDB database, split into modules. Only one class, the Posting Service, may write to the ledger (A, P for naming).
 
 ```text
 Browser (React via Inertia)
@@ -300,7 +302,7 @@ tests/
 4. It checks that the entry date is in an open month and not in the future.
 5. It takes the next voucher number from the numbering table, with a row lock.
 6. It saves the business record (purchase, sale, payment and so on).
-7. If the entry has an amount and is approved, it calls the Posting Service. The Posting Service builds the debit and credit lines from the posting rules (Section 8), checks that debits equal credits, and saves the journal entry and lines.
+7. If the entry has an amount and is approved, it calls the Posting Service. The Posting Service builds the debit and credit lines from the posting rules (Section 8), checks that debits equal credits, saves the journal entry and its lines, and writes the entry's **seal row** (BR-LED-11); the database itself refuses the entry if the seal does not match.
 8. It writes an audit log record.
 9. It commits. If any step fails, everything is rolled back: no partial record, no used voucher number, no unbalanced journal.
 10. The page shows a success message and reloads its data.
@@ -312,7 +314,7 @@ tests/
 - **Business tables are the truth for kg.** Kg reports read purchases and sales (active entries only).
 - **Thin controllers.** All business logic sits in Action classes, so a future mobile API reuses the same Actions.
 - **No money logic in React.** The browser shows a total preview only. The server recalculates and its number is saved.
-- **Exact money.** Database type `numeric`. PHP uses `brick/money` or `bcmath`. Float is forbidden for money and kg.
+- **Exact money.** Database type `DECIMAL(16,2)` (`numeric` is its synonym). PHP uses `brick/money` or `bcmath`. Float is forbidden for money and kg.
 - **Company scope.** Every query is filtered by `company_id` automatically (global scope).
 - **Settings, not code.** Limits, formats and categories live in the database (Section 9).
 
@@ -444,6 +446,7 @@ The screen never shows a minus sign for a party. It shows the words above (A).
 | PR-25 | Reversal (edit or cancel) | Same lines as the original, sides swapped |  | A |
 | PR-26 | Rate correction of an entry in a closed month, purchase | Increase: item purchase account / Decrease: 2000 (P) | Increase: 2000 (P) / Decrease: item purchase account | A |
 | PR-27 | Rate correction of an entry in a closed month, sale | Increase: 1200 (P) / Decrease: item sales account | Increase: item sales account / Decrease: 1200 (P) | A |
+| PR-28 | Party merge (balance moved to the target) | Source party's control account (P) when it has a credit balance, else the target's | The other one | A |
 
 A "control account (P)" is chosen by party type: supplier 2000, buyer 1200, employee 1300, other 2100.
 
@@ -458,10 +461,11 @@ A "control account (P)" is chosen by party type: supplier 2000, buyer 1200, empl
 - **BR-LED-08:** when a rate is added to an entry dated in a closed month, the journal's `posting_date` is the date the rate is added. The entry keeps its original date.
 - **BR-LED-09:** when a posted entry in a closed month needs a rate change, the original is not touched. A rate correction (PR-26 or PR-27) for the difference is posted in the open month and linked to the original.
 - **BR-LED-10:** the trial balance total debit must always equal total credit. If not, it is a software error: the system shows a red alert to the owner and month-end close is blocked.
+- **BR-LED-11:** every journal entry is sealed at the end of its saving transaction by one `journal_seals` row (source `posting`). The database refuses the whole save when the seal is written and the entry has fewer than two lines or its total debit does not equal its total credit (the MariaDB replacement for a deferred constraint trigger; D-45, §9.7). `zb:verify` also re-sums every seal daily.
 
 ## 9. Database design
 
-PostgreSQL, 27 tables plus the permission package's tables (P for names and exact types, A for structure). Money is `numeric(16,2)`, kg is `numeric(14,3)`, rate is `numeric(14,4)`; screens round to the settings in O-14 to O-16.
+MariaDB 11.8, 27 tables plus the permission package's tables (P for names and exact types, A for structure). Money is `DECIMAL(16,2)` (kg `DECIMAL(14,3)`, rate `DECIMAL(14,4)`; `numeric` is MariaDB's synonym for `decimal` and both are exact); screens round to the settings in O-14 to O-16. Timestamps are `DATETIME(3)` stored in UTC.
 
 ### 9.1 Columns every table has
 
@@ -470,7 +474,7 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
 | `id` | bigint identity | Primary key, never reused |
 | `company_id` | bigint, FK companies | Required on every business table (D-37) |
 | `created_by`, `updated_by` | bigint, FK users | Set by the system |
-| `created_at`, `updated_at` | timestamptz | Stored in UTC, shown in Asia/Karachi |
+| `created_at`, `updated_at` | datetime(3) | Stored in UTC, shown in Asia/Karachi |
 
 **Tables opened from a link** (parties, purchases, sales, payments, expenses, transfers, partner_transactions, adjustments, attachments, money_accounts, items, expense_categories, users) also have `public_id` uuid, not null, default `gen_random_uuid()`, unique (BR-SEC-19).
 
@@ -480,7 +484,7 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
 
 **companies:** `name`. One row in version 1.
 
-**users** (from starter kit) plus: `company_id`, `is_active` boolean default true, `must_change_password` boolean default false (BR-USR-08), `password_changed_at` timestamptz. Two-factor columns come from the kit. Roles and permissions use the `spatie/laravel-permission` tables.
+**users** (from starter kit) plus: `company_id`, `is_active` boolean default true, `must_change_password` boolean default false (BR-USR-08), `password_changed_at` datetime(3). Two-factor columns come from the kit. Roles and permissions use the `spatie/laravel-permission` tables.
 
 **settings:** `key` varchar(80), `value` text, `value_type` (string, integer, decimal, boolean, date, choice). Unique (`company_id`, `key`). Keys are listed in 9.6.
 
@@ -531,7 +535,7 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
 | `rate` | numeric(14,4) | Null when pending, else greater than 0 |
 | `amount` | numeric(16,2) | Null when pending, else kg × rate, rounded per O-16 |
 | `rate_status` | fixed / pending | Check: pending ⇔ rate and amount are null |
-| `rate_fixed_at` | timestamptz | When the rate was first added |
+| `rate_fixed_at` | datetime(3) | When the rate was first added |
 | `slip_no` | varchar(50) | Required if setting `slip_no_required` |
 | `our_weight_kg` | numeric(14,3) | Optional. Shown only if `plant_has_scale` |
 | `note` | text | Optional |
@@ -605,7 +609,9 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
 
 **cash_counts:** `count_date`, `money_account_id` (cash only), `counted_amount`, `system_amount`, `difference`, `note`, `counted_by`, `created_at`. business_closed boolean (Owner dismissal for a closed day; counted amount empty). Several per day allowed; the latest is used.
 
-**audit_logs:** `user_id`, `action`, `auditable_type`, `auditable_id`, `old_values` jsonb, `new_values` jsonb, `reason`, `ip_address`, `user_agent`, `created_at`.
+**audit_logs:** `user_id`, `action`, `auditable_type`, `auditable_id`, `old_values` json, `new_values` json, `reason`, `ip_address`, `user_agent`, `created_at`.
+
+**journal_seals:** `journal_entry_id` (unique), `line_count`, `total_debit`, `total_credit`, `sealed_at`. One row per journal entry, created at the end of the saving transaction; never updated or deleted (BR-LED-11, §9.7). A trigger on this table refuses an entry whose lines have fewer than two rows or whose debit does not equal its credit.
 
 ### 9.6 Settings keys
 
@@ -635,8 +641,11 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
 
 - Trigger: block UPDATE and DELETE on `journal_entries`, `journal_lines`, `audit_logs`, `rate_changes`, `period_events`.
 - Trigger: block DELETE on every master and transaction table.
-- Deferred constraint trigger on `journal_lines`: at commit, total debit must equal total credit for each journal entry.
+- **Seal row (`journal_seals`, BR-LED-11):** one row per journal entry, written by `PostingService` at the end of the saving transaction. A `BEFORE INSERT` trigger on `journal_seals` sums that entry's `journal_lines` and refuses the whole save (`SIGNAL SQLSTATE '45000'`) when the entry has fewer than two lines or its total debit does not equal its total credit. This replaces the deferred constraint trigger, which MariaDB does not have (D-45, ADR-0016).
 - Indexes: (`company_id`, `entry_date`) and (`party_id`, `entry_date`) on transaction tables; (`rate_status`) on purchases and sales; (`ledger_account_id`), (`party_id`) on journal_lines; (`posting_date`), (`source_type`, `source_id`) on journal_entries.
+- Unique-rule columns (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the **binary collation** `utf8mb4_bin`, so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
+- `CHECK` constraints are enforced on MariaDB 10.2 and newer; the application refuses to start on an older version (Q-9, T10.1).
+- InnoDB only, `utf8mb4` only.
 
 ## 10. Business rules
 
@@ -1058,7 +1067,7 @@ Trial balance, Income vs Spending and all report pages use the browser's print f
 
 ## 14. Security, audit log and backups
 
-Every action is logged permanently, every request is permission-checked on the server, and data is backed up off the server every hour (A, P for frequency). Numeric limits marked P are proposals you can change. How each rule is enforced and proven: `docs/security.md` §4. Secrets: `docs/secrets.md`. Data rules: `docs/data-handling.md`.
+Every action is logged permanently, every request is permission-checked on the server, and data is backed up off the server daily and monthly (A, P for frequency). Numeric limits marked P are proposals you can change. How each rule is enforced and proven: `docs/security.md` §4. Secrets: `docs/secrets.md`. Data rules: `docs/data-handling.md`.
 
 ### 14.1 Audit log
 
@@ -1078,11 +1087,11 @@ Every action is logged permanently, every request is permission-checked on the s
 - **BR-SEC-07 (P):** CSRF protection on every form (Laravel default).
 - **BR-SEC-08 (A, P for method):** backups run automatically, are encrypted, and are stored outside the server; a restore is tested once a month. Details: BR-OPS-01 to BR-OPS-05.
 - **BR-SEC-09 (P):** two-step login (authenticator app codes, the starter kit's feature) is available to every user. When `owner_two_factor_required` is true (O-31), an Owner without it is sent to the security settings page until it is turned on.
-- **BR-SEC-10 (P):** the server has a firewall (only SSH rate-limited, HTTP, HTTPS), SSH key login for one admin user only (no root, no passwords), automatic security updates with a night-time reboot when needed, UTC time kept synchronised, and separate operating-system users for the web server, the app, deploys and backups (`infra/provision`).
+- **BR-SEC-10 (P):** the hosting account has HTTPS only (the host's free certificate), HSTS from the app, `APP_DEBUG=false`, a strong account password with two-step login, SSH key login only (no FTP account, remote database access off), the host's malware scanner on and PHP on the newest supported version. The application, `.env` and uploads live **outside `public_html`**; only the `public` folder is on the web. The Hostinger account belongs to the business (D-10, O-30).
 - **BR-SEC-11 (P):** secrets are listed in `docs/secrets.md` and live only where that file says: never in the code repository, CI, a Claude session or its environment variables, chat or e-mail. The CI secret scan blocks keys, `APP_KEY` values, monitor URLs and `.env` files.
-- **BR-SEC-12 (P):** the application's database role (`zb_app`) cannot change table structure, remove or disable triggers, truncate, or delete rows except in framework housekeeping tables (sessions, cache, jobs, role links); it cannot update journal, audit, rate-change or period-event rows. Migrations run as `zb_migrator`; backups read as `zb_backup`. All three connect only through the local Unix socket with peer authentication: no database password exists, and PostgreSQL listens on no network address (D-43).
+- **BR-SEC-12 (P):** the application connects with **one database user that has all rights on its own database only** (the host cannot make two separate users; D-43, ADR-0014). The database password is a strong random value kept in `.env` **outside the web folder**, never in the repository, CI or a Claude session; remote database access is off and phpMyAdmin is reached only through hPanel. Because the application user can in principle change or drop the protections, the controls are the daily `zb:verify` books check (BR-OPS-08), the off-site backups (BR-OPS-01) and the paper register kept by the other partner. Trigger creation depends on `trust_function_creators` and the binary log staying off; the deployment runbook records this and `zb:verify` refuses to run when a trigger is missing.
 - **BR-SEC-13 (P):** when a user is disabled, their role changes, or their password is reset or changed, every other session of that user ends at once. A disabled user is logged out on the next request.
-- **BR-SEC-14 (P):** every response carries security headers: HSTS (1 year), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Permissions-Policy` (camera, microphone, location off), `X-Robots-Tag: noindex`; HTML pages also carry a Content Security Policy with a new nonce per request (ADR-0008). `robots.txt` disallows everything.
+- **BR-SEC-14 (P):** every response carries security headers, all set by the application (D-8): HSTS (1 year), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Permissions-Policy` (camera, microphone, location off), `X-Robots-Tag: noindex`; HTML pages also carry a Content Security Policy with a new nonce per request (ADR-0008). `robots.txt` disallows everything.
 - **BR-SEC-15 (P):** the session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`; session data is encrypted in the database.
 - **BR-SEC-16 (P):** staging and production run with `APP_ENV=production` and `APP_DEBUG=false`: users never see technical error details. Models are strict (no lazy loading, no silently discarded attributes) outside production.
 - **BR-SEC-17 (P):** logs never contain passwords, tokens, session IDs, request bodies, party names, mobiles, bank details or amounts. Application logs rotate daily and are kept 14 days; web server logs leave out query strings.
@@ -1091,17 +1100,17 @@ Every action is logged permanently, every request is permission-checked on the s
 
 ### 14.3 Operations (P unless stated)
 
-- **BR-OPS-01:** the database is backed up every hour (`pg_dump`, without session and cache rows) and uploads every day (monthly full archive plus daily additions). Every backup is encrypted with a public key before it leaves the server and uploaded with a storage key that cannot delete or overwrite earlier backups.
+- **BR-OPS-01:** the database and uploads are backed up by the application command `zb:backup` (`mariadb-dump` without session and cache rows), **daily** (kept 35 days) and **monthly** (kept 7 years). Every backup is encrypted with a public key before it leaves the server and uploaded with a storage key that cannot delete or overwrite earlier backups. At most one day of entries can be lost (owner's decision, 15 October 2026; D-40).
 - **BR-OPS-02:** the private key that decrypts backups is never stored on any server or in the repository. Two copies exist, held by two different people (O-37).
-- **BR-OPS-03:** retention by the storage's lifecycle rules: hourly copies 2 days, daily 35 days, monthly 7 years (O-35), uploads archives 100 days. Object Lock or versioning stops early deletion.
+- **BR-OPS-03:** retention by the storage's lifecycle rules: daily copies 35 days, monthly copies 7 years (O-35). Object Lock or versioning stops early deletion.
 - **BR-OPS-04 (A for monthly):** once a month a backup is restored on staging into a temporary database, checked (every journal balances, `zb:verify`), and the temporary database is dropped. Date and counts are recorded in `docs/release-checks.md`, never amounts or names (that file is in git).
-- **BR-OPS-05:** recovery targets: at most 1 hour of entries lost (RPO) and running again within 4 hours on a new server (RTO) (O-36). A full rebuild drill is done before go-live and once a year.
+- **BR-OPS-05:** recovery targets: at most **1 day** of entries lost (RPO, O-36; owner's decision, 15 October 2026) and running again within 4 hours on a new server (RTO) (O-36). A full rebuild drill is done before go-live and once a year.
 - **BR-OPS-06:** `/up` checks the database too; an external monitor checks it every 5 minutes and alerts the O-33 recipients.
-- **BR-OPS-07:** each backup job pings a dead-man monitor; a missed or failed backup alerts within 2 hours (database) or 26 hours (uploads). The backup status page shows the last success and the last error.
-- **BR-OPS-08:** `php artisan zb:verify` runs daily: every journal balances, trial balance totals are equal, voucher numbers have no gaps or duplicates, every line on a party control account names a party (so party balances add up to the control account), and every posted entry points to its own journal (reversed when cancelled). Any failure alerts.
-- **BR-OPS-09:** a health check every 15 minutes alerts on disk above 80%, a stopped service, unsynchronised clock, a certificate expiring within 14 days, an old backup, or `/up` failing.
-- **BR-OPS-10:** releases are built by CI from version tags on `main`, checked by SHA-256, and deployed by a person with `zb-deploy-release` (backup, maintenance mode, migrate as `zb_migrator`, system data (BR-OPS-11), grants, caches, atomic switch, smoke test, automatic switch-back). Every migration must keep working with the previous release, because rollback switches code only. `migrate:rollback` is never run in production. Nobody edits production data by hand. The repository is private on GitHub Free, which has no branch protection for private repositories (ADR-0012): code reaches `main` through pull requests that the developer merges when every check is green; the protection hook stops Claude from changing `main`; the CI main guard fails when a commit reaches `main` without a merged pull request or protected files changed without `[spec-change]`; and the release workflow builds only from a commit whose CI run on `main` is green.
-- **BR-OPS-11:** system data is created on every server by `SystemDataSeeder`: the company row, every settings key (with `null` for OPEN values), the roles and permissions of §7, the system ledger accounts of §8.1 and the four system items (BR-ITM-01). It only adds rows that are missing, and it sets the Owner and Accountant permissions to exactly the §7 lists (roles are fixed in version 1). It never changes a settings value, a user, a party or an entry, and never creates users or test data. `zb-deploy-release` runs it on every deploy as `zb_migrator`, right after the migrations, so a new release that adds a permission or a system account works at once. Test and demo data come only from `DatabaseSeeder` and the other local seeders, which refuse to run when `APP_ENV=production`.
+- **BR-OPS-07:** each backup job pings a dead-man monitor; a missed or failed backup alerts within 26 hours. The backup status page shows the last success and the last error.
+- **BR-OPS-08:** `php artisan zb:verify` runs daily: every journal balances, every seal row matches its entry (BR-LED-11), trial balance totals are equal, voucher numbers have no gaps or duplicates, every line on a party control account names a party (so party balances add up to the control account), every posted entry points to its own journal (reversed when cancelled), and the database settings are correct (MariaDB 11.8 or newer, InnoDB only, strict `sql_mode`, UTC, every protection trigger present — T10.1). Any failure alerts.
+- **BR-OPS-09:** a health check every 15 minutes alerts on disk above 80% (where the host exposes it), a certificate expiring within 14 days, an old backup, or `/up` failing.
+- **BR-OPS-10:** releases are built by CI from version tags on `main`, checked by SHA-256, and deployed by a person with `zb-deploy-release` (backup, maintenance mode, migrate, system data (BR-OPS-11), caches, atomic switch on the `current` link, smoke test, automatic switch-back). The application runs on shared hosting in a folder outside `public_html`; the web folder points at `current/public`. Every migration must keep working with the previous release, because rollback switches code only. `migrate:rollback` is never run in production. Nobody edits production data by hand. The repository is private on GitHub Free, which has no branch protection for private repositories (ADR-0012): code reaches `main` through pull requests that the developer merges when every check is green; the protection hook stops Claude from changing `main`; the CI main guard fails when a commit reaches `main` without a merged pull request or protected files changed without `[spec-change]`; and the release workflow builds only from a commit whose CI run on `main` is green.
+- **BR-OPS-11:** system data is created on every server by `SystemDataSeeder`: the company row, every settings key (with `null` for OPEN values), the roles and permissions of §7, the system ledger accounts of §8.1 and the four system items (BR-ITM-01). It only adds rows that are missing, and it sets the Owner and Accountant permissions to exactly the §7 lists (roles are fixed in version 1). It never changes a settings value, a user, a party or an entry, and never creates users or test data. `zb-deploy-release` runs it on every deploy, right after the migrations, so a new release that adds a permission or a system account works at once. Test and demo data come only from `DatabaseSeeder` and the other local seeders, which refuse to run when `APP_ENV=production`.
 
 ## 15. Frontend design system
 
@@ -1199,7 +1208,7 @@ The system is accepted only when all automated tests pass and acceptance cases A
 
 | ID | What is tested |
 | --- | --- |
-| T-01 | Each posting rule PR-01 to PR-27 creates the correct accounts, sides, party and item on each line, and balances |
+| T-01 | Each posting rule PR-01 to PR-28 creates the correct accounts, sides, party and item on each line, and balances |
 | T-02 | The database refuses an unbalanced journal (BR-LED-03) |
 | T-03 | The database refuses UPDATE or DELETE on journal, audit, rate change and period event tables |
 | T-04 | Voucher numbers stay gapless when a save fails and when two saves run at the same time |
@@ -1323,18 +1332,20 @@ Three server-side environments are used: your computer, a staging server and the
 
 ### 18.1 Server (P, D-41)
 
-- One VPS, Ubuntu 26.04 LTS, built by `infra/provision` (proposed 2 vCPU, 4 GB RAM, 80 GB SSD).
-- nginx (HTTPS with Let's Encrypt, renewed automatically), PHP-FPM 8.5 running as its own user, PostgreSQL 18 on the local socket only.
-- systemd timers: Laravel scheduler every minute, database backup hourly, uploads backup daily, health check every 15 minutes.
-- No Node.js, no Redis, no queue worker, no Docker (ADR-0003, ADR-0004).
+- One **Hostinger "Unlimited" shared hosting** account (a shared server, not a VPS) with **PHP 8.5 (LiteSpeed)** and **MariaDB 11.8**. There is no root access and no server operating system to manage.
+- The application lives in a folder **outside `public_html`**; the subdomain's document root points at `~/accounts/current/public`, so only the `public` folder is reachable from the web. Each release is a `releases/<version>/` folder and `current` is a link to the live one (D-6).
+- One **hPanel cron job every minute** runs `php artisan schedule:run`; this drives everything the system schedules — `zb:verify` (daily), `zb:backup` (daily and monthly) and the health check (every 15 minutes) (D-7). The host's own daily backups are an extra copy.
+- HTTPS uses the host's free certificate; HSTS and every other security header are set by the application (BR-SEC-14, D-8).
+- The database is one MariaDB database reached by one user whose password sits in `.env` outside the web folder (D-43, BR-SEC-12). Remote database access is off.
+- No Node.js, no Redis, no queue worker, no Docker (ADR-0004). The application refuses to start on a database older than MariaDB 10.2 or with wrong settings (Q-9, T10.1).
 
 ### 18.2 Releasing and deploying (P, D-42)
 
-1. Every change reaches `main` through a pull request with green CI (both PHP versions, PostgreSQL 18, guards, privilege check, protected files). The main guard reports any other way in, and step 2 refuses red commits.
+1. Every change reaches `main` through a pull request with green CI (both PHP versions, MariaDB 11.8, guards, the database-rules check, protected files). The main guard reports any other way in, and step 2 refuses red commits.
 2. When CI on `main` is green for the newest commit, you push a version tag (`v1.4.0`). The release workflow checks that CI run, runs the tests again and publishes the release archive and its SHA-256 checksum.
-3. You deploy to **staging** with `infra/local/ship-release.sh` (download, check, copy, `zb-deploy-release`). The script: verifies the checksum; unpacks a new release folder; backs up the database; puts the site in maintenance mode; migrates as `zb_migrator`; adds missing system data (BR-OPS-11); re-applies the grants; builds the config, route and event caches; switches to the new release; reloads PHP; leaves maintenance mode; checks `/up`, switching back automatically if it fails.
+3. You deploy to **staging** with `infra/hostinger/ship-release.sh` (download, check, copy, `zb-deploy-release`). The script: verifies the checksum; unpacks a new release folder; backs up the database; puts the site in maintenance mode; runs the migrations; adds missing system data (BR-OPS-11); builds the config, route and event caches; switches the `current` link to the new release; leaves maintenance mode; checks `/up`, switching back automatically if it fails.
 4. The client approves on staging. You deploy the same archive to production the same way.
-5. If anything is wrong: `zb-deploy-release --rollback` (code only, BR-OPS-10).
+5. If anything is wrong: `zb-deploy-release --rollback` (repoints the `current` link; code only, BR-OPS-10).
 
 ### 18.3 Rules
 
@@ -1351,7 +1362,7 @@ The build runs in 10 phases, each ending with a gate that must pass before the n
 ### 19.1 Phases
 
 1. **Sign-off.** Client confirms Requirements v1.2 and answers the OPEN items. You approve or change every P item. *Gate: signed v1.2, Section 4 answered.*
-2. **Foundation.** Starter kit, PostgreSQL, roles and permissions, settings and setup gate, ledger tables, Posting Service, triggers, voucher numbering, audit log. *Gate: T-02, T-03, T-04, T-10 pass.*
+2. **Foundation.** Starter kit, MariaDB, roles and permissions, settings and setup gate, ledger tables, Posting Service, triggers and the seal row, voucher numbering, audit log. *Gate: T-02, T-03, T-04, T-10 pass.*
 3. **Master data.** Parties, items, money accounts, expense categories, opening balances. *Gate: opening balance postings PR-17 to PR-22 pass T-01.*
 4. **Design approval** (can run beside Phase 3). Dashboard, New Purchase on phone, Party Khata shown to the client. *Gate: client approves the look.*
 5. **Core entries.** Purchases, sales, rate pending, rate changes, payments, approvals, agreed adjustments, rate corrections. *Gate: T-05 to T-08 pass.*
@@ -1373,12 +1384,12 @@ The build runs in 10 phases, each ending with a gate that must pass before the n
 - [ ] All parties created with correct types and mobiles
 - [ ] Expense category list confirmed by the client (O-11)
 - [ ] Opening balances entered, Opening Balance Equity figure confirmed by the Owner, marked complete
-- [ ] Hourly database and daily uploads backups running; `zb-backup-verify-offsite` shows three PASS lines; storage versioning/Object Lock and lifecycle rules checked (screenshot kept)
+- [ ] Daily and monthly backups running; a backup verification shows PASS lines; storage versioning/Object Lock and lifecycle rules checked (screenshot kept)
 - [ ] One restore tested on staging (BR-OPS-04) and one full rebuild drill timed against the 4-hour target (BR-OPS-05)
 - [ ] Backup private key and APP_KEY: two copies each, holders recorded (O-37)
 - [ ] Monitoring: a test alert reached the Owner and the developer (O-33)
-- [ ] HTTPS working, security headers present, server firewall on, SSH key-only login tested (BR-SEC-01, 10, 14)
-- [ ] `zb-health-check` reports OK; `zb:verify` passes
+- [ ] HTTPS working, security headers present, SSH key-only login tested, remote database access off (BR-SEC-01, 10, 14)
+- [ ] The database-settings check passes and `zb:verify` passes
 - [ ] Two-step login set up for every Owner if O-31 = yes
 - [ ] Every account in `docs/secrets.md` is in the company's name with two-factor login
 - [ ] Owner and Accountant trained on: every entry form, rate pending, approvals, wallet rule (BR-PAY-09), daily cash check, month-end close
@@ -1422,10 +1433,16 @@ Anything not described in this document is not part of version 1. Asking for it 
 4. After written approval, this specification gets a new version with a change log row, and Requirements gets a matching version.
 5. Only then is the change built, tested on staging and released.
 
+**Note for G-32 (the move to MariaDB/shared hosting, 15 October 2026):** the owner records that both
+partners are the developers themselves and both know this change, so a separate written partner approval
+is not needed; the owner's decision in `docs/proposals/G-32-part2-plan.md` stands in place of step 4 for
+this change. All other steps apply.
+
 ### 20.4 Change log
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 1.0 (update 9) | 16 October 2026 | G-32: the live system moves from a PostgreSQL VPS to the business's **Hostinger "Unlimited" shared hosting** account, so the database engine changes to **MariaDB 11.8** (D-38, D-41; ADR-0003 replaced by ADR-0013). D-40 and D-43 rewritten; new D-45 (seal row) and BR-LED-11 (seal-row balance check, replaces the deferred constraint trigger; ADR-0016); backups become **daily (35 days) + monthly (7 years)** and the recovery figure becomes 1 day (D-40, BR-OPS-01, 03, 05, 07; ADR-0006 replaced by ADR-0015); §5, §6, §9 (MariaDB types, `DECIMAL`/`DATETIME`, `json`, binary collation, seal table), §9.7, §14.2 (BR-SEC-10, 12, 14), §14.3 (BR-OPS-08 to 11), §18 rewritten for shared hosting; §19.1, §19.2 and §20.3 updated; **PR-28 added** (party-merge posting, the open question from T7.4); `docs/cards/M10.md` added. Every entry, rule, screen, report and number is unchanged; `docs/cards/M8.md` and the operations documents point at the shared-hosting runbook. **T10.4 (books fingerprint) is deferred**: the paper register kept by pen is the real legal book |
 | 1.0 (update 8) | 14 October 2026 | M9 (G-31), approved by the client in writing: simple dashboard for the Accountant (`dashboard.balances`, BR-DSH-01); account statement in pages of 100 (BR-RPT-09); monthly lines in the rate and weight reports over 3 months (BR-RPT-10); statement PDF at most 3 months (BR-RPT-11); random public ids in links and filters (BR-SEC-19, `public_id` in §9.1). Cards `docs/cards/M9.md` |
 | 1.0 (update 7) | 13 October 2026 | G-30: cloud sessions install PHP packages through `scripts/cloud-composer-cache.sh` (zips built from git into Composer's cache), because the cloud GitHub proxy refuses GitHub zip downloads; the cloud start script runs it; card T0.1 gets cloud blocks for steps 2 and 4; `docs/stack-baseline.md` records the proxy fact and the starter kit's `laravel/pao`, `.npmrc` and `pnpm-workspace.yaml` (kept). No change to the system's rules, laptop or CI |
 | 1.0 (update 6) | 13 October 2026 | Pack v4.1: Claude Code builds in cloud sessions and opens pull requests; the developer merges on GitHub and pulls and runs on a Linux Mint laptop. Cloud sessions are prepared by `scripts/cloud-session-start.sh` (PostgreSQL, both test databases, packages, `.env`). Main guard checks every push to `main`; Dependabot pull requests monthly, grouped (BR-SEC-18). Keeps the v4 documents (`README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`) and the laptop setup (`scripts/setup-local.sh`) |

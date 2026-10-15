@@ -74,14 +74,15 @@ Every confirmed fact (F) and decision (D) from the specification, the rules that
 | D-35 | §13 | T6.10 | T-14 |
 | D-36 | §12.5 | T7.5 | AT-1 insights |
 | D-37 | BR-GEN-01 | T1.1 | company scope test |
-| D-38 | §5 | T0.1 | CI |
+| D-38 | §5, D-41 | T10.1 | CI on MariaDB 11.8; `DbSettingsTest` |
 | D-39 | BR-GEN-06 | T2.7 | browser amount ignored test |
-| D-40 | BR-SEC-08, BR-OPS-01 to 05 | `infra/bin/zb-backup-*`, T7.6 | `infra/tests/test-backup-restore.sh`; monthly restore on staging |
-| D-41 | BR-SEC-10, §18.1 | `infra/provision`, T8.3 | `infra/tests/test-provision.sh`, `test-web.sh`; T8.1 rows on staging |
-| D-42 | BR-OPS-10 | `infra/bin/zb-deploy-release`, `.github/workflows/release.yml` | `infra/tests/test-deploy.sh` |
-| D-42 | BR-OPS-11 | `SystemDataSeeder` (T1.1, T1.2, T1.3, T1.4, T2.3), `infra/bin/zb-deploy-release` | seeder tests in those tasks (run twice, no duplicates, no overwrite, refuses production); `test-deploy.sh` |
-| D-43 | BR-SEC-12 | `infra/files/postgres`, T1.11 | `infra/tests/test-postgres.sh`; CI privilege check (T-19) |
+| D-40 | BR-SEC-08, BR-OPS-01 to 05 | T10.6, T7.6 | `BackupCommandTest`; real restore on staging |
+| D-41 | BR-SEC-10, §18 | T10.1, T10.7, T10.8 | `DbSettingsTest`; `infra/hostinger` deploy tests; T8.1 rows on staging |
+| D-42 | BR-OPS-10 | `infra/hostinger/zb-deploy-release`, `.github/workflows/release.yml` | `infra/tests/test-deploy.sh` |
+| D-42 | BR-OPS-11 | `SystemDataSeeder` (T1.1, T1.2, T1.3, T1.4, T2.3), `infra/hostinger/zb-deploy-release` | seeder tests in those tasks (run twice, no duplicates, no overwrite, refuses production); `test-deploy.sh` |
+| D-43 | BR-SEC-12 | T10.1, T10.2 | `DbSettingsTest`; one-user `MigratorConnectionTest` replacement; `zb:verify` |
 | D-44 | §5, §15.4 | T2.5 onward | form tests in each page task |
+| D-45 | BR-LED-03, BR-LED-11, §9.7 | T10.2 | seal-trigger refusal tests; T-02, T-20 |
 
 ## Automated tests required by spec §17.1
 
@@ -118,7 +119,7 @@ Every confirmed fact (F) and decision (D) from the specification, the rules that
 | G-02 temporary passwords | BR-USR-08 | T1.12, T5.2 | T-17 |
 | G-03 backups | BR-SEC-08, BR-OPS-01 to 05 | `infra/`, T7.6 | `test-backup-restore.sh`; `zb-backup-verify-offsite` on day one; monthly restore |
 | G-04 session revocation | BR-SEC-13 | T1.12, T5.2 | T-17 |
-| G-05 monitoring | BR-OPS-06 to 09 | `infra/bin/zb-health-check`, T1.12 (`/up`), T7.8 | `test-health-check.sh`; test alert at go-live |
+| G-05 monitoring | BR-OPS-06 to 09 | `infra/hostinger/zb-health-check`, T1.12 (`/up`), T7.8 | `test-health-check.sh`; test alert at go-live |
 | G-06 log rules | BR-SEC-17 | T1.12, conventions §12 | T1.12 test; review |
 | G-07 headers and CSP | BR-SEC-14 | nginx snippet, T1.12 | `test-web.sh`; T-16 |
 | G-08 retention | BR-OPS-03, O-35 | storage lifecycle (server setup step 7) | screenshot in release checks |
@@ -150,3 +151,21 @@ Every confirmed fact (F) and decision (D) from the specification, the rules that
 | G-27 local test user has no role | spec §7 | T1.3 | `local DatabaseSeeder gives test@example.com the owner role` |
 | G-28 real data in trial-month notes | BR-SEC-17, `data-handling.md` rule 9 | T8.5 | review of `docs/feedback/T8.5.md` before each commit |
 | G-29 no system data on a new server | BR-OPS-11 | T1.1 to T1.4, T2.3, T5.2, `zb-deploy-release` | seeder tests; `test-deploy.sh`; `zb:create-owner` refuses without system data |
+
+## G-32: Hostinger shared hosting and MariaDB (spec update 9, 16 October 2026)
+
+| Requirement | Spec section | Tasks | Proof |
+| --- | --- | --- | --- |
+| BR-LED-11 (seal row) | §9.7, §10.3 | T10.2 | seal-trigger refusal tests (fewer than two lines; debit ≠ credit); T-02; T-20 |
+| BR-OPS-01 (backups daily 35 days + monthly 7 years) | §14.3 | T10.6 | `BackupCommandTest`; real restore on staging |
+| BR-OPS-03 (retention 35 days / 7 years) | §14.3 | T10.6 | `BackupCommandTest` retention naming |
+| BR-OPS-05 (RPO 1 day, RTO 4 hours) | §14.3 | T10.6, T10.8 | restore on staging; timed rebuild drill |
+| BR-OPS-07 (dead-man ping, 26-hour alert) | §14.3 | T10.6 | `BackupCommandTest` (ping on success and failure) |
+| BR-OPS-08 (`zb:verify`: seals + database settings) | §14.3 | T10.1, T10.2, T10.6 | T-20; `DbSettingsTest`; `zb:verify` seal check |
+| BR-OPS-10 (shared-hosting deploy and one-command roll-back) | §14.3, §18.2 | T10.7, T10.8 | `infra/hostinger` deploy tests; staging deploy |
+| BR-OPS-11 (system data on every server) | §14.3 | T1.1–T1.4, T2.3, T10.7 | seeder tests; `test-deploy.sh`; `zb:create-owner` refuses without system data |
+| BR-SEC-10 (shared-hosting hardening; app outside `public_html`) | §14.2, §18.1 | T10.5, T10.7, T10.8 | go-live checklist §19.2; staging rows |
+| BR-SEC-12 (one database user with a password) | §14.2, §9.7 | T10.1, T10.2 | `DbSettingsTest`; trigger/refusal tests; `zb:verify` |
+| BR-SEC-14 (all security headers set by the app) | §14.2 | T10.5 | `SecurityHeadersTest`; T-16 |
+| PR-28 (party-merge posting) | §8.3 | T7.4, T10.2 | T-01; T-15; AT-6 |
+| Q-1…Q-12 (query portability) | part 1 §7, §5 | T10.1, T10.2, T10.3 | same-answer check; existing suite on MariaDB 11.8; raw-SQL guard test |

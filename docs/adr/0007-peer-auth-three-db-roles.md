@@ -1,5 +1,7 @@
 # ADR-0007: Unix-socket peer authentication and three database roles
 
+**Status:** Replaced by ADR-0014.
+
 **Status:** Accepted (BR-SEC-12).
 
 **Context.** A database password in `.env` can leak through a backup of the server, a mistake in git, or a file-read bug. The application role must not be able to change the schema or remove the protections of ADR-0002.

@@ -31,7 +31,7 @@ Read these first: `README.md`, `START-HERE.md`, `docs/README.md` (map of every d
 
 ## 2. Local setup in short
 
-1. Once per computer: `bash scripts/setup-local.sh` (PHP, Composer, Node, PostgreSQL, the two local databases `zb_mill_test` and `zb_mill_dev`, `.env` from `.env.example`).
+1. Once per computer: `bash scripts/setup-local.sh` (PHP, Composer, Node, MariaDB 11.8, the two local databases `zb_mill_test` and `zb_mill_dev`, `.env` from `.env.example`).
 2. `composer install` and `npm install` if the setup script did not.
 3. `php artisan key:generate` (only when `.env` has no key yet).
 4. `php artisan migrate --seed` — creates the tables, the system data, the test settings and the local owner `test@example.com` (password `password`, local only).
@@ -46,7 +46,7 @@ Speed on the laptop (T9.2, measured):
 
 ## 3. Running every check
 
-`bash scripts/check-all.sh` runs everything CI runs, in the same order: tests (`php artisan test`, PostgreSQL only), Pint, Larastan level 7, vite-plus lint and format (`npm run check`), TypeScript (`npm run types:check`), front-end tests (`npm test`), the project guard, the secret scan and the dependency audits. It must print **ALL CHECKS PASSED** before a pull request.
+`bash scripts/check-all.sh` runs everything CI runs, in the same order: tests (`php artisan test`, MariaDB 11.8 only), Pint, Larastan level 7, vite-plus lint and format (`npm run check`), TypeScript (`npm run types:check`), front-end tests (`npm test`), the project guard, the secret scan and the dependency audits. It must print **ALL CHECKS PASSED** before a pull request.
 
 Useful single commands:
 - `php artisan test --filter="BR-PUR-03"` — one rule's tests.

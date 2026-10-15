@@ -122,12 +122,13 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 - [x] **T9.4** Long report ranges. *Done when:* tests pass.
 - [x] **T9.5** Public ids in links and filters. *Done when:* tests pass; T-09 passes over every route.
 
-## M10: Run on Hostinger shared hosting  ·  card file `docs/cards/M10.md` (in `docs/proposals/G-32-part2.patch` until the `[spec-change]` pull request is merged)
+## M10: Run on Hostinger shared hosting (MariaDB)  ·  card file `docs/cards/M10.md`
 
-- [ ] **T10.1** The engine everywhere tests run. *Done when:* tests pass on both sides as stated, and the engine version matches the host's exactly.
-- [ ] **T10.2** Migrations, database rules and database users. *Done when:* tests pass; every refusal still refuses with the same words.
-- [ ] **T10.3** Queries, the engine flip and the same-answer proof. *Done when:* every check green on MariaDB, the same-answer check shows no difference, PostgreSQL removed, and every number is identical.
-- [ ] **T10.4** Headers in the app. *Done when:* tests pass; every header lists its new source.
-- [ ] **T10.5** Hourly encrypted off-site backups. *Done when:* tests pass; one real restore works from an uploaded backup and `zb:verify` says ok on the restored copy.
-- [ ] **T10.6** Deploy, roll-back, scheduler and operations documents. *Done when:* tests pass; a deploy and a roll-back work on staging (T10.7); the documents match the machine.
-- [ ] **T10.7** Staging on Hostinger, first deploy, restore test, speed [Human + Claude]. *Done when:* staging works from the documents alone; the restore and the three speed runs are recorded.
+- [ ] **T10.1** The same MariaDB everywhere. *Done when:* the existing suite boots against MariaDB 11.8 with the PostgreSQL code still in place; `DbSettingsTest` passes (the full suite goes green in T10.3).
+- [ ] **T10.2** Migrations and database rules (33 migration files). *Done when:* every schema-refusal test and the 7 check scripts pass on MariaDB; the seal trigger refuses an entry with one line and an entry whose debits do not equal its credits.
+- [ ] **T10.3** Queries: the PostgreSQL-only SQL, and the stop-gate. *Done when:* the full suite is green on MariaDB 11.8, the same-answer check shows no difference and PostgreSQL is removed, all recorded in `docs/release-checks.md`.
+- [ ] **T10.4** Books fingerprint. *(deferred by the owner 15 October 2026 — not built now)*
+- [ ] **T10.5** Security headers in the app. *Done when:* tests pass; the T8.1 "verify on staging" header rows are filled from staging.
+- [ ] **T10.6** Backups from PHP — daily and monthly (replaces the VPS scripts). *Done when:* the daily and monthly jobs run from the scheduler, a real backup restores on staging, and `docs/release-checks.md` records the restore.
+- [ ] **T10.7** Deploy, roll-back, scheduler. *Done when:* a release deploys to staging from CI artifacts and rolls back, both one command.
+- [ ] **T10.8** Staging subdomain, first deploy, restore, speed [Human + Claude]. *Done when:* staging serves the app over HTTPS with every header, a restore is proven, and the speed numbers are recorded in `docs/release-checks.md`.

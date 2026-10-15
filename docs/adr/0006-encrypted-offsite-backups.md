@@ -1,5 +1,7 @@
 # ADR-0006: Hourly backups encrypted with a public key, off-site, delete-proof
 
+**Status:** Replaced by ADR-0015.
+
 **Status:** Accepted (11 October 2026). Replaces `spatie/laravel-backup` (spec v1.0 §5, T7.6). Provider is O-32, retention O-35, targets O-36.
 
 **Context.** Spec v1.0 had a daily backup protected by a password stored on the server, sent to storage the server could also delete. A break-in or ransomware on the server would then reach the live data **and** every backup, and up to a day of entries could be lost.

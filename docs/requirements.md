@@ -245,9 +245,9 @@ End of day: Cash Rs 22,000, HBL Rs 3,10,000. We owe Karim Rs 18,800 plus 400 kg 
 
 - Owner is alerted when new parties are added.
 
-- Backups every hour, encrypted and stored outside the server. Only two named people hold the key that opens them, and a restore is tested every month.
+- Backups run every day, and one copy is kept for each month for 7 years. They are encrypted and stored outside the server. Only two named people hold the key that opens them, and a restore is tested every month.
 
-- If the server is ever lost, the system can be rebuilt on a new server from the latest backup (target: at most 1 hour of entries lost, running again within 4 hours).
+- If the hosting account is ever lost, the system can be rebuilt from the latest backup (target: at most one day of entries lost, running again within 4 hours).
 
 - Strong passwords. The owner creates each user with a temporary password that the user must change at first login.
 
@@ -255,11 +255,11 @@ End of day: Cash Rs 22,000, HBL Rs 3,10,000. We owe Karim Rs 18,800 plus 400 kg 
 
 - A disabled user is logged out at once, on every device.
 
-- The system runs on its own server with security updates installed automatically, and the connection is always encrypted (https).
+- The system runs on the business's own Hostinger "Unlimited" shared hosting account (the database is MariaDB 11.8, managed by the host, which keeps the server and its security updates up to date). The program files and the database password are kept outside the public web folder. Updates are installed by a script and can be undone in one command, and the connection is always encrypted (https).
 
 - If something fails (backup, server, certificate), the owner and the developer are alerted.
 
-- The server, domain, backup storage and code accounts are in the company's name and are handed over to you, with written instructions.
+- The hosting account, domain, backup storage and code accounts are in the company's name and are handed over to you, with written instructions.
 
 # 12. Not Included in Version 1
 
@@ -335,7 +335,7 @@ End of day: Cash Rs 22,000, HBL Rs 3,10,000. We owe Karim Rs 18,800 plus 400 kg 
 | Who receives alerts if something fails (phone and e-mail)? | Suggested: owner and developer |
 | Who keeps the two copies of the backup key? | Suggested: owner (sealed envelope) and developer, then a second company person |
 | How many years must records be kept? (ask your tax adviser) | We keep monthly backups for 7 years (the tax law minimum is 6) |
-| If the server is lost: at most 1 hour of entries lost, running again within 4 hours. Acceptable? | Suggested: yes |
+| If the hosting account is lost: at most one day of entries lost, running again within 4 hours. Acceptable? | Suggested: yes |
 | Server company, size and location. Must the data stay in Pakistan? (ask your lawyer) | ________ |
 
 # 15. Next Steps

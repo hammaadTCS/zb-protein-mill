@@ -1,6 +1,6 @@
 # G-32: Run the system on Hostinger "Unlimited" shared hosting
 
-**Status:** proposal, part 1 of 2. Nothing is built. Part 2 (the exact text for every protected file, as a patch like `G-31-m9.patch`) is written after the account check below, because its results decide the design.
+**Status:** proposal, part 1 of 2. Nothing is built. Part 2 (the exact text for every protected file, as a patch like `G-31-m9.patch`) is written after the account check below, because its results decide the design. **§12 records the implementation decisions of 15 October 2026 and the plan built on them.**
 
 ## 1. The request
 
@@ -152,3 +152,99 @@ The books fingerprint (section 6) is not extra security: it is what keeps the bo
 8. **T10.8** [Human + Claude] Staging subdomain (D-9), first deploy, restore test, speed measured.
 
 **Rough size:** 3 to 5 weeks of work (more than the first estimate, because sections 4 and 6 keep the protections instead of dropping them). The unknowns are the trigger test, H-4, the deploy layout and speed on a shared machine.
+
+---
+
+## 12. Implementation plan, decided 15 October 2026 (developer + Claude)
+
+Status of this section: decisions taken in a working session before the account check (§3). They change §6, §9, §10 and §11 of this proposal exactly where noted. The facts from §3 still decide the design of part 2; nothing here pre-empts them.
+
+### 12.1 Decisions taken (15 October 2026)
+
+| # | Question | Decision | What it changes |
+| --- | --- | --- | --- |
+| D-a | Does Hostinger replace the VPS, or sit beside it? | **Hostinger replaces the VPS.** Shared hosting is the only target; the VPS is not built. | Part 2 rewrites spec **D-41** and §18 for shared hosting, marks **ADR-0003** replaced by a new ADR, retires (or keeps as history) the VPS-only parts of `infra/` (nginx, php-fpm, certbot, systemd timers, PostgreSQL grants), and rewrites **T8.3**, **T8.6** and **T8.7** as shared-hosting tasks. `docs/traceability.md` row D-41 changes with it. |
+| D-b | Books fingerprint (§6, task T10.4)? | **Dropped entirely.** No fingerprint columns, no chain, no closing codes, no re-check page; nothing is added to the app for it. | §6 is not built; T10.4 does not exist (see 12.3). The books' protection rests only on the database rules/triggers (**D-2**) and two database users (**D-3**). Because of this, the other partner's written approval of §5 must now say plainly: *someone with the Hostinger login can change the database directly and leave no trace of that change.* §5's loss #1 stays unmitigated and is accepted. |
+| D-c | The six existing tests named in §10? | **Approved to adapt, on the condition that the behaviour stays identical**: the save is refused, the row stays unchanged, and the refusal is still tested under the same rule IDs. | The five refusal tests assert MariaDB's error text instead of PostgreSQL's. `MigratorConnectionTest` is rewritten against MariaDB grants — and if **H-4** turns out to allow only one all-rights database user, the developer is asked again **before** that test is deleted, because that deletion would record a lost protection. Nothing else in the 588 tests changes. |
+| D-d | Which engine runs the proofs? | **The exact version the host runs (H-7), whatever it takes**: the official apt repository if the distro package is a different version, otherwise a local container of that image; the distro package only if it already matches. | PostgreSQL stays installed and stays the default on the laptop until the same-answer check in **T10.3** passes. Applies to tests, cloud sessions and CI as §9 D-1 says. The CI, `phpunit.xml`, `.env.example`, `scripts/cloud-session-start.sh` and `scripts/guard.sh` changes are part 2 (protected files). |
+
+### 12.2 Phases and gates
+
+| Phase | What | Gate before it |
+| --- | --- | --- |
+| 0 | The account check of §3, plus the partner's written approval of §5 (now including D-b's sentence) | None — this is the first thing |
+| 1 | **G-31** applied first (its `[spec-change]`), then **part 2** of this proposal as one `[spec-change]` pull request: every protected file in §10, the M10 card, the ADR changes, the six approved test changes | Phase 0 facts |
+| 2 | Build, one branch and one pull request per task, in order: **T10.1 → T10.2 → T10.3 → T10.4 → T10.5 → T10.6 → T10.7** (renumbered, see 12.3) | Part 2 merged |
+| 3 | Go-live on shared hosting: **T8.4** client review on staging, **T8.5** trial month alongside the Urdu register, **T8.6** go-live, **T8.7** handover — all rewritten for shared hosting by D-a | Phase 2 done; restore test on staging recorded in `docs/release-checks.md` |
+
+**No data-migration step exists:** nothing is live today (T8.3–T8.7 unticked), so the first real entry is typed on Hostinger and no book ever changes database engine with real data in it.
+
+### 12.3 Milestone M10 as it will be written in part 2
+
+The fingerprint task of §11 (**T10.4**) is removed by D-b. The remaining tasks keep their content and shift down by one number:
+
+| New ID | Was | Content |
+| --- | --- | --- |
+| T10.1 | T10.1 | Test database switch: the exact host version (D-d) in tests, cloud sessions and CI; section 7 settings |
+| T10.2 | T10.2 | Migrations (Q-6 to Q-10), rules and the seal-row balance check (D-2), two database users (D-3); the six approved test adaptations (D-c) |
+| T10.3 | T10.3 | Queries (Q-1 to Q-5, Q-11, Q-12); AT-1 to AT-6 pass with the same numbers; the same-answer check against PostgreSQL shows no difference; PostgreSQL then removed |
+| T10.4 | ~~T10.5~~ | Headers in the app (D-8) |
+| T10.5 | ~~T10.6~~ | Hourly encrypted off-site backups from PHP, backup status page, restore command (D-4) |
+| T10.6 | ~~T10.7~~ | Shared-hosting deploy and roll-back (D-6), scheduler (D-7), `docs/operations/` documents |
+| T10.7 | ~~T10.8~~ | [Human + Claude] Staging subdomain (D-9), first deploy, restore test, speed measured (T8.2 and T9.2 re-measured on the shared machine) |
+
+The tasks are added to `docs/tasks.md` in part 2, as with every other milestone.
+
+### 12.4 Cost, checked 15 October 2026
+
+Prices are the hosts' public pages on that day; the account's own invoice decides the real number.
+
+| Item | Cost | Note |
+| --- | --- | --- |
+| Hostinger **Unlimited** plan | Already owned. If bought new: intro ≈ **$3.99/month** on a 48-month term; renewal ≈ **$16.99–18.99/month** (48-month renewal commonly quoted ≈ $911.52) | G-32 §1: the account already exists |
+| Domain, HTTPS, cron | **$0** (free certificate; hPanel cron every minute; domain with the plan) | H-2, §8 |
+| Off-site encrypted backups | Object storage ≈ **$6–6.95 per TB/month**, first 10 GB free (Backblaze B2), egress free up to 3× stored | A mill's books are tens of MB a year → realistically cents, likely $0 |
+| VPS | **$0 — not taken** (a VPS would be ≈ $6–13/month) | The point of D-a |
+| New PHP packages | **$0**: `sodium` ships with PHP; uploads use the HTTP client already present. Any SDK would be a new package and needs approval | D-4 |
+| Development | **3 to 5 weeks** (§11 estimate, now without T10.4) | Claude builds branches and proposes protected-file text; never a server |
+| Your time | ≈30 minutes for §3; staging deploy and a restore test; the trial month (T8.5); go-live and handover | T8.4–T8.7 |
+
+### 12.5 What stays identical, and what cannot (with D-b in force)
+
+**Identical:** every screen, form, report, khata, statement, PDF, dashboard, permission check, audit row, month-end close and approval; money exact to the paisa (`DECIMAL(16,2)`, kg `(14,3)`, rate `(14,4)`, strings in JSON); AT-1 to AT-6 with the same numbers; all 588 tests except the six approved by D-c; server-side permissions, two-step login, CSP, login limits, company scope, uploads through the app, no personal data in logs.
+
+**Cannot stay identical — written here so nobody is surprised:** database error wording (the five refusal tests); speed on a shared machine (T8.2 and T9.2 are measured again on the real machine in T10.7); a database password in `.env` instead of peer login (§5 #2); and, by D-b, **direct database edits are possible and leave no trace** — only the daily `zb:verify` and the off-site backups limit the damage they can do. If H-4 fails, a leaked database password could drop tables and backups are the only recovery.
+
+### 12.6 Phase 0 sheet (about 30 minutes, human, before part 2 is written)
+
+1. hPanel → Databases: create an **empty test database** and user (any names).
+2. hPanel → Advanced → SSH Access: turn SSH on; copy `docs/proposals/G-32-hostinger-check.sh` to the account; run `bash G-32-hostinger-check.sh`; paste the whole output into the Claude session. **Do not commit it** — it contains account and folder names. Delete the test database afterwards.
+3. Answer from hPanel: **H-1** highest PHP version; **H-2** can a cron job run every minute; **H-3** can `accounts.zbgroup.website` have a folder of its own, and can it be outside `public_html`; **H-4** can one database have two users with different rights; **H-5** how many days of daily backups, and can they be downloaded; **H-6** who owns the account, is two-step login on, can a second person get their own access; **H-7** MySQL or MariaDB, and its version.
+4. Send the other partner the §5 losses and ask for a written reply (e-mail or message, enough for spec §20.3) that now includes, because of D-b: *someone with the Hostinger login can change the database directly and leave no trace of that change.*
+
+### 12.7 Who does what
+
+Claude: branches, code, migrations, tests, the same-answer comparison, backup and deploy scripts, and the exact proposed text for every protected file in part 2. Claude never connects to Hostinger, never pushes or merges, never tags, never edits a protected file.
+
+The developer: Phase 0, hPanel and SSH steps, the account ownership and two-step login (H-6, D-10), the storage account and the backup keys (D-4), staging and production deploys, the restore test, merging the pull requests, and the client-facing tasks T8.4 to T8.7.
+
+### 12.8 Phase 0 results (account check run 15 October 2026; the report itself is not committed — it is in the session log)
+
+The script reported *"nothing for you to fix"*. What each fact decides for part 2:
+
+| Fact from the check | What it decides |
+| --- | --- |
+| **MariaDB 11.8.9** (`11.8.9-MariaDB-log`) | **H-7 answered.** D-d is now concrete: 11.8.x in tests, cloud sessions, CI and the laptop. CHECK rules are enforced on this version (tested: yes), so Q-9's floor is met |
+| **Triggers allowed; all 7 ledger-protection tests passed** (balanced entry posts; unbalanced, changed or deleted entries and lines refused) | **D-2 keeps its strongest form**: the database itself still refuses unbalanced entries, edits and deletes, exactly as on the VPS. This was the biggest unknown and it is resolved well |
+| Grants: one user, `ALL PRIVILEGES` on its own database only (`GRANT USAGE ON *.*` + all on `<db-user>.*`) | **H-4 evidence: failed.** No limited second user on this account — §5 loss #4 applies (a leaked database password could drop tables; backups are the recovery), and the D-c condition is triggered: `MigratorConnectionTest` would be deleted with a written note, with the developer's second approval first |
+| `sql_mode` has no `STRICT_*`, `innodb_strict_mode = OFF` | **NOTE, load-bearing:** strict mode must be set on the connection itself (Laravel `strict`) and the app-level decimal refusal of Q-10 carries the "too many decimals" guarantee, not the server |
+| `READ-COMMITTED` already the server default; system time zone UTC; `explicit_defaults_for_timestamp = ON`; `lower_case_table_names = 0`; InnoDB; `utf8mb4` / `utf8mb4_unicode_ci` | Q-5, Q-7 settings are already half in place; unique columns still need a binary collation per column (Q-6) and the connection settings are still set explicitly in code, because defaults are not a promise |
+| `mariadb-dump` (client 10.20) works; a dump taken, restored, **triggers came back and still blocked changes** | T10.5's backup/restore route exists. Dumps contain `DEFINER` clauses — the restore command must strip or handle them when restoring to a different server/user (T10.5 design item) |
+| PHP **8.5.11** on the command line and on the website (LiteSpeed + hcdn), opcache on, memory 2048M, execution time 360 s, upload/post 2048M | **H-1 answered**: the exact PHP the project requires. The 3-month statement PDF (2.7 s on the laptop) has ample headroom |
+| Symlink switching works from SSH and the website follows the link; the app can live outside `public_html` | **D-6 confirmed**: `releases/<version>` + one symlink is possible. H-3 (the folder for `accounts.zbgroup.website` and the staging subdomain) is still an hPanel answer |
+| CLI disables `exec`, `system`, `shell_exec`, `popen` — but `proc_open` works | The backup job calls `mariadb-dump` through Symfony Process (`proc_open`), never `exec` |
+| `crontab` binary absent | Irrelevant: the scheduler is hPanel cron (D-7); H-2 (every minute) still to be confirmed in hPanel |
+| Reachable: Backblaze B2 (401 = reached), GitHub (200), healthchecks.io (301) | D-4 off-site backups, downloading the CI release archive, and an outside uptime monitor are all possible |
+| `MAX_USER_CONNECTIONS 75`, `wait_timeout 20`, `innodb_lock_wait_timeout 50`, `MAX_STATEMENT_TIME 120` | Small but adequate for one company; noted for the T10.7 speed re-measurement. The 120 s statement ceiling is far above any page's 3 s target |
+
+**Still open after the script** (hPanel, ~10 minutes): **H-2** (cron every minute), **H-3** (subdomain folder, outside `public_html`), **H-4** confirmation (can a second user with fewer rights be added to one database?), **H-5** (daily backups: how many days, downloadable?), **H-6** (account ownership, two-step login, a second person's access). Then: the throwaway database is deleted in hPanel, and the other partner's written §5 approval arrives — which must now carry both sentences: a direct database edit leaves no trace (D-b), and one all-rights database user means a leaked password could drop tables (§5 #4, this check).

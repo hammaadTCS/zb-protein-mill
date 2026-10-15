@@ -353,6 +353,7 @@ Two roles exist in version 1: Owner and Accountant (C). Permissions are stored i
 | `opening.manage` | Opening balances | Yes | No | A |
 | `users.manage` | Add users, assign roles, disable users | Yes | No | A |
 | `backup.view` | Backup status (no download: backups are readable only with the offline key, ADR-0006) | Yes | No | A + P |
+| `dashboard.balances` | Cash and bank balances on the dashboard (BR-DSH-01) | Yes | No | C |
 
 ### Rules
 
@@ -470,6 +471,8 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
 | `company_id` | bigint, FK companies | Required on every business table (D-37) |
 | `created_by`, `updated_by` | bigint, FK users | Set by the system |
 | `created_at`, `updated_at` | timestamptz | Stored in UTC, shown in Asia/Karachi |
+
+**Tables opened from a link** (parties, purchases, sales, payments, expenses, transfers, partner_transactions, adjustments, attachments, money_accounts, items, expense_categories, users) also have `public_id` uuid, not null, default `gen_random_uuid()`, unique (BR-SEC-19).
 
 **Transaction tables** (purchases, sales, adjustments, payments, expenses, partner_transactions, transfers) also have: `voucher_no` varchar(20) unique per company, `entry_date` date, `status` (active / cancelled), `cancel_reason` text, `cancelled_by`, `cancelled_at`, `journal_entry_id` (FK, latest journal, nullable), `idempotency_key` uuid nullable with a unique index on (`company_id`, `idempotency_key`) (BR-GEN-11).
 
@@ -772,7 +775,7 @@ Every purchase rule BR-PUR-02 to BR-PUR-14 also applies to sales, reading "suppl
 
 ## 11. Page specifications
 
-The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (P). "Mobile-first" pages are designed for a phone screen first (A).
+The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (P). "Mobile-first" pages are designed for a phone screen first (A). A record in a route (`{id}`) and a record in an address-bar filter are named by the record's `public_id`, never by its internal number (BR-SEC-19).
 
 ### 11.1 Page list
 
@@ -838,9 +841,10 @@ The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (
 ### 11.3 Dashboard (page 2)
 
 - **Today:** kg bought per item, kg sold per product, money received, money paid, expenses total.
-- **Balances:** each cash and bank account.
+- **Balances:** each cash and bank account (`dashboard.balances`, Owner).
 - **Alerts (each links to its list):** rate-pending count (red if aged), payments awaiting approval (Owner), new parties to review (Owner), bank detail changes to review (Owner), overdue buyers, buyers over credit limit, aged advances, missing cash count, negative cash balance, trial balance error (Owner).
 - **Quick buttons:** New purchase, New sale, New payment, Quick expense.
+- **BR-DSH-01 (C):** the Accountant's dashboard is the simple one: Today, the alerts the Accountant can act on, and the quick buttons. The balances block needs `dashboard.balances`, which only the Owner has; without it the server does not compute the balances. The Accountant still sees balances on the Accounts page (`account.view`).
 
 ### 11.4 Form: New purchase (page 4)
 
@@ -937,6 +941,9 @@ Money figures come only from journal lines; kg figures come only from purchases 
 - **BR-RPT-03 (P):** rate averages use the original entry amounts, before agreed adjustments. Adjustments are reported separately (R-12).
 - **BR-RPT-04 (A):** party balances are shown in words, never with a minus sign (Section 8.2).
 - **BR-RPT-05 (A):** numbers and dates follow `number_format` and `date_format`.
+- **BR-RPT-09 (C):** the account statement (R-06) shows 100 movements per page. Opening, closing and the in and out totals always cover the whole range; a later page starts with "Brought forward", the balance after the rows before it.
+- **BR-RPT-10 (C):** the rate report (R-10) and the weight difference report (R-11) list each entry for a range of at most 3 months. For a longer range they show one line per month in each party (and item) group, with the same totals, weighted average and %, and the note "Periods longer than 3 months show one line per month." The party profile keeps the entry-by-entry view.
+- **BR-RPT-11 (C):** one statement PDF (§13.1) covers at most 3 months; a longer range is refused with the glossary message. Without a chosen period it covers the 3 months up to today, never before `system_start_date`. A range of at most 3 months ends on its last day: 1 January to 31 March is 3 months; 1 January to 1 April is longer.
 
 ### 12.2 Report list
 
@@ -947,12 +954,12 @@ Money figures come only from journal lines; kg figures come only from purchases 
 | R-03 | Rate pending list (26) | Type, party | Entry, date, party, item, kg, age in days (red if over `rate_pending_age_days`) |
 | R-04 | Daily summary (29) | Date | Kg bought per item, kg sold per product, money received, money paid, expenses by category, closing balance per money account, pending-rate count |
 | R-05 | Expense report (34) | Date range, category, party | Total per category, then each expense with note, mode and party |
-| R-06 | Account statement (25) | Account, date range | Opening, each movement, running balance, closing |
+| R-06 | Account statement (25) | Account, date range | Opening, each movement, running balance, closing; 100 movements per page (BR-RPT-09) |
 | R-07 | Trial balance (36) | As-of date, "show parties" | Each ledger account's total debit, total credit and balance. "Show parties" splits control accounts by party. Footer: total debit = total credit |
 | R-08 | Income vs Spending (35) | Month or range | Income, spending and the difference (12.3) |
 | R-09 | Partner statement (23) | Partner, date range | Investments, withdrawals, net per partner |
-| R-10 | Rate report (37) | Item, party, date range | Each fixed rate over time and the weighted average |
-| R-11 | Weight difference (38) | Type, party, date range | Their kg vs our kg per party, difference and % (12.4) |
+| R-10 | Rate report (37) | Item, party, date range | Each fixed rate over time and the weighted average; one line per month over 3 months (BR-RPT-10) |
+| R-11 | Weight difference (38) | Type, party, date range | Their kg vs our kg per party, difference and % (12.4); one line per month over 3 months (BR-RPT-10) |
 | R-12 | Adjustments report (39) | Type, party, reason, date range | Total, count and % of sales or purchases per party and reason |
 | R-13 | Business insights (40) | Period (default `insights_period_months` = 3) | Indicators in 12.5, each labelled "rough indicator" |
 
@@ -1025,7 +1032,7 @@ Two PDFs are generated on the server: the party statement and the entry slip (D-
 
 | Part | Content |
 | --- | --- |
-| Header | Company name, "Statement of Account", party name, code, mobile, period (from – to) |
+| Header | Company name, "Statement of Account", party name, code, mobile, period (from – to), at most 3 months (BR-RPT-11) |
 | Opening | Balance at the start of the period, in words (Section 8.2) |
 | Rows | Date, voucher number, description (item, kg × rate, or payment method and reference), amount that increases the balance, amount that reduces it, running balance in words |
 | Pending | Rate-pending entries listed with kg and "Rate pending", no amount |
@@ -1079,6 +1086,7 @@ Every action is logged permanently, every request is permission-checked on the s
 - **BR-SEC-15 (P):** the session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`; session data is encrypted in the database.
 - **BR-SEC-16 (P):** staging and production run with `APP_ENV=production` and `APP_DEBUG=false`: users never see technical error details. Models are strict (no lazy loading, no silently discarded attributes) outside production.
 - **BR-SEC-17 (P):** logs never contain passwords, tokens, session IDs, request bodies, party names, mobiles, bank details or amounts. Application logs rotate daily and are kept 14 days; web server logs leave out query strings.
+- **BR-SEC-19 (C):** links, record URLs and address-bar filters name a record by its random `public_id` (UUID v4), never by its internal number. An unknown or malformed public id answers 404. Form bodies and background lookups keep internal numbers; the protection stays the login, the permission on every route (BR-SEC-05) and the company scope.
 - **BR-SEC-18 (P):** dependency lock files are committed; CI checks known vulnerabilities (`composer audit`, `npm audit`) Dependabot opens grouped pull requests for minor and patch updates monthly, and its alerts e-mail security warnings at once. Only packages named in a task card are installed.
 
 ### 14.3 Operations (P unless stated)
@@ -1418,6 +1426,7 @@ Anything not described in this document is not part of version 1. Asking for it 
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 1.0 (update 8) | 14 October 2026 | M9 (G-31), approved by the client in writing: simple dashboard for the Accountant (`dashboard.balances`, BR-DSH-01); account statement in pages of 100 (BR-RPT-09); monthly lines in the rate and weight reports over 3 months (BR-RPT-10); statement PDF at most 3 months (BR-RPT-11); random public ids in links and filters (BR-SEC-19, `public_id` in §9.1). Cards `docs/cards/M9.md` |
 | 1.0 (update 7) | 13 October 2026 | G-30: cloud sessions install PHP packages through `scripts/cloud-composer-cache.sh` (zips built from git into Composer's cache), because the cloud GitHub proxy refuses GitHub zip downloads; the cloud start script runs it; card T0.1 gets cloud blocks for steps 2 and 4; `docs/stack-baseline.md` records the proxy fact and the starter kit's `laravel/pao`, `.npmrc` and `pnpm-workspace.yaml` (kept). No change to the system's rules, laptop or CI |
 | 1.0 (update 6) | 13 October 2026 | Pack v4.1: Claude Code builds in cloud sessions and opens pull requests; the developer merges on GitHub and pulls and runs on a Linux Mint laptop. Cloud sessions are prepared by `scripts/cloud-session-start.sh` (PostgreSQL, both test databases, packages, `.env`). Main guard checks every push to `main`; Dependabot pull requests monthly, grouped (BR-SEC-18). Keeps the v4 documents (`README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`) and the laptop setup (`scripts/setup-local.sh`) |
 | 1.0 (update 5) | 13 October 2026 | Pack v4, laptop edition: Claude Code runs on the developer's Linux Mint laptop (no cloud sessions). Code reaches `main` only through `scripts/finish-task.sh`; CI checks every push to `main`; protected files change only with `[spec-change]`. Dependabot pull requests replaced by alerts plus a monthly update session (BR-SEC-18). New documents: `README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`, `docs/templates/task-report.md`. Laptop app uses database `zb_mill_dev`; tests `zb_mill_test` |

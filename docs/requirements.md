@@ -373,7 +373,7 @@ Who: Both = owner and accountant. Owner = owner only.
 | **#** | **Page** | **Who** | **What it contains** |
 | --- | --- | --- | --- |
 | 1 | Login | Both | Username and password. Every login recorded |
-| 2 | Dashboard | Both | Today's totals, cash and bank balances, alerts, quick buttons |
+| 2 | Dashboard | Both | Today's totals, alerts, quick buttons; cash and bank balances for the Owner only (the Accountant sees them on the Accounts page) |
 
 ## Daily entries
 

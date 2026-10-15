@@ -140,6 +140,11 @@ Every confirmed fact (F) and decision (D) from the specification, the rules that
 
 | Gap | Rules | Built in | Proof |
 | --- | --- | --- | --- |
+| G-31 simple Accountant dashboard | BR-DSH-01, §7 `dashboard.balances` | T9.3 | `AccountantDashboardTest`; `RolesAndPermissionsTest` |
+| G-31 long report ranges | BR-RPT-09, BR-RPT-10, BR-RPT-11 | T9.4 | `AccountStatementPagesTest`; `LongRangeReportsTest`; `zb:time-pages` (release checks) |
+| G-31 no internal numbers in URLs | BR-SEC-19 | T9.5 | `PublicIdTest`; T-09 |
+| G-31 user messages and DevTools data kept out of logs | BR-SEC-17 | T9.1 | `ProtectedAppTest` |
+| G-31 speed of dashboard, insights, pending balances | NFR-02, spec §12.6 | T9.2 | `AgeingOverdueManyTest`; T-12; AT-1 to AT-6; `zb:time-pages` |
 | G-25 no branch protection on GitHub Free | BR-OPS-10 | hook git guard, protected-files check on pull requests, main guard, release gate, ADR-0012 | `test-guardrails.sh` (git guard and main guard cases); release workflow gate step |
 | G-26 network facts for building | — | `docs/stack-baseline.md` | T0.1 runs Composer and npm in the cloud session |
 | G-27 local test user has no role | spec §7 | T1.3 | `local DatabaseSeeder gives test@example.com the owner role` |

@@ -40,6 +40,7 @@ The people using this system are the owner and the accountant of ZB Poultry Prot
 | Cash count | `cash_count` | Cash physically counted at day end |
 | Month-end close | `period` close | Monthly matching and lock |
 | Income vs Spending | report R-08 | Money earned minus money spent. **Not profit** |
+| Brought forward | `brought_forward` | The balance at the top of a later page of a statement (BR-RPT-09) |
 
 ## 2. Balance words (never a minus sign)
 
@@ -98,6 +99,8 @@ The plain "Cancel" link that closes a dialog without saving is labelled **Close*
 | Account disabled | This account is disabled. Ask the owner. |
 | Staging banner | TEST COPY – entries here are not real. |
 | Last owner (BR-USR-04) | At least one active owner is required. |
+| Monthly lines (BR-RPT-10) | Periods longer than 3 months show one line per month. |
+| Statement too long (BR-RPT-11) | A statement PDF can cover at most 3 months. Choose a shorter period. |
 
 ## 5. Words never used anywhere in the interface
 

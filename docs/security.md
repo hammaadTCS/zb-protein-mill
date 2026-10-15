@@ -85,6 +85,7 @@ What we protect, from whom, and exactly where each protection lives and how it i
 | BR-SEC-16 no debug output | `.env`, error pages | T1.12 test |
 | BR-SEC-17 log rules | `config/logging.php`, code review | T1.12 test (no password in logs) |
 | BR-SEC-18 dependency and secret checks | CI, `check-all.sh`, Dependabot (alerts and monthly pull requests) | CI |
+| BR-SEC-19 public ids in URLs | `App\Support\HasPublicId` on every linked model, UUID route patterns (`AppServiceProvider`), `idFromPublic()` for filters, migration `add_public_id_to_linked_tables` | `PublicIdTest`; T-09 route table |
 | BR-OPS-01 to 10 | `infra/`, runbook | infra tests; T8.1 and go-live checklist |
 
 ## 5. If something happens

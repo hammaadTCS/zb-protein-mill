@@ -22,7 +22,7 @@ afterEach(function () {
     rmdir($this->statusDir);
 });
 
-/** Writes a status file the way infra/bin/zb-lib.sh does. */
+/** Writes a status file the way infra/hostinger/zb-lib.sh does. */
 function backupFile(string $dir, string $name, array $body): void
 {
     file_put_contents("{$dir}/{$name}.json", json_encode($body)."\n");

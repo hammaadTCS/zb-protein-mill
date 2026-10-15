@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   # Application checks. Runs on PHP 8.3 (cloud sessions and your laptop) and PHP 8.5 (the servers),
-  # against PostgreSQL 18 (the servers). TEST values only below: never real credentials.
+  # against MariaDB 11.8 (the host). TEST values only below: never real credentials.
   checks:
     name: checks (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
@@ -34,24 +34,26 @@ jobs:
         php: ${{ fromJSON(github.event_name == 'push' && '["8.5"]' || '["8.3", "8.5"]') }}
 
     services:
-      postgres:
-        image: postgres:18
+      mariadb:
+        image: mariadb:11.8
         env:
-          POSTGRES_USER: zb_test
-          POSTGRES_PASSWORD: local_test_only
-          POSTGRES_DB: zb_mill_test
+          MARIADB_DATABASE: zb_mill_test
+          MARIADB_USER: zb_test
+          MARIADB_PASSWORD: local_test_only
+          MARIADB_ROOT_PASSWORD: local_test_only
+          MARIADB_ROOT_HOST: '%'
         ports:
-          - 5432:5432
+          - 3306:3306
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
 
     env:
-      DB_CONNECTION: pgsql
+      DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
-      DB_PORT: 5432
+      DB_PORT: 3306
       DB_DATABASE: zb_mill_test
       DB_USERNAME: zb_test
       DB_PASSWORD: local_test_only
@@ -83,7 +85,7 @@ jobs:
         if: steps.app.outputs.exists == 'true'
         with:
           php-version: ${{ matrix.php }}
-          extensions: pdo_pgsql, pgsql, bcmath, gmp, intl, mbstring, gd, zip
+          extensions: pdo_mysql, mysqli, bcmath, gmp, intl, mbstring, gd, zip
           tools: composer:v2
           coverage: none
 
@@ -144,25 +146,24 @@ jobs:
         run: |
           if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then npm test; else echo "No test script yet (added in T2.1)"; fi
 
-      - name: Tests (PostgreSQL)
+      - name: Tests (MariaDB)
         if: steps.app.outputs.exists == 'true'
         run: php artisan test
 
-      # From task T1.11: real migrations run as the owner role, then the production grants are
-      # applied and the web role is proven unable to change structure or delete business rows.
-      - name: Database privilege check (from T1.11)
-        if: steps.app.outputs.exists == 'true' && matrix.php == '8.5' && hashFiles('config/database.php') != ''
+      # From task T10.2: shared hosting gives ONE all-rights database user, so what keeps the books
+      # safe is the database itself. This runs the real migrations, then proves the protection
+      # triggers and the seal trigger are in the schema (BR-SEC-12, ADR-0016).
+      - name: Database rules check (from T10.2)
+        if: steps.app.outputs.exists == 'true' && matrix.php == '8.5' && hashFiles('infra/tests/ci-db-rules.sh') != ''
         env:
-          PGHOST: 127.0.0.1
-          PGPORT: 5432
-          PGUSER: zb_test
-          PGPASSWORD: local_test_only
-        run: |
-          if grep -q "pgsql_migrator" config/database.php; then
-            bash infra/tests/ci-db-privileges.sh
-          else
-            echo "pgsql_migrator connection not added yet (task T1.11)"
-          fi
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: zb_mill_rulescheck
+          DB_USERNAME: root
+          DB_PASSWORD: local_test_only
+          DB_ADMIN_USERNAME: root
+          DB_ADMIN_PASSWORD: local_test_only
+        run: bash infra/tests/ci-db-rules.sh
 
   # Every push to main: each new commit must come from a merged pull request, and protected
   # files may change only through a [spec-change] pull request (scripts/check-main-push.sh).

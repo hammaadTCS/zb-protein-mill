@@ -40,7 +40,12 @@ else
 fi
 
 if [ -f artisan ]; then
-  run "PHP tests (Pest, PostgreSQL)" php artisan test
+  run "PHP tests (Pest, MariaDB)" php artisan test
+  if [ -f infra/tests/ci-db-rules.sh ]; then
+    run "Database rules" env DB_HOST=127.0.0.1 DB_PORT=3306 DB_DATABASE=zb_mill_rulescheck DB_USERNAME=zb_test DB_PASSWORD=local_test_only bash infra/tests/ci-db-rules.sh
+  else
+    skip "Database rules" "added in T10.2"
+  fi
   run "PHP code style (Pint)" vendor/bin/pint --test
   run "Static analysis (Larastan level 7)" vendor/bin/phpstan analyse --memory-limit=1G --no-progress
   run "Front-end build (also generates Wayfinder routes)" npm run build

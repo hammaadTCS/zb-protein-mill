@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# zb-health-check – shared-hosting checks (BR-OPS-06 to BR-OPS-09).
+# Run over SSH as the account's own user, or from the scheduler. Pings the "health" monitor on
+# success, "/fail" with the list of problems otherwise. Prints the same list, so running
+# `bash ~/accounts/bin/zb-health-check` is a quick status view.
+#
+# No root, no systemd, no nginx: it checks the app, the host's certificate, disk use where the
+# host exposes it, and the freshness of the last backup and the daily books check.
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+# shellcheck source=zb-lib.sh
+source "$LIB"
+zb_load_config DOMAIN
+APP_BASE="${APP_BASE:-${HOME:-$PWD}/accounts}"; APP_BASE="${APP_BASE/#\~/$HOME}"
+
+DISK_LIMIT="${DISK_ALERT_PERCENT:-80}"
+APP_CHECK_CMD="${APP_CHECK_CMD:-curl -fsS -o /dev/null --max-time 15 https://$DOMAIN/up}"
+# Where the app's zb:backup writes the status files (ZB_BACKUP_STATUS_DIR); kept in sync with
+# config('zb.backup_status_dir') so this check reads the same files as the Backups page.
+STATUS_DIR="${STATUS_DIR:-}"
+BACKUP_MAX_AGE_MIN="${BACKUP_MAX_AGE_MIN:-1560}"   # 26 hours (BR-OPS-07)
+VERIFY_FILE="${VERIFY_STATUS_FILE:-$APP_BASE/shared/storage/app/zb-verify.json}"
+
+PROBLEMS=()
+NOTES=()
+
+# Disk space: only where the host exposes it for the account's home. df may report the whole
+# shared volume or refuse; either way this stays best-effort (BR-OPS-09 "where the host exposes it").
+if command -v df >/dev/null 2>&1; then
+    while read -r use mount; do
+        case "$use" in *%) ;; *) continue ;; esac
+        use="${use%\%}"
+        [ "$use" -lt "$DISK_LIMIT" ] || PROBLEMS+=("disk $mount is ${use}% full")
+    done < <(df -P "$APP_BASE" 2>/dev/null | awk 'NR > 1 {print $5, $6}')
+else
+    NOTES+=("df not available: disk not checked")
+fi
+
+# The application answers /up (which also checks the database).
+bash -c "$APP_CHECK_CMD" >/dev/null 2>&1 || PROBLEMS+=("https://$DOMAIN/up does not answer 200")
+
+# Certificate: read the host's certificate file when the account can see it, otherwise ask the
+# site itself. Alerts when it expires within 14 days.
+cert_file="${CERT_FILE:-}"
+checkend=1209600   # 14 days
+if [ -n "$cert_file" ] && [ -r "$cert_file" ]; then
+    openssl x509 -checkend "$checkend" -noout -in "$cert_file" >/dev/null 2>&1 \
+        || PROBLEMS+=("TLS certificate expires within 14 days")
+elif command -v openssl >/dev/null 2>&1; then
+    if ! openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" </dev/null 2>/dev/null \
+        | openssl x509 -checkend "$checkend" -noout >/dev/null 2>&1; then
+        PROBLEMS+=("TLS certificate expires within 14 days, or could not be read for $DOMAIN")
+    fi
+else
+    NOTES+=("openssl not available: certificate not checked")
+fi
+
+# Backups: age of the last success written by php artisan zb:backup.
+if [ -n "$STATUS_DIR" ] && [ -d "$STATUS_DIR" ]; then
+    DB_AGE="$(age_minutes "$STATUS_DIR/backup-db-last-success.json")"
+    FILES_AGE="$(age_minutes "$STATUS_DIR/backup-files-last-success.json")"
+    if [ "$DB_AGE" -eq 999999 ]; then
+        PROBLEMS+=("no database backup has been recorded yet")
+    else
+        [ "$DB_AGE" -le "$BACKUP_MAX_AGE_MIN" ] || PROBLEMS+=("last good database backup was $DB_AGE minutes ago")
+    fi
+    if [ "$FILES_AGE" -eq 999999 ]; then
+        PROBLEMS+=("no uploads backup has been recorded yet")
+    else
+        [ "$FILES_AGE" -le "$BACKUP_MAX_AGE_MIN" ] || PROBLEMS+=("last good uploads backup was $FILES_AGE minutes ago")
+    fi
+else
+    NOTES+=("backup status folder not configured (STATUS_DIR); backups not checked")
+fi
+
+# Daily books check written by "php artisan zb:verify" (BR-OPS-08).
+if [ -r "$VERIFY_FILE" ]; then
+    grep -q '"result":"ok"' "$VERIFY_FILE" || PROBLEMS+=("ledger integrity check FAILED (php artisan zb:verify)")
+    VERIFY_AGE="$(age_minutes "$VERIFY_FILE")"
+    [ "$VERIFY_AGE" -le "$BACKUP_MAX_AGE_MIN" ] || PROBLEMS+=("ledger integrity check last ran $VERIFY_AGE minutes ago")
+else
+    NOTES+=("ledger integrity check has not run yet")
+fi
+
+if [ "${#PROBLEMS[@]}" -eq 0 ]; then
+    MSG="OK: app, certificate, disk, backups, integrity check"
+    [ "${#NOTES[@]}" -gt 0 ] && MSG="$MSG; note: ${NOTES[*]}"
+    echo "$MSG"
+    zb_hc_ping health "" "$MSG"
+    exit 0
+fi
+
+MSG="$(printf 'PROBLEM: %s\n' "${PROBLEMS[@]}")"
+echo "$MSG"
+zb_hc_ping health fail "$MSG"
+exit 1

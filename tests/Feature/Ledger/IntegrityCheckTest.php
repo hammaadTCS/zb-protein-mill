@@ -8,7 +8,8 @@ use Tests\Support\AcceptanceRunner;
 
 /**
  * T-20, BR-OPS-08. Faults are planted inside the test's own transaction (rolled back
- * after it); where a trigger protects the row, it is disabled for this test only.
+ * after it). MariaDB cannot disable a trigger inside that transaction (DDL commits),
+ * so faults are planted the way the rules allow: INSERT only, never UPDATE or DELETE.
  */
 beforeEach(function () {
     $this->verifyFile = storage_path('app/zb-verify.json');
@@ -53,13 +54,13 @@ it('T-20 after AT-1 every check is OK and the file says ok', function () {
 
 it('T-20 an unbalanced journal fails only journals_balance', function () {
     AcceptanceRunner::load('at1')->setUp()->runAll();
-    DB::statement('ALTER TABLE journal_lines DISABLE TRIGGER journal_balance_check');
     [$first, $second] = DB::table('journal_entries')->orderBy('id')->limit(2)->pluck('id')->all();
     $account = DB::table('ledger_accounts')->where('code', '6900')->value('id');
     $company = DB::table('companies')->value('id');
 
-    // One extra debit on the first journal and one extra credit on the second: both are
-    // unbalanced, the totals still agree.
+    // MariaDB checks the balance when the seal row is written, not on every line insert, so
+    // the extra lines are planted directly: one extra debit on the first journal and one extra
+    // credit on the second. Both are unbalanced, the totals still agree.
     DB::table('journal_lines')->insert([
         ['company_id' => $company, 'journal_entry_id' => $first, 'line_no' => 90, 'ledger_account_id' => $account, 'debit' => '1.00', 'credit' => '0.00'],
         ['company_id' => $company, 'journal_entry_id' => $second, 'line_no' => 90, 'ledger_account_id' => $account, 'debit' => '0.00', 'credit' => '1.00'],
@@ -83,10 +84,15 @@ it('T-20 a voucher gap fails only voucher_numbers', function () {
 
 it('T-20 a control-account line without a party fails only control_account_parties', function () {
     AcceptanceRunner::load('at1')->setUp()->runAll();
-    DB::statement('ALTER TABLE journal_lines DISABLE TRIGGER journal_lines_prevent_change');
+    // journal_lines refuse UPDATE and DELETE, so the fault is planted with INSERT instead: two
+    // balanced lines on control account 2000, neither naming a party, added to an existing entry.
+    // The entry stays balanced (one debit, one credit), so only control_account_parties fails.
     $line = DB::table('journal_lines')->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
-        ->where('ledger_accounts.code', '2000')->orderBy('journal_lines.id')->first(['journal_lines.id', 'journal_lines.journal_entry_id']);
-    DB::table('journal_lines')->where('id', $line->id)->update(['party_id' => null]);
+        ->where('ledger_accounts.code', '2000')->orderBy('journal_lines.id')->first(['journal_lines.journal_entry_id', 'journal_lines.company_id', 'journal_lines.ledger_account_id']);
+    DB::table('journal_lines')->insert([
+        ['company_id' => $line->company_id, 'journal_entry_id' => $line->journal_entry_id, 'line_no' => 90, 'ledger_account_id' => $line->ledger_account_id, 'debit' => '1.00', 'credit' => '0.00'],
+        ['company_id' => $line->company_id, 'journal_entry_id' => $line->journal_entry_id, 'line_no' => 91, 'ledger_account_id' => $line->ledger_account_id, 'debit' => '0.00', 'credit' => '1.00'],
+    ]);
 
     expect(failingIntegrity())->toBe(['control_account_parties' => ["journal {$line->journal_entry_id}"]]);
 });
@@ -111,7 +117,7 @@ it('T-20 --db-name checks the named database and writes no status file', functio
     @unlink($this->verifyFile);
 
     // A separate process, so this test's own connection and transaction stay untouched.
-    $named = Process::path(base_path())->run(['php', 'artisan', 'zb:verify', '--db-name='.config('database.connections.pgsql.database')]);
+    $named = Process::path(base_path())->run(['php', 'artisan', 'zb:verify', '--db-name='.config('database.connections.mysql.database')]);
     $missing = Process::path(base_path())->run(['php', 'artisan', 'zb:verify', '--db-name=zb_no_such_database']);
     $invalid = Process::path(base_path())->run(['php', 'artisan', 'zb:verify', '--db-name=bad;name']);
 

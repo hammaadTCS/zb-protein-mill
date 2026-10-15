@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+# zb-deploy-release – install a release built by CI on Hostinger shared hosting, with a backup
+# first and one-command rollback (BR-OPS-10, spec 18.2). Run over SSH as the account's own user:
+# there is no root, no systemd and no service to reload.
+#
+#   bash ~/accounts/bin/zb-deploy-release <artifact.tar.gz> --sha256 <hash from the GitHub release>
+#   bash ~/accounts/bin/zb-deploy-release --rollback          # back to the previous release (code only)
+#   bash ~/accounts/bin/zb-deploy-release --refresh-config    # after editing shared/.env
+#   bash ~/accounts/bin/zb-deploy-release --list
+#
+# Layout (APP_BASE=~/accounts by default):
+#   releases/<id>/        one folder per release
+#   shared/.env           secrets, outside public_html
+#   shared/storage/       uploads, logs, framework files
+#   bin/                  the zb-* commands (refreshed from every release)
+#   current -> releases/<id>   (the subdomain document root points at current/public)
+#
+# Steps: verify checksum -> unpack -> link shared files -> backup (php artisan zb:backup) ->
+# maintenance mode -> migrate -> SystemDataSeeder (BR-OPS-11) -> caches -> switch the current
+# link -> live -> smoke test /up. If the smoke test fails, the previous release is switched back.
+# Migrations are never rolled back: every migration must work with the previous release (BR-OPS-10).
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/zb-lib.sh"
+# shellcheck source=zb-lib.sh
+source "$LIB"
+
+zb_load_config APP_BASE DOMAIN
+APP_BASE="${APP_BASE/#\~/$HOME}"
+PHP="${PHP_BIN:-php}"
+KEEP="${KEEP_RELEASES:-5}"
+SMOKE_URL="${SMOKE_URL:-https://$DOMAIN/up}"
+RELEASES="$APP_BASE/releases"
+SHARED="$APP_BASE/shared"
+CURRENT="$APP_BASE/current"
+BIN="$APP_BASE/bin"
+LOG="$APP_BASE/deploy.log"
+
+artisan() { local dir="$1"; shift; (cd "$dir" && "$PHP" artisan "$@" --no-interaction); }
+
+current_release() { if [ -L "$CURRENT" ]; then basename "$(readlink -f "$CURRENT")"; fi; }
+previous_release() {
+    local cur; cur="$(current_release)"
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d ! -name '*.failed' -printf '%f\n' | sort | awk -v c="$cur" '$0 < c' | tail -1
+}
+
+switch_to() {
+    local target="$RELEASES/$1"
+    ln -sfn "$target" "$APP_BASE/current.next"
+    mv -Tf "$APP_BASE/current.next" "$CURRENT"
+    zb_log "live release is now $1"
+}
+
+record() { printf '%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${USER:-$(id -un)}" "$1" "$2" >> "$LOG"; }
+
+cache_config() {
+    local dir="$1"
+    install -d -m 0755 "$dir/bootstrap/cache"
+    (cd "$dir" && "$PHP" artisan config:cache --no-interaction)
+    (cd "$dir" && "$PHP" artisan route:cache --no-interaction)
+    (cd "$dir" && "$PHP" artisan event:cache --no-interaction)
+}
+
+# The zb-* commands travel inside the release archive (infra/hostinger/); refresh the copy in
+# $BIN from the new release so the next deploy uses the matching scripts. Missing in older
+# archives, so this is best-effort.
+install_scripts() {
+    local dir="$1" f
+    [ -d "$dir/infra/hostinger" ] || { zb_log "no infra/hostinger in this release: commands left as they are"; return 0; }
+    install -d -m 0755 "$BIN"
+    for f in zb-lib.sh zb-deploy-release zb-health-check; do
+        [ -f "$dir/infra/hostinger/$f" ] || continue
+        install -m 0755 "$dir/infra/hostinger/$f" "$BIN/$f"
+    done
+    chmod 0644 "$BIN/zb-lib.sh"
+}
+
+cmd_list() {
+    local cur; cur="$(current_release)"
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | while read -r r; do
+        if [ "$r" = "$cur" ]; then echo "* $r (live)"; else echo "  $r"; fi
+    done
+}
+
+cmd_rollback() {
+    local prev cur; cur="$(current_release)"; prev="$(previous_release)"
+    [ -n "$prev" ] || zb_die "no earlier release to roll back to"
+    zb_log "rolling back $cur -> $prev (database stays as it is)"
+    switch_to "$prev"
+    artisan "$CURRENT" up || true
+    record rollback "$cur -> $prev"
+}
+
+cmd_refresh_config() {
+    local cur; cur="$(current_release)"; [ -n "$cur" ] || zb_die "nothing deployed yet"
+    cache_config "$RELEASES/$cur"
+    record refresh-config "$cur"
+    zb_log "configuration cache rebuilt for $cur"
+}
+
+# State used by on_exit to undo a half-finished deploy.
+DEPLOY_STATE=idle NEW_DIR="" NEW_ID="" PREV_LIVE="" PUT_DOWN=0
+on_exit() {
+    local rc=$?
+    [ "$DEPLOY_STATE" = preparing ] || return 0
+    zb_log "DEPLOY FAILED (exit $rc). The live site stays on: ${PREV_LIVE:-nothing}"
+    if [ "$PUT_DOWN" -eq 1 ] && [ -n "$PREV_LIVE" ]; then artisan "$CURRENT" up || true; fi
+    if [ -n "$NEW_DIR" ] && [ -d "$NEW_DIR" ]; then mv "$NEW_DIR" "$NEW_DIR.failed"; fi
+    record failed "$NEW_ID"
+}
+trap on_exit EXIT
+
+cmd_deploy() {
+    local artifact="$1" sha="$2" version
+    [ -r "$artifact" ] || zb_die "artifact $artifact not found"
+    [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || zb_die "--sha256 must be the 64-character hash from the GitHub release"
+    echo "$sha  $artifact" | sha256sum --check --quiet - || zb_die "checksum does not match: do not deploy this file"
+    if tar -tzf "$artifact" | grep -qE '(^/|(^|/)\.\.(/|$))'; then zb_die "archive contains unsafe paths"; fi
+
+    NEW_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+    NEW_DIR="$RELEASES/$NEW_ID"
+    PREV_LIVE="$(current_release)"
+    DEPLOY_STATE=preparing
+    install -d -m 0755 "$NEW_DIR"
+
+    zb_log "unpacking release $NEW_ID"
+    tar -xzf "$artifact" -C "$NEW_DIR" --no-same-owner
+    find "$NEW_DIR" -type d -exec chmod 0755 {} +
+    find "$NEW_DIR" -type f -exec chmod 0644 {} +
+    for f in artisan public/index.php vendor/autoload.php public/build/manifest.json RELEASE; do
+        [ -e "$NEW_DIR/$f" ] || zb_die "release is missing $f"
+    done
+    version="$(head -1 "$NEW_DIR/RELEASE")"
+
+    rm -rf "$NEW_DIR/storage" "$NEW_DIR/.env" "$NEW_DIR/bootstrap/cache"
+    ln -s "$SHARED/storage" "$NEW_DIR/storage"
+    ln -s "$SHARED/.env" "$NEW_DIR/.env"
+    install -d -m 0755 "$NEW_DIR/bootstrap/cache"
+
+    zb_log "checking that release $version starts"
+    (cd "$NEW_DIR" && "$PHP" artisan --version --no-interaction) >/dev/null
+
+    if [ "${SKIP_BACKUP:-0}" = 1 ] || [ -z "$PREV_LIVE" ]; then
+        zb_log "no previous release to back up from (first deploy), or SKIP_BACKUP=1"
+    else
+        zb_log "backing up the database first (php artisan zb:backup)"
+        artisan "$CURRENT" zb:backup
+    fi
+
+    if [ -n "$PREV_LIVE" ]; then
+        artisan "$CURRENT" down --retry=15
+        PUT_DOWN=1
+    fi
+
+    zb_log "running migrations"
+    artisan "$NEW_DIR" migrate --force
+    # BR-OPS-11: add missing system data (company, settings keys, roles and permissions, system
+    # accounts, items). The seeder only adds what is missing and never creates users or test data.
+    zb_log "adding missing system data"
+    artisan "$NEW_DIR" db:seed --class=SystemDataSeeder --force
+
+    cache_config "$NEW_DIR"
+
+    DEPLOY_STATE=switching
+    switch_to "$NEW_ID"
+    artisan "$CURRENT" up || true
+
+    zb_log "smoke test $SMOKE_URL"
+    if ! curl -fsS -o /dev/null --max-time 15 "$SMOKE_URL"; then
+        zb_log "SMOKE TEST FAILED for $NEW_ID"
+        if [ -n "$PREV_LIVE" ]; then
+            switch_to "$PREV_LIVE"
+            artisan "$CURRENT" up || true
+            mv "$NEW_DIR" "$NEW_DIR.failed"
+            record smoke-failed-rolled-back "$NEW_ID ($version) -> $PREV_LIVE"
+            zb_die "rolled back to $PREV_LIVE. Check storage/logs and the hPanel error log."
+        fi
+        record smoke-failed "$NEW_ID ($version)"
+        zb_die "first release failed its smoke test; nothing to roll back to"
+    fi
+
+    DEPLOY_STATE=finished
+    install_scripts "$NEW_DIR"
+    record deployed "$NEW_ID ($version) sha256=$sha"
+    zb_log "deployed $version as $NEW_ID"
+
+    # Keep the newest $KEEP releases; never remove the live one or the one before it.
+    local keep_prev; keep_prev="$(previous_release)"
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r | tail -n +"$((KEEP + 1))" | while read -r r; do
+        [ "$r" = "$NEW_ID" ] || [ "$r" = "$keep_prev" ] || rm -rf "${RELEASES:?}/$r"
+    done
+}
+
+# Only one deploy at a time. flock is a no-op when the tool is absent on the host.
+if command -v flock >/dev/null 2>&1; then
+    exec 9> "$APP_BASE/.deploy.lock"
+    flock -n 9 || zb_die "another deploy is running"
+fi
+
+case "${1:-}" in
+    --list) cmd_list ;;
+    --rollback) cmd_rollback ;;
+    --refresh-config) cmd_refresh_config ;;
+    ""|-h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *)
+        ART="$1"; shift
+        if [ "${1:-}" != "--sha256" ] || [ -z "${2:-}" ]; then
+            zb_die "usage: zb-deploy-release <artifact.tar.gz> --sha256 <hash>"
+        fi
+        cmd_deploy "$ART" "$2"
+        ;;
+esac

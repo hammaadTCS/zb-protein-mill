@@ -31,16 +31,16 @@ it('T-04 a rolled-back save does not consume a number', function () {
 it('T-04 calling outside a transaction is refused', function () {
     // Every test runs inside RefreshDatabase's transaction, so use a second connection
     // to the same database that has no open transaction.
-    config(['database.connections.pgsql_outside' => config('database.connections.pgsql')]);
+    config(['database.connections.mysql_outside' => config('database.connections.mysql')]);
     $default = DB::getDefaultConnection();
-    DB::setDefaultConnection('pgsql_outside');
+    DB::setDefaultConnection('mysql_outside');
 
     try {
         expect(fn () => VoucherNumberService::next('purchase'))
             ->toThrow(LogicException::class, 'inside a database transaction');
     } finally {
         DB::setDefaultConnection($default);
-        DB::purge('pgsql_outside');
+        DB::purge('mysql_outside');
     }
 });
 

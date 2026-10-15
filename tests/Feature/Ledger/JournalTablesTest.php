@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Inserts a journal straight through the models, with the posting flag set the way
- * PostingService sets it. Lines are [account code, debit, credit].
+ * PostingService sets it, then seals it (sealJournal). Lines are [account code, debit, credit].
  *
  * @param  list<array{string, string, string}>  $lines
  */
@@ -39,33 +39,50 @@ function insertJournalThroughModels(array $lines): JournalEntry
             ]);
         }
 
+        sealJournal($entry);
+
         return $entry;
     });
 }
 
+/**
+ * Writes the entry's seal row the way PostingService does at the end of its save (BR-LED-11).
+ * The BEFORE INSERT trigger on journal_seals sums the entry's journal_lines and refuses the
+ * whole save (SIGNAL SQLSTATE '45000') when there are fewer than two lines or debit != credit
+ * — the MariaDB replacement for the deferred journal_balance_check constraint trigger.
+ */
+function sealJournal(JournalEntry $entry): void
+{
+    $totals = DB::table('journal_lines')->where('journal_entry_id', $entry->id)
+        ->selectRaw('COUNT(*) AS line_count, COALESCE(SUM(debit), 0) AS total_debit, COALESCE(SUM(credit), 0) AS total_credit')
+        ->first();
+
+    DB::table('journal_seals')->insert([
+        'company_id' => $entry->company_id,
+        'journal_entry_id' => $entry->id,
+        'line_count' => $totals->line_count,
+        'total_debit' => $totals->total_debit,
+        'total_credit' => $totals->total_credit,
+        'sealed_at' => now(),
+    ]);
+}
+
 it('T-02 database refuses an unbalanced journal', function () {
     insertJournalThroughModels([['5000', '100.00', '0.00'], ['3900', '0.00', '90.00']]);
-
-    DB::statement('SET CONSTRAINTS journal_balance_check IMMEDIATE');
 })->throws(QueryException::class, 'is not balanced');
 
 it('T-02 database refuses a journal with only one line', function () {
     insertJournalThroughModels([['5000', '100.00', '0.00']]);
-
-    DB::statement('SET CONSTRAINTS journal_balance_check IMMEDIATE');
 })->throws(QueryException::class, 'fewer than 2 lines');
 
 it('T-02 database accepts a balanced journal', function () {
     $entry = insertJournalThroughModels([['5000', '100.00', '0.00'], ['3900', '0.00', '100.00']]);
-
-    DB::statement('SET CONSTRAINTS journal_balance_check IMMEDIATE');
 
     expect(JournalLine::query()->where('journal_entry_id', $entry->id)->count())->toBe(2);
 });
 
 it('T-03 journal rows cannot be updated or deleted', function (string $table, string $operation) {
     $entry = insertJournalThroughModels([['5000', '100.00', '0.00'], ['3900', '0.00', '100.00']]);
-    DB::statement('SET CONSTRAINTS journal_balance_check IMMEDIATE');
 
     $query = DB::table($table)->where($table === 'journal_entries' ? 'id' : 'journal_entry_id', $entry->id);
 

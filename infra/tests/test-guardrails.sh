@@ -16,7 +16,7 @@ blocked() { local d="$1"; shift; if hook "$@"; then fail "$d (allowed)"; else pa
 allowed() { local d="$1"; shift; if hook "$@"; then pass "$d"; else fail "$d (blocked)"; fi; }
 
 blocked "Write docs/spec.md"            Write '{"file_path":"'"$REPO"'/docs/spec.md"}'
-blocked "Edit infra/bin/zb-backup-db"   Edit  '{"file_path":"'"$REPO"'/infra/bin/zb-backup-db"}'
+blocked "Edit infra/history/bin/zb-backup-db" Edit '{"file_path":"'"$REPO"'/infra/history/bin/zb-backup-db"}'
 blocked "Write docs/security.md"        Write '{"file_path":"'"$REPO"'/docs/security.md"}'
 blocked "Write docs/adr/0001-x.md"      Write '{"file_path":"'"$REPO"'/docs/adr/0001-x.md"}'
 blocked "Write docs/client/x.docx" Write '{"file_path":"'"$REPO"'/docs/client/x.docx"}'
@@ -29,7 +29,7 @@ blocked "Write README.md"               Write '{"file_path":"'"$REPO"'/README.md
 blocked "Write docs/frontend.md"        Write '{"file_path":"'"$REPO"'/docs/frontend.md"}'
 blocked "Write docs/backend.md"         Write '{"file_path":"'"$REPO"'/docs/backend.md"}'
 blocked "Edit .claude/settings.json"    Edit  '{"file_path":"'"$REPO"'/.claude/settings.json"}'
-blocked "Bash: sed -i on infra/files/postgres/30-app-grants.sql" Bash '{"command":"sed -i s/a/b/ infra/files/postgres/30-app-grants.sql"}'
+blocked "Bash: sed -i on infra/history/files/postgres/30-app-grants.sql" Bash '{"command":"sed -i s/a/b/ infra/history/files/postgres/30-app-grants.sql"}'
 blocked "Bash: rm -rf infra"            Bash  '{"command":"rm -rf infra"}'
 blocked "Bash: echo > docs/stack-baseline.md" Bash '{"command":"echo x > docs/stack-baseline.md"}'
 blocked "Bash: rm -rf docs (contains protected files)" Bash '{"command":"rm -rf docs"}'
@@ -114,8 +114,8 @@ scenario() { # scenario <description> <expect pass|fail> <title> <command to cha
     git checkout -q main; git clean -qfdx
 }
 scenario "app change passes"                         pass "T2.7: purchases"  "mkdir -p app && echo x > app/A.php"
-scenario "infra change without tag fails"           fail "T2.7: purchases"  "echo '# x' >> infra/files/postgres/30-app-grants.sql"
-scenario "infra change with [spec-change] passes"   pass "[spec-change] grants" "echo '# x' >> infra/files/postgres/30-app-grants.sql"
+scenario "infra change without tag fails"           fail "T2.7: purchases"  "echo '# x' >> infra/history/files/postgres/30-app-grants.sql"
+scenario "infra change with [spec-change] passes"   pass "[spec-change] grants" "echo '# x' >> infra/history/files/postgres/30-app-grants.sql"
 scenario "new ADR without tag fails"                fail "T1.12: headers"   "mkdir -p docs/adr && echo x > docs/adr/0099-new.md"
 scenario ".env.production.example change fails"    fail "T1.12: headers"   "echo X=1 >> .env.production.example"
 scenario "a new script in scripts/ fails"           fail "T2.1: ui"         "echo x > scripts/new.sh"
@@ -162,9 +162,9 @@ C1="$(commit "T2.7: purchases" "mkdir -p app && echo x > app/A.php")"; merged "$
 expect_ok   "a merged pull request passes"                    guard "$B0" "$C1"
 C2="$(commit "quick fix" "mkdir -p app && echo y > app/B.php")"
 expect_fail_with "a direct push to main fails"                "without a merged pull request" guard "$C1" "$C2"
-C3="$(commit "T2.8: photos" "echo '# x' >> infra/files/postgres/30-app-grants.sql")"; merged "$C3" 14 "T2.8: photos"
+C3="$(commit "T2.8: photos" "echo '# x' >> infra/history/files/postgres/30-app-grants.sql")"; merged "$C3" 14 "T2.8: photos"
 expect_fail_with "protected change merged without [spec-change] fails" "PROTECTED FILES CHANGED" guard "$C2" "$C3"
-C4="$(commit "grants" "echo '# y' >> infra/files/postgres/30-app-grants.sql")"; merged "$C4" 15 "[spec-change] grants"
+C4="$(commit "grants" "echo '# y' >> infra/history/files/postgres/30-app-grants.sql")"; merged "$C4" 15 "[spec-change] grants"
 expect_ok   "protected change merged with [spec-change] passes" guard "$C3" "$C4"
 expect_fail "a push with several commits fails if one of them was direct" guard "$C1" "$C4"
 expect_ok   "the first push of main (the starter pack) passes" guard "0000000000000000000000000000000000000000" "$B0"

@@ -150,15 +150,15 @@ it('BR-SEC-09 an accountant is never forced', function () {
 it('BR-OPS-06 /up returns 500 when the database query fails', function () {
     $this->get('/up')->assertOk();
 
-    config(['database.connections.pgsql_down' => [...config('database.connections.pgsql'), 'port' => '1']]);
+    config(['database.connections.mysql_down' => [...config('database.connections.mysql'), 'port' => '1']]);
     $default = DB::getDefaultConnection();
-    DB::setDefaultConnection('pgsql_down');
+    DB::setDefaultConnection('mysql_down');
 
     try {
         $this->get('/up')->assertStatus(500);
     } finally {
         DB::setDefaultConnection($default);
-        DB::purge('pgsql_down');
+        DB::purge('mysql_down');
     }
 });
 

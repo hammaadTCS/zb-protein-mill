@@ -1,47 +1,66 @@
 #!/usr/bin/env bash
-# Tests zb-health-check with stand-ins for systemctl, timedatectl and the app check.
+# Tests infra/hostinger/zb-health-check with stand-ins for the certificate and the app's /up
+# answer. No root, no services to restart and nothing to install: on shared hosting the health
+# check runs as the account's own user and only reads files and asks the site itself.
+#   bash infra/tests/test-health-check.sh
 source "$(dirname "$0")/lib.sh"
-require_root
+command -v openssl >/dev/null || { echo "openssl is required"; exit 2; }
 
-WORK="$(mktemp -d /tmp/zb-hctest.XXXXXX)"
+WORK="$(mktemp -d /tmp/zb-hctest.XXXXXX)"; chmod 0755 "$WORK"
 trap 'rm -rf "$WORK"' EXIT
-mkdir -p "$WORK/status" "$WORK/hc"
+mkdir -p "$WORK/app" "$WORK/status" "$WORK/hc"
 
 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$WORK/k.pem" -out "$WORK/good.pem" -days 60 -subj /CN=test.invalid 2>/dev/null
 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$WORK/k.pem" -out "$WORK/expiring.pem" -days 3 -subj /CN=test.invalid 2>/dev/null
-printf '#!/bin/sh\n[ -e %s/DOWN ] && [ "$3" = "postgresql" ] && exit 3\nexit 0\n' "$WORK" > "$WORK/systemctl"
-printf '#!/bin/sh\necho yes\n' > "$WORK/timedatectl"
-chmod 0755 "$WORK/systemctl" "$WORK/timedatectl"
 echo '{}' > "$WORK/status/backup-db-last-success.json"
 echo '{}' > "$WORK/status/backup-files-last-success.json"
 
 cat > "$WORK/zb-mill.conf" <<EOF
 DOMAIN=test.invalid
-PHP_VERSION=8.5
+APP_BASE=$WORK/app
 STATUS_DIR=$WORK/status
 HC_DIR=$WORK/hc
 EOF
+export ZB_CONF="$WORK/zb-mill.conf"
+
+# run <cert-file> <app-check> <disk-alert-percent> <verify-file>   (omitted = the good values)
 run() {
-    env ZB_CONF="$WORK/zb-mill.conf" SYSTEMCTL="$WORK/systemctl" TIMEDATECTL="$WORK/timedatectl" \
-        CERT_FILE="${CERT:-$WORK/good.pem}" APP_CHECK_CMD="${APP:-true}" DISK_ALERT_PERCENT="${DISK:-100}" \
-        bash "$INFRA_DIR/bin/zb-health-check"
+    local cert="${1:-$WORK/good.pem}" app="${2:-true}" disk="${3:-100}" verify="${4:-$WORK/verify.json}"
+    env CERT_FILE="$cert" APP_CHECK_CMD="$app" DISK_ALERT_PERCENT="$disk" VERIFY_STATUS_FILE="$verify" \
+        bash "$INFRA_DIR/hostinger/zb-health-check"
 }
+fresh() { touch "$WORK/status/backup-db-last-success.json" "$WORK/status/backup-files-last-success.json"; }
 
 echo "Health check"
-expect_ok "all good -> exit 0" run
-expect_fail_with "certificate expiring within 14 days is reported" "expires within 14 days" env CERT="$WORK/expiring.pem" bash -c "$(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
-expect_fail_with "a stopped service is reported" "postgresql is not running" bash -c "touch '$WORK/DOWN'; $(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
-rm -f "$WORK/DOWN"
-touch -d '3 hours ago' "$WORK/status/backup-db-last-success.json"
+fresh
+expect_ok "everything is well -> exit 0" run
+expect_fail_with "a certificate expiring within 14 days is reported" "expires within 14 days" \
+    run "$WORK/expiring.pem"
+expect_fail_with "the app not answering /up is reported" "does not answer 200" \
+    run "$WORK/good.pem" false
+expect_fail_with "a full disk is reported" "full" \
+    run "$WORK/good.pem" true 1
+
+touch -d '2 days ago' "$WORK/status/backup-db-last-success.json"
 expect_fail_with "an old database backup is reported" "last good database backup was" run
-touch "$WORK/status/backup-db-last-success.json"
-expect_fail_with "the app not answering /up is reported" "does not answer 200" env APP=false bash -c "$(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
-expect_fail_with "a full disk is reported" "full" env DISK=1 bash -c "$(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
-echo '{"result":"ok","finished_at":"x","failed_checks":[]}' > "$WORK/verify.json"
-expect_ok "integrity check ok -> no problem" env VERIFY_STATUS_FILE="$WORK/verify.json" bash -c "$(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
-echo '{"result":"failed","finished_at":"x","failed_checks":["journal_balance"]}' > "$WORK/verify.json"
-expect_fail_with "a failed integrity check is reported" "integrity check FAILED" env VERIFY_STATUS_FILE="$WORK/verify.json" bash -c "$(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
-echo '{"result":"ok"}' > "$WORK/verify.json"; touch -d '2 days ago' "$WORK/verify.json"
-expect_fail_with "an old integrity check is reported" "integrity check last ran" env VERIFY_STATUS_FILE="$WORK/verify.json" bash -c "$(declare -f run); WORK='$WORK' INFRA_DIR='$INFRA_DIR' run"
+fresh
+
+mv "$WORK/status/backup-db-last-success.json" "$WORK/status/backup-db.saved"
+expect_fail_with "a missing backup status is reported" "no database backup has been recorded yet" run
+mv "$WORK/status/backup-db.saved" "$WORK/status/backup-db-last-success.json"
+fresh
+
+echo '{"result":"ok","finished_at":"now"}' > "$WORK/verify.json"
+expect_ok "a current, passing ledger check is not a problem" \
+    run "$WORK/good.pem" true 100 "$WORK/verify.json"
+
+echo '{"result":"failed","finished_at":"now","failed_checks":["journal_balance"]}' > "$WORK/verify.json"
+expect_fail_with "a failed ledger check is reported" "integrity check FAILED" \
+    run "$WORK/good.pem" true 100 "$WORK/verify.json"
+
+echo '{"result":"ok","finished_at":"now"}' > "$WORK/verify.json"
+touch -d '2 days ago' "$WORK/verify.json"
+expect_fail_with "an old ledger check is reported" "integrity check last ran" \
+    run "$WORK/good.pem" true 100 "$WORK/verify.json"
 
 summary "Health check"

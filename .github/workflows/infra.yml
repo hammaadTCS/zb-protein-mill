@@ -1,9 +1,9 @@
 name: Infra
 
-# Server scripts and configuration: lint, then the real tests (PostgreSQL, age, rclone, nginx,
-# PHP-FPM) on a throwaway runner. Runs only when server files, scripts or workflows change, to
-# save Actions minutes (GitHub Free: 2,000 a month for private repositories). Run it by hand any
-# time from Actions -> Infra -> Run workflow (for example on the very first push).
+# Shared-hosting scripts and configuration: lint, then the real tests (MariaDB 11.8, the deploy
+# and health-check layout) on a throwaway runner. Runs only when server files, scripts or workflows
+# change, to save Actions minutes (GitHub Free: 2,000 a month for private repositories). Run it by
+# hand any time from Actions -> Infra -> Run workflow (for example on the very first push).
 on:
   pull_request:
     paths:
@@ -32,15 +32,39 @@ concurrency:
 jobs:
   infra:
     runs-on: ubuntu-24.04
+
+    # The same MariaDB 11.8 as the host and the application checks. The infrastructure tests use
+    # this service container (DB_EXISTING=1) instead of starting a private server.
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: local_test_only
+          MARIADB_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_EXISTING: '1'
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_ROOT_USER: root
+      DB_ROOT_PASSWORD: local_test_only
+
     steps:
       - uses: actions/checkout@v7
       - name: Install test tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q shellcheck age rclone nginx php8.3-fpm php8.3-pgsql postgresql-16
+          sudo apt-get install -y -q shellcheck age php-cli mariadb-client
       - name: Lint shell scripts
         run: |
-          shellcheck -S warning -x infra/bin/zb-* infra/bin/zb-lib.sh scripts/*.sh
-          shellcheck -S warning -x -e SC1091 infra/provision/setup.sh infra/provision/lib.sh infra/provision/steps/*.sh
+          shellcheck -S warning -x infra/hostinger/zb-* infra/hostinger/ship-release.sh
+          shellcheck -S warning -x scripts/*.sh
       - name: Infrastructure tests
-        run: sudo bash infra/tests/run-all.sh
+        run: bash infra/tests/run-all.sh

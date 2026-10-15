@@ -82,7 +82,7 @@ it('BR-LED-05 reverse swaps every line and nets each account to zero', function 
         ->join('ledger_accounts', 'ledger_accounts.id', '=', 'journal_lines.ledger_account_id')
         ->groupBy('ledger_accounts.code')
         ->orderBy('ledger_accounts.code')
-        ->selectRaw('ledger_accounts.code, (SUM(debit) - SUM(credit))::text AS net')
+        ->selectRaw('ledger_accounts.code, CAST(SUM(debit) - SUM(credit) AS CHAR) AS net')
         ->pluck('net', 'code')
         ->all();
 
@@ -142,15 +142,15 @@ it('PostingService refuses an inactive account', function () {
 it('PostingService refuses to post outside a database transaction', function () {
     // Build the user first: the second connection cannot see this test's data.
     $user = User::factory()->create();
-    config(['database.connections.pgsql_outside' => config('database.connections.pgsql')]);
+    config(['database.connections.mysql_outside' => config('database.connections.mysql')]);
     $default = DB::getDefaultConnection();
-    DB::setDefaultConnection('pgsql_outside');
+    DB::setDefaultConnection('mysql_outside');
 
     try {
         expect(fn () => PostingService::post(testPosting([['5000', 'debit', '1.00'], ['3900', 'credit', '1.00']]), $user))
             ->toThrow(LogicException::class, 'inside a database transaction');
     } finally {
         DB::setDefaultConnection($default);
-        DB::purge('pgsql_outside');
+        DB::purge('mysql_outside');
     }
 });

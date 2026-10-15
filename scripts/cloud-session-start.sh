@@ -1,15 +1,15 @@
 #!/bin/bash
 # Runs at the start of every Claude Code session (.claude/settings.json, SessionStart hook).
 # In CLOUD sessions only (CLAUDE_CODE_REMOTE=true) it prepares the fresh machine:
-#   1. starts PostgreSQL and creates the TEST login and both databases;
+#   1. installs MariaDB 11.8, starts it and creates the TEST login and both databases;
 #   2. once the app exists (task T0.1 onward): installs PHP and JS packages if they are missing,
 #      and creates .env with a new APP_KEY if it is missing (.env is never committed).
 #      PHP packages: the cloud GitHub proxy refuses GitHub zip downloads, so
 #      scripts/cloud-composer-cache.sh first builds every zip from git into Composer's cache.
 # On your laptop it only prints a short status; it never changes anything there.
 # Test values only. Never put real or production credentials here.
-# The test role is called zb_test on purpose: zb_app, zb_migrator and zb_backup are the production
-# roles (infra/files/postgres) and are never created with a password.
+# The test role is called zb_test on purpose: on the host there is ONE database user (zb_app) with
+# all rights on its own database only (D-43) and it is never created with a test password.
 cd "$(dirname "$0")/.." || exit 0
 
 DB_USER="${DB_USERNAME:-zb_test}"
@@ -24,31 +24,46 @@ fi
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   # Laptop: report only.
-  if PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U "$DB_USER" -d zb_mill_test -tAc 'select 1' >/dev/null 2>&1; then
-    echo "PostgreSQL: ready (test database zb_mill_test)."
+  if mariadb --no-defaults -h 127.0.0.1 -P 3306 -u "$DB_USER" -p"$DB_PASS" zb_mill_test -e 'SELECT 1' >/dev/null 2>&1; then
+    echo "MariaDB: ready (test database zb_mill_test)."
   else
-    echo "PostgreSQL test database not reachable. The human runs: bash scripts/setup-local.sh"
+    echo "MariaDB test database not reachable. The human runs: bash scripts/setup-local.sh"
   fi
   exit 0
 fi
 
 # ---- Cloud session ----
-service postgresql start >/dev/null 2>&1 || true
-for _ in $(seq 1 20); do
-  su postgres -c "pg_isready -q" && break
+# MariaDB 11.8 is not in the base image, so install it from the MariaDB community repository
+# (the same version of record as the host, the laptop and CI). The app enforces its own session
+# settings in config/database.php, so nothing server-side is configured here (conventions §14a).
+if ! command -v mariadbd >/dev/null 2>&1 && ! command -v mysqld >/dev/null 2>&1; then
+  echo "Installing MariaDB 11.8..."
+  curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup \
+    | bash -s -- --mariadb-server-version="mariadb-11.8" >/dev/null 2>&1 || true
+  apt-get update -q >/dev/null 2>&1 || true
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q mariadb-server mariadb-client >/dev/null 2>&1 \
+    || echo "WARNING: MariaDB could not be installed; report it and run this script again."
+fi
+
+service mariadb start >/dev/null 2>&1 || service mysql start >/dev/null 2>&1 || true
+for _ in $(seq 1 30); do
+  mariadb --no-defaults -u root -e 'SELECT 1' >/dev/null 2>&1 && break
   sleep 1
 done
 
-su postgres -c "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'\"" | grep -q 1 \
-  || su postgres -c "psql -c \"CREATE ROLE ${DB_USER} LOGIN PASSWORD '${DB_PASS}' CREATEDB\"" >/dev/null 2>&1 || true
-for db in zb_mill_test zb_mill_dev; do
-  su postgres -c "psql -tAc \"SELECT 1 FROM pg_database WHERE datname='${db}'\"" | grep -q 1 \
-    || su postgres -c "createdb -O ${DB_USER} ${db}" >/dev/null 2>&1 || true
-done
-if PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U "$DB_USER" -d zb_mill_test -tAc 'select 1' >/dev/null 2>&1; then
-  echo "PostgreSQL ready: databases zb_mill_test (tests) and zb_mill_dev, user ${DB_USER}."
+# One all-rights test user for both databases, matching the ONE-user shape of the host (D-43).
+mariadb --no-defaults -u root <<SQL
+CREATE DATABASE IF NOT EXISTS zb_mill_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS zb_mill_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON \`zb_mill_%\`.* TO '${DB_USER}'@'%';
+FLUSH PRIVILEGES;
+SQL
+
+if mariadb --no-defaults -h 127.0.0.1 -P 3306 -u "$DB_USER" -p"$DB_PASS" zb_mill_test -e 'SELECT 1' >/dev/null 2>&1; then
+  echo "MariaDB ready: databases zb_mill_test (tests) and zb_mill_dev, user ${DB_USER}."
 else
-  echo "WARNING: PostgreSQL is not ready. Run: service postgresql start, then this script again."
+  echo "WARNING: MariaDB is not ready. Run: service mariadb start, then this script again."
 fi
 
 if [ -f artisan ]; then

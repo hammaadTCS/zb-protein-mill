@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Domain\Ledger\IntegrityCheck;
+use App\Support\Database\DatabaseGuard;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -11,6 +12,9 @@ use Throwable;
  * BR-OPS-08 (card T7.8): runs the integrity check and prints each check as OK or
  * FAILED with the IDs involved. With --db-name it checks that database instead (a
  * restored copy, `zb-restore --verify`). Read-only. Exit code 0 when all pass.
+ *
+ * Card T10.1: the database engine and the enforced session settings are checked first,
+ * as the check named `database`, so a run on the wrong server fails before any select.
  */
 class VerifyLedger extends Command
 {
@@ -31,8 +35,8 @@ class VerifyLedger extends Command
             }
 
             // For this run only: the same server and role, another database.
-            config(['database.connections.pgsql.database' => $dbName]);
-            DB::purge('pgsql');
+            config(['database.connections.mysql.database' => $dbName]);
+            DB::purge('mysql');
         }
 
         try {
@@ -42,6 +46,8 @@ class VerifyLedger extends Command
             $this->error('FAILED could not run the checks ('.class_basename($e).').');
             $results = [['check' => 'run', 'ok' => false, 'ids' => []]];
         }
+
+        array_unshift($results, $this->databaseGuardResult());
 
         foreach ($results as $result) {
             $result['ok']
@@ -61,5 +67,22 @@ class VerifyLedger extends Command
         }
 
         return $failed === [] ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Card T10.1: one result for the database guard, its ids being the failing items.
+     *
+     * @return array{check: string, ok: bool, ids: list<string>}
+     */
+    private function databaseGuardResult(): array
+    {
+        try {
+            $failures = DatabaseGuard::failures();
+        } catch (Throwable $e) {
+            // Only the kind of error: its message could hold server details.
+            $failures = ['could not reach the database ('.class_basename($e).')'];
+        }
+
+        return ['check' => 'database', 'ok' => $failures === [], 'ids' => $failures];
     }
 }

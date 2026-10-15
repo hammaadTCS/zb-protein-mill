@@ -20,6 +20,7 @@ use App\Domain\Sales\Models\Sale;
 use App\Domain\Settings\Models\Setting;
 use App\Domain\Transfers\Models\Transfer;
 use App\Models\User;
+use App\Support\Database\DatabaseGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -55,6 +56,23 @@ class AppServiceProvider extends ServiceProvider
         $this->configureAudit();
         $this->configureDevServer();
         $this->configureRoutePatterns();
+        $this->configureDatabaseGuard();
+    }
+
+    /**
+     * Card T10.1 / conventions §14a: the running system refuses to serve on a database that
+     * is not the MariaDB of record with the enforced session settings. A web request only:
+     * console commands (migrations, `zb:db-check`, `zb:verify`) must still run while a
+     * release is being applied (BR-OPS-10). Local and test runs are exempt so a developer
+     * without the host's schema can work; the test suite checks the guard directly.
+     */
+    protected function configureDatabaseGuard(): void
+    {
+        if ($this->app->runningInConsole() || $this->app->environment('local', 'testing')) {
+            return;
+        }
+
+        DatabaseGuard::check();
     }
 
     /**

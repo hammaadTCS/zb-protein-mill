@@ -17,7 +17,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -44,6 +44,9 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
+        // conventions.md §12 and §14a: one MySQL-family connection (MariaDB 11.8) used by
+        // everything. The session settings are enforced here, never trusted from the
+        // server, so the laptop, cloud sessions, CI and the host behave the same.
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
@@ -57,8 +60,18 @@ return [
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'strict' => true,
-            'engine' => null,
+            // Laravel applies 'modes' verbatim, so the session sql_mode is exactly the
+            // list the spec names and cannot drift with the server's own default.
+            'modes' => [
+                'STRICT_TRANS_TABLES',
+                'ERROR_FOR_DIVISION_BY_ZERO',
+                'NO_AUTO_CREATE_USER',
+                'NO_ENGINE_SUBSTITUTION',
+                'ONLY_FULL_GROUP_BY',
+            ],
+            'engine' => 'InnoDB',
+            'isolation_level' => 'READ COMMITTED',
+            'timezone' => '+00:00',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

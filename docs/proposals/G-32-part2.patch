@@ -1,0 +1,105 @@
+diff --git a/docs/cards/M10.md b/docs/cards/M10.md
+new file mode 100644
+index 0000000..76bdd9f
+--- /dev/null
++++ b/docs/cards/M10.md
+@@ -0,0 +1,99 @@
++# M10: Run on Hostinger shared hosting (G-32 part 2)
++
++Requested by the developer for the client on 14 October 2026. The other partner's written approval (spec §20.3) must cover section 5 of `docs/proposals/G-32-shared-hosting.md` as changed by its §12: a direct database edit leaves no trace (D-b, fingerprint dropped) and one all-rights database user can drop tables if the password leaks (§5 #4, §12.8). Spec update 9.
++
++**The rule for the whole milestone (developer, 15 October 2026): no number changes.** Every monthly ledger, trial balance, account statement, khata, ageing figure, closing balance, dashboard total and PDF must come out of MariaDB identical to what PostgreSQL answers today — to the paisa and to the gram. Any difference stops the milestone until it is explained and fixed. PostgreSQL and its code are removed only at the end of T10.3, after the same-answer check.
++
++## T10.1 The engine everywhere tests run
++
++**Goal:** the exact engine Hostinger runs is installed and proven, without touching the application (D-1, D-d).
++
++**Depends on:** this card merged.
++
++**Build exactly:** MariaDB **11.8.9** (the version the account check found, §12.8) beside PostgreSQL, on the laptop through the official apt repository or a container of that exact image (D-d), in cloud sessions and in CI as a second database service; `zb_mill_test` created on it; `config/database.php`'s `mariadb` connection completed with the section 7 settings (Laravel `strict`, `ONLY_FULL_GROUP_BY`, InnoDB only, `utf8mb4`, `READ COMMITTED`, UTC, charset and collation `utf8mb4` / `utf8mb4_unicode_ci`); `MariaDbEngineTest` proving the section 7 engine facts on that connection: server version, CHECK and foreign keys enforced, transactions, exact `DECIMAL` arithmetic, triggers allowed, binary collation available for unique columns, connection settings visible. The application suite keeps running on PostgreSQL and stays green — nothing in the application changes in this task.
++
++**Tests:** `MariaDbEngineTest`; full suite still green on PostgreSQL.
++
++**Done when:** tests pass on both sides as stated, and the engine version matches the host's exactly.
++
++---
++
++## T10.2 Migrations, database rules and database users
++
++**Goal:** the schema and every database protection work the same way on both engines, with the same words (section 4, D-2, D-3).
++
++**Depends on:** T10.1.
++
++**Build exactly:** the migrations rewritten to section 7's portable forms (Q-6 binary collation on columns and keys with unique rules, Q-7 `DATETIME` stored in UTC with the connection on `+00:00`, Q-8 plain unique indexes with a test proving the same behaviour, Q-9 `CHECK` rules, Q-10 money, kg and rate stay `DECIMAL(16,2)`, `(14,3)`, `(14,4)`); the balance check and the refuse-edit/delete rules as triggers that fire on both engines: `journal_balance_check` (deferred on PostgreSQL) is replaced by the seal-row check of section 4 — `PostingService` writes the lines, then one seal row per entry, and the trigger adds up the lines and refuses the whole save when debits and credits differ or there are fewer than two lines; **every refusal keeps the exact message text it has today** ("is not balanced", "fewer than 2 lines", "Rows in `<table>` cannot be updated or deleted", the `journal_lines_one_side` check name), so the tests and the user's words do not change; the rate-change, month-event, audit-row and `zb:verify` protections proven unchanged. Two database users only if H-4 allows it (D-3): the account check found one all-rights user (§12.8), so confirm H-4 in hPanel at this task before deleting `tests/Feature/Security/MigratorConnectionTest.php`, and ask the developer's second approval then (D-c). The six approved test adaptations (D-c) land here: same test names, same rule IDs, same behaviour — only PostgreSQL-only test steps go (for example `SET CONSTRAINTS … IMMEDIATE`, which MariaDB does not have; the seal row checks at write time instead).
++
++**Tests:** the five refusal tests adapted under their existing names and rule IDs; migrations run on both engines; T-12 and AT-1 to AT-6 unchanged and passing on PostgreSQL.
++
++**Done when:** tests pass; every refusal still refuses with the same words.
++
++---
++
++## T10.3 Queries, the engine flip and the same-answer proof
++
++**Goal:** the same answer to the paisa on every page (section 7's whole point).
++
++**Depends on:** T10.2.
++
++**Build exactly:** the files with PostgreSQL-only SQL converted per Q-1 to Q-12: date subtraction through `DATEDIFF` (Q-1), the NULL order written explicitly in every sort on a column that can be empty (Q-2), case-insensitive `LIKE` where `ilike` stood (Q-3), shared and exclusive row locks on one lock row per company instead of advisory locks (Q-4), `READ COMMITTED` on every connection (Q-5), binary collation facts kept (Q-6), `DATETIME` UTC (Q-7), plain unique indexes (Q-8), explicit types in every comparison so text never turns into a number (Q-12), `CAST(… AS DECIMAL(16,2))`, `CASE WHEN`, `DATE_FORMAT` instead of `::numeric` casts, `FILTER (WHERE …)`, `to_char` (Q-11); tests, cloud sessions and CI flipped to the MariaDB connection (`phpunit.xml`, `.env.example` — Claude's code after part 2, §10); all 588 tests plus AT-1 to AT-6 on MariaDB 11.8.9; **the same-answer check**: the same test data loaded into both databases, every report, khata, account statement, trial balance, ageing, PDF data, dashboard number and month-end close produced from both and compared line by line — any difference stops the task until it is explained and fixed; only then PostgreSQL, its CI service and its code paths are removed. Results recorded in `docs/release-checks.md`.
++
++**Tests:** all existing tests green on MariaDB; the same-answer comparison recorded; AT-1 to AT-6 with the same numbers.
++
++**Done when:** every check green on MariaDB, the same-answer check shows no difference, PostgreSQL removed, and every number is identical — the rule of this milestone.
++
++---
++
++## T10.4 Headers in the app
++
++**Goal:** D-8: everything the web server used to send is sent by the application.
++
++**Depends on:** T10.3.
++
++**Build exactly:** every security header from `docs/security.md` set by the application, including the ones that lived in the old `infra/` web-server file, plus HSTS; a note where the hosting `.htaccess` still needs a line; the affected rows of `docs/release-checks.md` changed from "verify on staging" to how the header is set now.
++
++**Tests:** the existing security header tests still pass; T-09 unchanged.
++
++**Done when:** tests pass; every header lists its new source.
++
++---
++
++## T10.5 Hourly encrypted off-site backups
++
++**Goal:** D-4 exactly as section 4: hourly, encrypted to the backup public key, uploaded with an upload-only key, the host cannot delete the copies, and a restore command exists.
++
++**Depends on:** T10.3.
++
++**Build exactly:** the hourly scheduled job (one hPanel cron job runs `schedule:run` every minute; the job itself runs hourly): the database export through `proc_open` / Symfony Process calling `mariadb-dump` (the account's CLI disables `exec`; §12.8), encryption with PHP's built-in `sodium` to the backup public key, upload to the storage bucket with an upload-only key, retention as D-4 says, `DEFINER` clauses in the dump handled so a restore works on another server (§12.8), an outside monitor for a missing hour, the backup status page (`backup.view`, T7.6), and `zb:restore` for staging and the laptop. **[Human]** create the storage account, the key pair (private key offline, one copy per partner, O-37), and approve before the job runs in production.
++
++**Tests:** the existing backup tests adapted to the new call path; a dump → upload → restore → `zb:verify` round trip recorded in `docs/release-checks.md`.
++
++**Done when:** tests pass; one real restore works from an uploaded backup and `zb:verify` says ok on the restored copy.
++
++---
++
++## T10.6 Deploy, roll-back, scheduler and operations documents
++
++**Goal:** D-6 and D-7: the CI release archive installed over SSH, `releases/<version>` per release with one symlink to the live one, roll-back one command, the scheduler on hPanel, and documents that describe shared hosting only.
++
++**Depends on:** T10.5.
++
++**Build exactly:** deploy and roll-back scripts for the shared-hosting layout confirmed by the account check (application, `.env` and storage outside `public_html`, only `public/` on the web; symlink switching works), database migrations run over SSH during a deploy; `docs/operations/server-setup.md`, `runbook.md` and `handover.md` rewritten for Hostinger (hPanel steps, cron every minute, backups, restore, alerts); the `infra/` VPS scripts marked as history with a note in their README — kept, not deleted; `scripts/check-all.sh`, `scripts/guard.sh`, `scripts/setup-local.sh`, `scripts/cloud-session-start.sh` and the CI workflows switched to the engine and layout of this milestone (part 2 carries their protected text); the exact hPanel cron line **[Human]** registered once.
++
++**Tests:** the existing deploy and health-check tests adapted to the new scripts; guard and checks green.
++
++**Done when:** tests pass; a deploy and a roll-back work on staging (T10.7); the documents match the machine.
++
++---
++
++## T10.7 Staging on Hostinger, first deploy, restore test, speed [Human + Claude]
++
++**Goal:** D-9: staging on its own subdomain with its own database and test data only, and the measurements of §5 #3 recorded.
++
++**Depends on:** T10.6.
++
++**Build exactly:** **[Human]** add the subdomain (folder per H-3), its database, confirm two-step login (H-6), deploy the release CI built, run the restore test (runbook §4) with `zb:verify` on the restored copy, and measure speed: `zb:time-pages` three times on the shared machine with every page under 3 seconds, recorded in `docs/release-checks.md` (T8.2 and T9.2 re-measured on the shared machine). **[Claude]** the setup document the steps come from, and the reading and recording of the results.
++
++**Done when:** staging works from the documents alone; the restore and the three speed runs are recorded; M8's T8.4 to T8.7 (their shared-hosting text comes with part 2) continue on this staging.

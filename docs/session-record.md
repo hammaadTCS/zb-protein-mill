@@ -69,11 +69,39 @@ The same three runs close T9.2 as well ("every page in `zb:time-pages` under 3 s
 
 ## Step 6 – T9.3: screenshots at 375 px for both roles
 
-(to be written when the step runs)
+Local server: `php artisan serve --host=127.0.0.1 --port=8000` (the built files from `check-all` are used; no Vite). Browser: the Google Chrome already installed on this machine, headless, driven over its DevTools protocol by a throwaway script in `/tmp/opencode/t93/` (Python + the already-installed `websockets`; **nothing was added to the project**). Every step below went through the real product flow, exactly as a person would click it — the server log in the session shows each request.
+
+1. **Owner** — logged in at `/login` as `test@example.com` (the documented local owner login), landed on `/dashboard`.
+2. **Accountant user created through Settings → Users** while logged in as Owner: name `Demo Accountant`, e-mail `accountant@example.com`, role **Accountant** (the dialog's default), temporary password a local test value (`Temporary-acc-1`). This is `CreateUser` (BR-USR-08): the user must choose a new password at first login. The user exists **only in `zb_mill_dev`** on this laptop; nothing was committed.
+3. **Accountant's first login** — `accountant@example.com` with the temporary password. The forced flow worked: `/dashboard` → (BR-USR-08) `/settings/security` → (password confirmation, Fortify) `/user/confirm-password` → back to `/settings/security`, where the temporary password was changed to a local test value (`Demo-accountant-2026`); then `/dashboard` opened normally.
+4. **Screenshots** taken with the viewport emulated at 375 × 1400 CSS px (device scale 2), full page, saved **outside git** in `storage/app/screenshots/` (that folder is git-ignored — same rule as T5.6, "screenshots are not committed"):
+
+| File | Bytes | PNG size |
+| --- | --- | --- |
+| `t9.3-owner-dashboard-375.png` | 129,661 | 750 × 2,800 |
+| `t9.3-accountant-dashboard-375.png` | 115,222 | 750 × 2,800 |
+
+5. **What the pictures show** (BR-DSH-01). Headless Chrome reported **no console errors** on either page. The two images are identical except for the Balances block:
+   - both: `Dashboard` heading, `Today · 15-10-2026` (all zeros — the demo's entries are dated 2026-01-05), Alerts (`Rate pending too long 1`, `No cash count for 14-10-2026 1`), the four quick buttons (`New purchase`, `New sale`, `New payment`, `Quick expense`);
+   - **Owner**: a **Balances** block — `Cash Rs 30,000.00`, `HBL Rs 3,00,000.00`;
+   - **Accountant**: **no Balances block at all** — the T9.3 rule ("the Accountant sees no bank or cash balances").
+   - The two figures are arithmetically right for the half-loaded demo: `at1.json` opening balances are Cash 80,000 / HBL 3,00,000, and `DemoSeeder` loads only day 1's purchases (40,000 + 10,000 paid from cash) → Cash 30,000, HBL unchanged. (The AT-1 sheet's own day-2 end figures, 21,900 / 4,17,600, need the rest of the entries, which the demo does not load.)
+6. **A limitation, stated plainly:** the model driving this session has no image input, so the two PNGs were **not looked at with eyes**. They were verified by proof instead: page text captured at the moment of each shot (kept beside the images as `t9.3-owner-dashboard-375.txt` and `t9.3-accountant-dashboard-375.txt` inside the same ignored folder), the page path, the viewport width (375), the PNG geometry above, the file sizes, and the absence of console errors. **Please open the two PNGs once and look at the layout** before the client sees them.
 
 ## Step 7 – Final checks and commits
 
-(to be written when the step runs)
+- Branch: `task/T8.2-performance-check` (your choice: one branch, one commit per task).
+- Commits: `T8.2: …` (timings recorded + tick), `T9.2: …` (same runs recorded as T9.2's evidence + tick), `T9.3: …` (screenshots + tick).
+- `bash scripts/check-all.sh` on the branch → **ALL CHECKS PASSED**: Secret scan; Protected files unchanged (or approved); PHP tests (Pest, PostgreSQL) — **588 tests, 6,522 assertions, all passed** (also re-run on their own: same result); Pint; Larastan level 7; front-end build (also generates Wayfinder routes); front-end lint and format; TypeScript; front-end unit tests (6 files, 30 tests); Project guard; Known-vulnerable PHP packages; Known-vulnerable JS packages. This is the run on the task branch, where the protected-files check actually runs (on `main` it is skipped).
+- One honest note: the **first** run of `check-all` in this step failed two checks — "Known-vulnerable PHP packages" and "Known-vulnerable JS packages" — because the laptop lost its internet connection in the middle of the run (the output showed DNS errors for `repo.packagist.org` and `registry.npmjs.org`). Those two checks are the "needs internet" ones. The connection came back and the **complete re-run then passed all twelve checks**, as above. Nothing in the project was changed to make it pass.
+- The worktree is clean except the ignored screenshots: `git status --short` prints nothing, and `git check-ignore -v storage/app/screenshots/t9.3-owner-dashboard-375.png` shows `storage/app/.gitignore:1:*` — so the pictures and their text proofs stay on this laptop only.
+- Files touched by this session: `docs/tasks.md` (three tick lines), `docs/release-checks.md` (the re-run section), and this new `docs/session-record.md`. No application code, no test, no configuration was changed.
+
+## Handover: what is on this laptop that is not in git
+
+- `storage/app/screenshots/t9.3-owner-dashboard-375.png` and `t9.3-accountant-dashboard-375.png`, with `t9.3-owner-dashboard-375.txt` / `t9.3-accountant-dashboard-375.txt` beside them (the page text captured at the moment of each shot — a person with eyes should still open the pictures once).
+- `zb_mill_dev` now holds the AT-1 demo: 7 parties, 2 money accounts, 3 purchases from 2026-01-05, opening balances Cash 80,000 / HBL 3,00,000, and the user `accountant@example.com` (role Accountant, local test password). To get the empty starting state back: `php artisan migrate:fresh --seed`.
+- `/tmp/opencode/t93/` holds the throwaway browser driver (`shoot.py`, `verify.py`) — delete it whenever you like; it is not part of the project.
 
 ## Tasks this session cannot perform, and why
 

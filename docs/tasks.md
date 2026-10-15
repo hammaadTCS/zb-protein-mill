@@ -118,6 +118,6 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 - [x] **T9.1** Starter-kit leftovers and log safety. *Done when:* tests pass.
 - [x] **T9.2** Speed. *Done when:* tests pass; every page in `zb:time-pages` under 3 seconds on the measured machine, recorded. (Re-measured 15 October 2026: three runs, every page under 3 s; see `docs/release-checks.md`, "Re-run on 15 October 2026".)
-- [ ] **T9.3** Simple dashboard for the Accountant. *Done when:* tests pass; screenshot at 375 px for both roles. (Tests pass; the two screenshots are still to take: this session had no browser.)
+- [x] **T9.3** Simple dashboard for the Accountant. *Done when:* tests pass; screenshot at 375 px for both roles. (Screenshots taken 15 October 2026 for Owner and Accountant at 375 px; they are not committed — they are in `storage/app/screenshots/` on the developer's laptop. See `docs/session-record.md`, Step 6.)
 - [x] **T9.4** Long report ranges. *Done when:* tests pass.
 - [x] **T9.5** Public ids in links and filters. *Done when:* tests pass; T-09 passes over every route.

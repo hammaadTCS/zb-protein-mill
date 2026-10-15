@@ -117,7 +117,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 ## M9: Requested changes before go-live  ·  card file `docs/cards/M9.md` (in `docs/proposals/G-31-m9.patch` until the `[spec-change]` pull request is merged)
 
 - [x] **T9.1** Starter-kit leftovers and log safety. *Done when:* tests pass.
-- [ ] **T9.2** Speed. *Done when:* tests pass; every page in `zb:time-pages` under 3 seconds on the measured machine, recorded. (Built and recorded; two pages are still over 3 seconds on the developer's laptop: see `docs/release-checks.md`, "M9 re-measure".)
+- [x] **T9.2** Speed. *Done when:* tests pass; every page in `zb:time-pages` under 3 seconds on the measured machine, recorded. (Re-measured 15 October 2026: three runs, every page under 3 s; see `docs/release-checks.md`, "Re-run on 15 October 2026".)
 - [ ] **T9.3** Simple dashboard for the Accountant. *Done when:* tests pass; screenshot at 375 px for both roles. (Tests pass; the two screenshots are still to take: this session had no browser.)
 - [x] **T9.4** Long report ranges. *Done when:* tests pass.
 - [x] **T9.5** Public ids in links and filters. *Done when:* tests pass; T-09 passes over every route.

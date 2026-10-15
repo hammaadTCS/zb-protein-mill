@@ -58,6 +58,10 @@ The plan was written and stopped on before any change, with seven questions; you
 - The full table of all three runs is recorded in `docs/release-checks.md`, section "Re-run on 15 October 2026".
 - The 14 October recording showed the 3-month statement PDF at 6,984 ms. No application code changed since then (documentation and CI-config commits only); the cause of the difference was not identified in this session — the machine's power or thermal state is possible but unproven. Both facts are written in `docs/release-checks.md`.
 
+## Step 4b – T9.2 recorded and ticked
+
+The same three runs close T9.2 as well ("every page in `zb:time-pages` under 3 seconds on the measured machine, recorded"), so T9.2 is ticked in `docs/tasks.md` in this commit, pointing at the same `docs/release-checks.md` table. Nothing in the code changed for T9.2 in this session: its speed work (SSR off, the parallel dev server, the one-query ageing methods) was built and committed earlier (`544fa19`); this session only proved and recorded the result.
+
 ## Step 5 – Demo data for the dashboard screenshots
 
 - Command: `php artisan db:seed --class=DemoSeeder` → ran once (it refuses production and a second run), finished in 550 ms with no error.

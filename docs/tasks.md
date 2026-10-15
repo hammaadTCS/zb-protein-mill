@@ -107,7 +107,7 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 ## M8: Release and handover  ·  card file `docs/cards/M8.md`
 
 - [x] **T8.1** Security checklist. *Done when:* every row filled; tests pass.
-- [ ] **T8.2** Performance check. *Done when:* every report and list loads in under 3 seconds on the measured machine (NFR-02), with the timings and sizes recorded.
+- [x] **T8.2** Performance check. *Done when:* every report and list loads in under 3 seconds on the measured machine (NFR-02), with the timings and sizes recorded.
 - [ ] **T8.3** Staging server and first deploy [Human + Claude]. *Done when:* staging works from the documents alone; release checks updated.
 - [ ] **T8.4** Client review on staging [Human]. *Done when:* every comment has a decision.
 - [ ] **T8.5** Trial month alongside the Urdu register [Human]. *Done when:* the month closes in the system with zero unexplained differences.

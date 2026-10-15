@@ -151,7 +151,54 @@ What changed it:
 - Account statement, rate report, weight difference: BR-RPT-09 and BR-RPT-10 (100 rows per page; monthly lines over 3 months).
 - Statement PDF: BR-RPT-11 (at most 3 months).
 
-**Still over 3 seconds: the 3-month statement PDF of the busiest supplier** (349 rows, 15 pages): 0.5 s for the figures and 5.8 s inside the PDF library (dompdf), about 17 ms per row on this machine. Measured alternatives: separate borders 5.0 s, fixed table layout 6.2 s, no row page-break rule 5.8 s, no font subsetting 5.9 s, the table split into chunks of 40 rows 4.3 s (but every chunk repeats the header row, a visible change). A month of the same supplier takes 1.5 s. This needs a decision: see `docs/work-log.md`, M9.
+**Still over 3 seconds: the 3-month statement PDF of the busiest supplier** (349 rows, 15 pages): 0.5 s for the figures and 5.8 s inside the PDF library (dompdf), about 17 ms per row on this machine. Measured alternatives: separate borders 5.0 s, fixed table layout 6.2 s, no row page-break rule 5.8 s, no font subsetting 5.9 s, the table split into chunks of 40 rows 4.3 s (but every chunk repeats the header row, a visible change). A month of the same supplier takes 1.5 s. This needs a decision: see `docs/work-log.md`, M9. **Re-run below (15 October 2026): the 3-month PDF passed in all three runs.**
+
+### Re-run on 15 October 2026 (T8.2 and T9.2)
+
+Command, run three times on the same machine and the same database as the M9 re-measure above: `DB_DATABASE=zb_mill_perf php artisan zb:time-pages`. The database is unchanged (122,654 journal entries); the code is `main` at `76707e1` — after the M9 code above only documentation and CI-configuration commits were made, no application change. The command exits non-zero when any page reaches 3,000 ms: **all three runs exited 0 — every page under 3 seconds every time.** Values are the slowest of three opens per page, in milliseconds.
+
+| Page | Run 1 | Run 2 | Run 3 |
+| --- | --- | --- | --- |
+| Dashboard | 497 | 500 | 507 |
+| Purchases | 47 | 45 | 45 |
+| Purchases, 12 months | 70 | 64 | 64 |
+| Sales | 34 | 31 | 34 |
+| Payments | 32 | 32 | 31 |
+| Expenses | 34 | 33 | 31 |
+| Transfers | 22 | 21 | 20 |
+| Parties | 78 | 78 | 78 |
+| Supplier profile and khata | 611 | 566 | 559 |
+| Buyer profile and khata | 353 | 335 | 334 |
+| Partners | 21 | 21 | 21 |
+| Partner statement | 43 | 42 | 40 |
+| Accounts | 123 | 118 | 119 |
+| Account statement | 102 | 105 | 102 |
+| Account statement, 12 months | 157 | 202 | 163 |
+| Rate pending | 518 | 539 | 513 |
+| Approvals | 16 | 15 | 14 |
+| Cash check | 21 | 24 | 16 |
+| Daily summary | 124 | 130 | 128 |
+| Pending balances | 380 | 382 | 384 |
+| Expense report, 12 months | 499 | 481 | 504 |
+| Trial balance | 122 | 123 | 100 |
+| Trial balance with parties | 119 | 122 | 96 |
+| Income vs Spending, 12 months | 110 | 114 | 92 |
+| Rate report | 287 | 284 | 237 |
+| Rate report, 12 months | 527 | 402 | 341 |
+| Weight difference | 119 | 120 | 95 |
+| Weight difference, 12 months | 136 | 138 | 110 |
+| Adjustments report, 12 months | 17 | 19 | 11 |
+| Business insights | 819 | 808 | 700 |
+| Business insights, 12 months | 1,007 | 984 | 845 |
+| Audit log | 114 | 97 | 71 |
+| Month-end close | 125 | 125 | 89 |
+| Months | 32 | 31 | 30 |
+| Statement PDF, this month | 564 | 591 | 474 |
+| Statement PDF, 3 months | 2,755 | 2,752 | 2,230 |
+
+What this closes: NFR-02 for **T8.2** ("every report and list loads in under 3 seconds on the measured machine, with the timings and sizes recorded" — the sizes are in the NFR-11 tables above) and the done-when of **T9.2** ("every page in `zb:time-pages` under 3 seconds on the measured machine, recorded").
+
+The 14 October figures above stand as recorded then. No application code changed between the two measurements; the difference — most visibly the 3-month statement PDF, 6,984 ms then and 2,230–2,755 ms now — was not traced further in this session. The machine's power or thermal state is one possible but unproven explanation. Re-run the command if a page ever behaves differently.
 
 **Note on DevTools.** The same "before" code with Inertia DevTools on (its default for `APP_ENV=local` before T9.1) was much slower on the laptop: for example, the expense report 4,651 ms instead of 1,235 ms, and the supplier khata 4,322 ms instead of 1,499 ms, because DevTools wrote every page's data to disk. Servers never had it on (`APP_ENV=production`), so the table above leaves it out of both columns. Since T9.1 it is off unless a developer turns it on.
 

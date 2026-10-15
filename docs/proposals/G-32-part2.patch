@@ -103,3 +103,200 @@ index 0000000..76bdd9f
 +**Build exactly:** **[Human]** add the subdomain (folder per H-3), its database, confirm two-step login (H-6), deploy the release CI built, run the restore test (runbook §4) with `zb:verify` on the restored copy, and measure speed: `zb:time-pages` three times on the shared machine with every page under 3 seconds, recorded in `docs/release-checks.md` (T8.2 and T9.2 re-measured on the shared machine). **[Claude]** the setup document the steps come from, and the reading and recording of the results.
 +
 +**Done when:** staging works from the documents alone; the restore and the three speed runs are recorded; M8's T8.4 to T8.7 (their shared-hosting text comes with part 2) continue on this staging.
+diff --git a/docs/spec.md b/docs/spec.md
+index 74b4176..153d037 100644
+--- a/docs/spec.md
++++ b/docs/spec.md
+@@ -129,17 +129,17 @@ ## 3. Decisions register
+ | D-35 | Entry slip and party statement can be shared as PDF | A | Section 13 |
+ | D-36 | Business insights: kg ratio, wood per kg, rate gap, rough cost per kg, supplier and buyer comparison | A | Section 12 |
+ | D-37 | Every record carries a company ID so a second plant can be added later | A | BR-GEN-01 |
+-| D-38 | Framework: Laravel 13 with the official React starter kit (Inertia, React 19, TypeScript, Tailwind 4, shadcn/ui), PostgreSQL | A | Section 5 |
++| D-38 | Framework: Laravel 13 with the official React starter kit (Inertia, React 19, TypeScript, Tailwind 4, shadcn/ui), MariaDB 11.8 (update 9; PostgreSQL before) | A | Section 5 |
+ | D-39 | Server always recalculates totals and balances. The browser only shows them | A | BR-GEN-06 |
+ | D-40 | Automatic encrypted off-site backups: database every hour, uploads daily (A for automatic backups, P for frequency and method) | A + P | BR-SEC-08, BR-OPS-01 to BR-OPS-05 |
+-| D-41 | One VPS on Ubuntu 26.04 LTS with Ubuntu's PHP 8.5 and PostgreSQL 18; scripted setup (ADR-0003) | P | BR-SEC-10, §18 |
++| D-41 | Hostinger "Unlimited" shared hosting with hPanel: PHP 8.5, MariaDB 11.8, a cron job every minute, application and `.env` outside `public_html`, `releases/` folder plus one symlink (ADR-0013; one VPS on Ubuntu with PostgreSQL 18 before update 9) | P | BR-SEC-10, §18 |
+ | D-42 | Releases are built by CI from version tags and deployed by a person; no server credentials in GitHub or Claude; rollback in one command (ADR-0005) | P | BR-OPS-10, §18.2 |
+-| D-43 | Database access by Unix-socket peer authentication with three roles and no passwords (ADR-0007) | P | BR-SEC-12 |
++| D-43 | Database access with a password stored in `.env` outside the web folder, local socket only, remote access off; one database user per database (ADR-0014; Unix-socket peer authentication with three roles and no passwords before update 9) | P | BR-SEC-12 |
+ | D-44 | Forms use Inertia's `useForm`; server validation is the only validation that counts | P | §5, §15.4 |
+ 
+ ## 4. Open items register
+ 
+-37 items are not decided yet. None of them blocks development: each one is built as a setting, a choice, or a go-live checklist step. None may be guessed.
++37 items were registered. O-30 is answered (update 9: Hostinger) and O-34's provider is answered; its data-location question stays open. None of them blocks development: each one is built as a setting, a choice, or a go-live checklist step. None may be guessed.
+ 
+ **Rule (P):** the system has a Setup Checklist. No transaction can be entered until every required setting below is filled by the owner.
+ 
+@@ -186,11 +186,11 @@ ### Behaviour the client must confirm
+ | O-27 | Can an agreed adjustment ever increase the amount (an extra amount agreed)? | Only reductions were discussed | Built for reductions only |
+ | O-28 | If a buyer never pays, is a write-off entry needed? | Not discussed with client | Not built. The amount stays visible in pending balances |
+ | O-29 | Do employees take salary advances or cash for buying things? | Not asked directly | Employee khata supports both. Only training is affected |
+-| O-30 | Hosting provider and domain name | Your choice with client | Needed before staging setup |
++| O-30 | Hosting provider and domain name | Your choice with client | **Answered (update 9):** the business's Hostinger "Unlimited" account, domain `zbgroup.website` (G-32, 15 October 2026) |
+ | O-31 | Should the owner use two-step login (code on phone)? | Yes, for the owner | Setting `owner_two_factor_required`, required, no default (BR-SEC-09). Two-step login is available to every user from the start |
+ | O-32 | Which off-site storage provider for backups? | Any with versioning/Object Lock and keys without delete rights (worked example: Backblaze B2) | Needed before staging. `zb-backup-verify-offsite` must pass |
+ | O-33 | Which monitoring service, and who receives alerts (phone and e-mail)? | Owner and developer | Go-live blocked until alerts reach both |
+-| O-34 | Server provider, size and region. Must data stay in Pakistan? | 2 vCPU, 4 GB RAM, 80 GB SSD (P). Data location: ask the client's lawyer | Needed before staging |
++| O-34 | Server provider, size and region. Must data stay in Pakistan? | 2 vCPU, 4 GB RAM, 80 GB SSD (P). Data location: ask the client's lawyer | **Provider answered (update 9):** Hostinger shared hosting — the host sizes the machine, there is no size or region to choose. **Data location still open: ask the client's lawyer** |
+ | O-35 | How many years must records and backups be kept? | At least 6 years (Income Tax Ordinance s.174(3)); monthly backups kept 7 years (P) | Built for 7 years; client's tax adviser confirms |
+ | O-36 | Is "at most 1 hour of entries lost, running again within 4 hours" acceptable? | Yes | Built for RPO 1 hour, RTO 4 hours (P) |
+ | O-37 | Who holds the two copies of the backup private key and the APP_KEY? | Owner (sealed paper) + developer, then a second company person at handover | Go-live blocked until both copies exist |
+@@ -199,7 +199,7 @@ ### Behaviour the client must confirm
+ 
+ ## 5. Technology stack
+ 
+-The system is built on Laravel 13 using the official Laravel React starter kit, with PostgreSQL as the database (D-38). Exact package versions are pinned at install time in `composer.lock` and `package-lock.json`.
++The system is built on Laravel 13 using the official Laravel React starter kit, with MariaDB as the database (D-38, update 9). Exact package versions are pinned at install time in `composer.lock` and `package-lock.json`.
+ 
+ ### Backend
+ 
+@@ -208,12 +208,12 @@ ### Backend
+ | Framework | Laravel 13 | A | Requires PHP 8.3 or newer. Bug fixes for 18 months and security fixes for 2 years per release ([Laravel release notes](https://laravel.com/docs/13.x/releases)) |
+ | Support window | Laravel 13 security fixes until Q1 2028 | Fact | Released 17 March 2026 ([Laravel News](https://laravel-news.com/index.php/laravel-13-released)). Plan an upgrade to the next major version within that window |
+ | Language | PHP 8.3 minimum; servers run **PHP 8.5** (security support until 31 Dec 2029) | Fact + P | Laravel 13 supports 8.3 to 8.5. Lock file resolved for 8.3 so cloud sessions, the laptop (Linux Mint 22) and the servers share it (ADR-0009) |
+-| Database | PostgreSQL 18 on servers (16+ supported) | P | Exact `numeric` type, check constraints, triggers for immutability. PostgreSQL 18 is supported until 14 Nov 2030 |
++| Database | MariaDB 11.8 (the exact version the host runs, G-32 §3) | P | Exact `DECIMAL` type, check constraints, triggers for immutability — all three proved on the host on 15 October 2026 |
+ | Login | Laravel Fortify (included in the starter kit) | Fact | Starter kits use Fortify for authentication ([Laravel starter kits](https://laravel.com/docs/master/starter-kits)) |
+ | Roles and permissions | `spatie/laravel-permission` | P | Roles and permissions stored in the database (A) |
+ | Money calculations | `brick/money` (or PHP `bcmath`) | P | PHP float numbers are not exact. Never use float for money |
+ | PDF | `barryvdh/laravel-dompdf` | P | Runs in PHP, no browser or Node.js needed on the server |
+-| Backups | Server scripts: `pg_dump` + `age` (public-key encryption) + `rclone` (ADR-0006) | P | The server cannot read or delete its own backups. Replaces `spatie/laravel-backup` |
++| Backups | Scheduled PHP job: `mariadb-dump` + `sodium` (public-key encryption) + an upload-only storage key (ADR-0006, ADR-0013) | P | The account cannot read or delete the off-site copies. Replaces `spatie/laravel-backup` |
+ | Audit log | Own `audit_logs` table | P | Full control, write-only, protected by database trigger |
+ | Tests | Pest 4 (`^4.7`) on PHPUnit 12 | P | Pest 5 needs PHP 8.4 (ADR-0009). Static analysis: Larastan level 7 (in the kit) |
+ | File storage | Laravel private disk (not public) | P | Slip and receipt photos are served only to logged-in users |
+@@ -237,11 +237,11 @@ ### Frontend
+ 
+ ### Node.js
+ 
+-Node.js is used only to build the frontend files (`npm run build`). The live server runs PHP and PostgreSQL only. The release archive is built by CI (GitHub Actions) from a version tag and deployed by a person (D-42, §18.2).
++Node.js is used only to build the frontend files (`npm run build`). The live server runs PHP and MariaDB only. The release archive is built by CI (GitHub Actions) from a version tag and deployed by a person (D-42, §18.2).
+ 
+ ## 6. Architecture and code structure
+ 
+-One Laravel application, one PostgreSQL database, split into modules. Only one class, the Posting Service, may write to the ledger (A, P for naming).
++One Laravel application, one MariaDB database, split into modules. Only one class, the Posting Service, may write to the ledger (A, P for naming).
+ 
+ ```text
+ Browser (React via Inertia)
+@@ -461,7 +461,7 @@ ### 8.4 Ledger rules
+ 
+ ## 9. Database design
+ 
+-PostgreSQL, 27 tables plus the permission package's tables (P for names and exact types, A for structure). Money is `numeric(16,2)`, kg is `numeric(14,3)`, rate is `numeric(14,4)`; screens round to the settings in O-14 to O-16.
++MariaDB 11.8, 27 tables plus the permission package's tables (P for names and exact types, A for structure). Money is `decimal(16,2)`, kg is `decimal(14,3)`, rate is `decimal(14,4)` — the same exactness as `numeric` (G-32 §7); screens round to the settings in O-14 to O-16.
+ 
+ ### 9.1 Columns every table has
+ 
+@@ -635,7 +635,7 @@ ### 9.7 Database protections (P)
+ 
+ - Trigger: block UPDATE and DELETE on `journal_entries`, `journal_lines`, `audit_logs`, `rate_changes`, `period_events`.
+ - Trigger: block DELETE on every master and transaction table.
+-- Deferred constraint trigger on `journal_lines`: at commit, total debit must equal total credit for each journal entry.
++- Seal-row trigger (G-32 §4): `PostingService` writes the lines and then one seal row per entry; the trigger on the seal row adds up the lines and refuses the whole save unless total debit equals total credit and the entry has at least two lines. It is checked at write time, inside the same transaction. (Before update 9 a deferred constraint trigger checked it at commit.)
+ - Indexes: (`company_id`, `entry_date`) and (`party_id`, `entry_date`) on transaction tables; (`rate_status`) on purchases and sales; (`ledger_account_id`), (`party_id`) on journal_lines; (`posting_date`), (`source_type`, `source_id`) on journal_entries.
+ 
+ ## 10. Business rules
+@@ -1078,9 +1078,9 @@ ### 14.2 Security
+ - **BR-SEC-07 (P):** CSRF protection on every form (Laravel default).
+ - **BR-SEC-08 (A, P for method):** backups run automatically, are encrypted, and are stored outside the server; a restore is tested once a month. Details: BR-OPS-01 to BR-OPS-05.
+ - **BR-SEC-09 (P):** two-step login (authenticator app codes, the starter kit's feature) is available to every user. When `owner_two_factor_required` is true (O-31), an Owner without it is sent to the security settings page until it is turned on.
+-- **BR-SEC-10 (P):** the server has a firewall (only SSH rate-limited, HTTP, HTTPS), SSH key login for one admin user only (no root, no passwords), automatic security updates with a night-time reboot when needed, UTC time kept synchronised, and separate operating-system users for the web server, the app, deploys and backups (`infra/provision`).
++- **BR-SEC-10 (P):** the hosting account belongs to the business, with two-step login on the account and key-only SSH access for the developer (D-10). The host keeps the machine, its firewall and its security patches; the account keeps PHP on the newest supported version and its malware scanner on; the account's time is UTC. The machine-level controls of the VPS plan (separate operating-system users, `infra/provision`) are the host's job on shared hosting (ADR-0013, G-32 §8).
+ - **BR-SEC-11 (P):** secrets are listed in `docs/secrets.md` and live only where that file says: never in the code repository, CI, a Claude session or its environment variables, chat or e-mail. The CI secret scan blocks keys, `APP_KEY` values, monitor URLs and `.env` files.
+-- **BR-SEC-12 (P):** the application's database role (`zb_app`) cannot change table structure, remove or disable triggers, truncate, or delete rows except in framework housekeeping tables (sessions, cache, jobs, role links); it cannot update journal, audit, rate-change or period-event rows. Migrations run as `zb_migrator`; backups read as `zb_backup`. All three connect only through the local Unix socket with peer authentication: no database password exists, and PostgreSQL listens on no network address (D-43).
++- **BR-SEC-12 (P):** the database itself refuses updates and deletes of journal, audit, rate-change and period-event rows, refuses deletes of master and transaction rows, and refuses an unbalanced entry through the seal-row trigger (§9.7) — these protections belong to the database, not to the application (D-2 of G-32). The application connects from the local socket only, with a password kept in `.env` outside the web folder; remote database access is off and phpMyAdmin is reachable only through hPanel (D-43, ADR-0014). The host allows one database user per database, with all rights on its own database: a leaked password could drop tables, so the off-site backups (BR-OPS-01) are the recovery, and the client's written approval of G-32 §5 accepts this. Migrations run over SSH during a deploy; the password never appears in the repository, CI, logs or a Claude session (BR-SEC-11).
+ - **BR-SEC-13 (P):** when a user is disabled, their role changes, or their password is reset or changed, every other session of that user ends at once. A disabled user is logged out on the next request.
+ - **BR-SEC-14 (P):** every response carries security headers: HSTS (1 year), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Permissions-Policy` (camera, microphone, location off), `X-Robots-Tag: noindex`; HTML pages also carry a Content Security Policy with a new nonce per request (ADR-0008). `robots.txt` disallows everything.
+ - **BR-SEC-15 (P):** the session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`; session data is encrypted in the database.
+@@ -1091,7 +1091,7 @@ ### 14.2 Security
+ 
+ ### 14.3 Operations (P unless stated)
+ 
+-- **BR-OPS-01:** the database is backed up every hour (`pg_dump`, without session and cache rows) and uploads every day (monthly full archive plus daily additions). Every backup is encrypted with a public key before it leaves the server and uploaded with a storage key that cannot delete or overwrite earlier backups.
++- **BR-OPS-01:** the database is backed up every hour (`mariadb-dump`, without session and cache rows) and uploads every day (monthly full archive plus daily additions). Every backup is encrypted with a public key before it leaves the account and uploaded with a storage key that cannot delete or overwrite earlier backups.
+ - **BR-OPS-02:** the private key that decrypts backups is never stored on any server or in the repository. Two copies exist, held by two different people (O-37).
+ - **BR-OPS-03:** retention by the storage's lifecycle rules: hourly copies 2 days, daily 35 days, monthly 7 years (O-35), uploads archives 100 days. Object Lock or versioning stops early deletion.
+ - **BR-OPS-04 (A for monthly):** once a month a backup is restored on staging into a temporary database, checked (every journal balances, `zb:verify`), and the temporary database is dropped. Date and counts are recorded in `docs/release-checks.md`, never amounts or names (that file is in git).
+@@ -1099,9 +1099,9 @@ ### 14.3 Operations (P unless stated)
+ - **BR-OPS-06:** `/up` checks the database too; an external monitor checks it every 5 minutes and alerts the O-33 recipients.
+ - **BR-OPS-07:** each backup job pings a dead-man monitor; a missed or failed backup alerts within 2 hours (database) or 26 hours (uploads). The backup status page shows the last success and the last error.
+ - **BR-OPS-08:** `php artisan zb:verify` runs daily: every journal balances, trial balance totals are equal, voucher numbers have no gaps or duplicates, every line on a party control account names a party (so party balances add up to the control account), and every posted entry points to its own journal (reversed when cancelled). Any failure alerts.
+-- **BR-OPS-09:** a health check every 15 minutes alerts on disk above 80%, a stopped service, unsynchronised clock, a certificate expiring within 14 days, an old backup, or `/up` failing.
+-- **BR-OPS-10:** releases are built by CI from version tags on `main`, checked by SHA-256, and deployed by a person with `zb-deploy-release` (backup, maintenance mode, migrate as `zb_migrator`, system data (BR-OPS-11), grants, caches, atomic switch, smoke test, automatic switch-back). Every migration must keep working with the previous release, because rollback switches code only. `migrate:rollback` is never run in production. Nobody edits production data by hand. The repository is private on GitHub Free, which has no branch protection for private repositories (ADR-0012): code reaches `main` through pull requests that the developer merges when every check is green; the protection hook stops Claude from changing `main`; the CI main guard fails when a commit reaches `main` without a merged pull request or protected files changed without `[spec-change]`; and the release workflow builds only from a commit whose CI run on `main` is green.
+-- **BR-OPS-11:** system data is created on every server by `SystemDataSeeder`: the company row, every settings key (with `null` for OPEN values), the roles and permissions of §7, the system ledger accounts of §8.1 and the four system items (BR-ITM-01). It only adds rows that are missing, and it sets the Owner and Accountant permissions to exactly the §7 lists (roles are fixed in version 1). It never changes a settings value, a user, a party or an entry, and never creates users or test data. `zb-deploy-release` runs it on every deploy as `zb_migrator`, right after the migrations, so a new release that adds a permission or a system account works at once. Test and demo data come only from `DatabaseSeeder` and the other local seeders, which refuse to run when `APP_ENV=production`.
++- **BR-OPS-09:** a health check every 15 minutes alerts on an old backup, a `zb:verify` result older than 26 hours, `/up` failing, or HTTPS failing. The machine itself (disk, services, clock, certificate) is the host's responsibility on shared hosting (ADR-0013, G-32 §8).
++- **BR-OPS-10:** releases are built by CI from version tags on `main`, checked by SHA-256, and deployed by a person with `zb-deploy-release` (backup, maintenance mode, migrate, system data (BR-OPS-11), caches, atomic symlink switch, smoke test, automatic switch-back). Every migration must keep working with the previous release, because rollback switches code only. `migrate:rollback` is never run in production. Nobody edits production data by hand. The repository is private on GitHub Free, which has no branch protection for private repositories (ADR-0012): code reaches `main` through pull requests that the developer merges when every check is green; the protection hook stops Claude from changing `main`; the CI main guard fails when a commit reaches `main` without a merged pull request or protected files changed without `[spec-change]`; and the release workflow builds only from a commit whose CI run on `main` is green.
++- **BR-OPS-11:** system data is created on every server by `SystemDataSeeder`: the company row, every settings key (with `null` for OPEN values), the roles and permissions of §7, the system ledger accounts of §8.1 and the four system items (BR-ITM-01). It only adds rows that are missing, and it sets the Owner and Accountant permissions to exactly the §7 lists (roles are fixed in version 1). It never changes a settings value, a user, a party or an entry, and never creates users or test data. `zb-deploy-release` runs it over SSH on every deploy, right after the migrations, so a new release that adds a permission or a system account works at once. Test and demo data come only from `DatabaseSeeder` and the other local seeders, which refuse to run when `APP_ENV=production`.
+ 
+ ## 15. Frontend design system
+ 
+@@ -1217,7 +1217,7 @@ ### 17.1 Automated tests (required)
+ | T-16 | Security headers and CSP nonce on every page; no debug output in production mode (BR-SEC-14, BR-SEC-16) |
+ | T-17 | Sessions end when a user is disabled, demoted or their password is reset (BR-SEC-13); temporary passwords must be changed (BR-USR-08) |
+ | T-18 | A repeated idempotency key saves nothing new (BR-GEN-11) |
+-| T-19 | CI privilege check: after the real migrations the web role cannot alter, truncate, disable triggers or delete business rows (BR-SEC-12) |
++| T-19 | Engine check: on the exact host engine the database refuses edits and deletes of journal, audit, rate-change and period-event rows through triggers, and the connection holds exactly the §5 settings (BR-SEC-12, G-32 §7). The three-role privilege check of update 3 is dropped: the host allows one all-rights user per database (G-32 §5 #4) |
+ | T-20 | `zb:verify` finds a planted imbalance, gap and sub-ledger mismatch (BR-OPS-08) |
+ 
+ ### 17.2 AT-1: two days of trading
+@@ -1313,7 +1313,7 @@ ### 17.4 AT-3 to AT-6: controls
+ 
+ ## 18. Deployment and environments
+ 
+-Three server-side environments are used: your computer, a staging server and the live server (A). The full picture, including cloud sessions, the laptop and CI, is in `docs/environments.md`; the architecture in `docs/architecture.md`; step-by-step operation in `docs/operations/`. The hosting provider and domain are O-30; size and region O-34.
++Three server-side environments are used: your computer, a staging subdomain and the live site (A). The full picture, including cloud sessions, the laptop and CI, is in `docs/environments.md`; the architecture in `docs/architecture.md`; step-by-step operation in `docs/operations/`. The hosting provider is answered (O-30: the business's Hostinger account, update 9); on shared hosting there is no machine size or region to choose (O-34's data-location question stays open).
+ 
+ | Environment | Purpose | Data |
+ | --- | --- | --- |
+@@ -1323,16 +1323,16 @@ ## 18. Deployment and environments
+ 
+ ### 18.1 Server (P, D-41)
+ 
+-- One VPS, Ubuntu 26.04 LTS, built by `infra/provision` (proposed 2 vCPU, 4 GB RAM, 80 GB SSD).
+-- nginx (HTTPS with Let's Encrypt, renewed automatically), PHP-FPM 8.5 running as its own user, PostgreSQL 18 on the local socket only.
+-- systemd timers: Laravel scheduler every minute, database backup hourly, uploads backup daily, health check every 15 minutes.
+-- No Node.js, no Redis, no queue worker, no Docker (ADR-0003, ADR-0004).
++- Hostinger "Unlimited" shared hosting (ADR-0013): hPanel for domains, databases, cron and backups; the account check of G-32 §3 recorded the facts on 15 October 2026 (G-32 §12.8).
++- The website runs PHP 8.5 (the account's default CLI PHP; LiteSpeed on the web side). The application, `.env` and storage live outside `public_html`; only `public/` is on the web. MariaDB 11.8.9 answers on the local socket with remote access off.
++- One hPanel cron job runs `php artisan schedule:run` every minute; the scheduler starts the hourly database backup, the daily uploads backup and the 15-minute health check (D-6, D-7).
++- No Node.js, no Redis, no queue worker, no Docker (ADR-0004, ADR-0013).
+ 
+ ### 18.2 Releasing and deploying (P, D-42)
+ 
+-1. Every change reaches `main` through a pull request with green CI (both PHP versions, PostgreSQL 18, guards, privilege check, protected files). The main guard reports any other way in, and step 2 refuses red commits.
++1. Every change reaches `main` through a pull request with green CI (both PHP versions, MariaDB 11.8, guards, engine and privilege checks, protected files). The main guard reports any other way in, and step 2 refuses red commits.
+ 2. When CI on `main` is green for the newest commit, you push a version tag (`v1.4.0`). The release workflow checks that CI run, runs the tests again and publishes the release archive and its SHA-256 checksum.
+-3. You deploy to **staging** with `infra/local/ship-release.sh` (download, check, copy, `zb-deploy-release`). The script: verifies the checksum; unpacks a new release folder; backs up the database; puts the site in maintenance mode; migrates as `zb_migrator`; adds missing system data (BR-OPS-11); re-applies the grants; builds the config, route and event caches; switches to the new release; reloads PHP; leaves maintenance mode; checks `/up`, switching back automatically if it fails.
++3. You deploy to **staging** with `zb-deploy-release` over SSH (D-6). The script: verifies the checksum; backs up the database; puts the site in maintenance mode; unpacks the archive into `releases/<version>`; migrates with the database password from `.env`; adds missing system data (BR-OPS-11); builds the config, route and event caches; points the one symlink at the new release; leaves maintenance mode; checks `/up`, switching the symlink back automatically if it fails.
+ 4. The client approves on staging. You deploy the same archive to production the same way.
+ 5. If anything is wrong: `zb-deploy-release --rollback` (code only, BR-OPS-10).
+ 
+@@ -1351,7 +1351,7 @@ ## 19. Delivery plan and go-live checklist
+ ### 19.1 Phases
+ 
+ 1. **Sign-off.** Client confirms Requirements v1.2 and answers the OPEN items. You approve or change every P item. *Gate: signed v1.2, Section 4 answered.*
+-2. **Foundation.** Starter kit, PostgreSQL, roles and permissions, settings and setup gate, ledger tables, Posting Service, triggers, voucher numbering, audit log. *Gate: T-02, T-03, T-04, T-10 pass.*
++2. **Foundation.** Starter kit, database (PostgreSQL then, MariaDB from update 9), roles and permissions, settings and setup gate, ledger tables, Posting Service, triggers, voucher numbering, audit log. *Gate: T-02, T-03, T-04, T-10 pass.*
+ 3. **Master data.** Parties, items, money accounts, expense categories, opening balances. *Gate: opening balance postings PR-17 to PR-22 pass T-01.*
+ 4. **Design approval** (can run beside Phase 3). Dashboard, New Purchase on phone, Party Khata shown to the client. *Gate: client approves the look.*
+ 5. **Core entries.** Purchases, sales, rate pending, rate changes, payments, approvals, agreed adjustments, rate corrections. *Gate: T-05 to T-08 pass.*
+@@ -1377,7 +1377,7 @@ ### 19.2 Go-live checklist
+ - [ ] One restore tested on staging (BR-OPS-04) and one full rebuild drill timed against the 4-hour target (BR-OPS-05)
+ - [ ] Backup private key and APP_KEY: two copies each, holders recorded (O-37)
+ - [ ] Monitoring: a test alert reached the Owner and the developer (O-33)
+-- [ ] HTTPS working, security headers present, server firewall on, SSH key-only login tested (BR-SEC-01, 10, 14)
++- [ ] HTTPS working, security headers present, hosting account with two-step login, key-only SSH login tested (BR-SEC-01, 10, 14)
+ - [ ] `zb-health-check` reports OK; `zb:verify` passes
+ - [ ] Two-step login set up for every Owner if O-31 = yes
+ - [ ] Every account in `docs/secrets.md` is in the company's name with two-factor login
+@@ -1426,6 +1426,7 @@ ### 20.4 Change log
+ 
+ | Version | Date | Change |
+ | --- | --- | --- |
++| 1.0 (update 9) | 15 October 2026 | M10 (G-32 part 2), on the developer's decision of 15 October 2026 and the other partner's written approval (spec §20.3) covering §5 of the proposal as changed by its §12: one VPS with PostgreSQL 18 and peer-authenticated database roles (D-41, D-43) is replaced by the business's Hostinger "Unlimited" shared hosting (ADR-0013) with MariaDB 11.8 (D-38) and one database password per database in `.env` (ADR-0014); the seal-row trigger replaces the deferred constraint trigger (§9.7); backups become a scheduled PHP job (`mariadb-dump` + `sodium` + an upload-only key, BR-OPS-01); BR-SEC-10, BR-SEC-12, BR-OPS-09 to BR-OPS-11, T-19 and §18 rewritten for shared hosting; O-30 answered (hosting provider and domain), O-34's data-location question stays open; new card `docs/cards/M10.md` (tasks T10.1 to T10.7; no fingerprint — a direct database edit leaves no trace) |
+ | 1.0 (update 8) | 14 October 2026 | M9 (G-31), approved by the client in writing: simple dashboard for the Accountant (`dashboard.balances`, BR-DSH-01); account statement in pages of 100 (BR-RPT-09); monthly lines in the rate and weight reports over 3 months (BR-RPT-10); statement PDF at most 3 months (BR-RPT-11); random public ids in links and filters (BR-SEC-19, `public_id` in §9.1). Cards `docs/cards/M9.md` |
+ | 1.0 (update 7) | 13 October 2026 | G-30: cloud sessions install PHP packages through `scripts/cloud-composer-cache.sh` (zips built from git into Composer's cache), because the cloud GitHub proxy refuses GitHub zip downloads; the cloud start script runs it; card T0.1 gets cloud blocks for steps 2 and 4; `docs/stack-baseline.md` records the proxy fact and the starter kit's `laravel/pao`, `.npmrc` and `pnpm-workspace.yaml` (kept). No change to the system's rules, laptop or CI |
+ | 1.0 (update 6) | 13 October 2026 | Pack v4.1: Claude Code builds in cloud sessions and opens pull requests; the developer merges on GitHub and pulls and runs on a Linux Mint laptop. Cloud sessions are prepared by `scripts/cloud-session-start.sh` (PostgreSQL, both test databases, packages, `.env`). Main guard checks every push to `main`; Dependabot pull requests monthly, grouped (BR-SEC-18). Keeps the v4 documents (`README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`) and the laptop setup (`scripts/setup-local.sh`) |

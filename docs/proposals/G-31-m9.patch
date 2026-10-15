@@ -1,12 +1,12 @@
 diff --git a/docs/cards/M9.md b/docs/cards/M9.md
 new file mode 100644
-index 0000000..413ab52
+index 0000000..866e7aa
 --- /dev/null
 +++ b/docs/cards/M9.md
 @@ -0,0 +1,63 @@
 +# M9: Requested changes before go-live (G-31)
 +
-+Requested by the developer for the client on 14 October 2026 and approved in writing (spec §20.3). Spec update 7.
++Requested by the developer for the client on 14 October 2026 and approved in writing (spec §20.3). Spec update 8 (update 7 was taken by G-30).
 +
 +## T9.1 Starter-kit leftovers and log safety
 +
@@ -71,7 +71,7 @@ diff --git a/docs/conventions.md b/docs/conventions.md
 index 22fba2c..0dfbde5 100644
 --- a/docs/conventions.md
 +++ b/docs/conventions.md
-@@ -150,6 +150,7 @@ Use `Relation::enforceMorphMap` in `AppServiceProvider` with exactly these alias
+@@ -150,6 +150,7 @@ ## 10. Inertia and frontend
  - Shared props (via `HandleInertiaRequests`): `auth.user` (id, name, roles, permissions list), `settings.formats` (`kg_decimals`, `rate_decimals`, `amount_rounding`, `number_format`, `date_format`), `flash.success`, `flash.voucher`, `app.env_name` (`staging` shows a banner; from `ZB_ENV_NAME`). Never share secrets, `.env` values or other users' data.
  - Forms use Inertia's `useForm` (spec §5, D-44). Server validation errors always show under the field.
  - Routes in React come from **Wayfinder** (generated in `resources/js/actions` and `resources/js/routes`; git-ignored, rebuilt by `npm run build` or `php artisan wayfinder:generate --with-form`). Never hard-code URLs; never add Ziggy.
@@ -83,7 +83,7 @@ diff --git a/docs/glossary.md b/docs/glossary.md
 index 51469e5..5351b15 100644
 --- a/docs/glossary.md
 +++ b/docs/glossary.md
-@@ -40,6 +40,7 @@ The people using this system are the owner and the accountant of ZB Poultry Prot
+@@ -40,6 +40,7 @@ ## 1. Business terms
  | Cash count | `cash_count` | Cash physically counted at day end |
  | Month-end close | `period` close | Monthly matching and lock |
  | Income vs Spending | report R-08 | Money earned minus money spent. **Not profit** |
@@ -91,7 +91,7 @@ index 51469e5..5351b15 100644
  
  ## 2. Balance words (never a minus sign)
  
-@@ -98,6 +99,8 @@ The plain "Cancel" link that closes a dialog without saving is labelled **Close*
+@@ -98,6 +99,8 @@ ## 4. Messages (exact text)
  | Account disabled | This account is disabled. Ask the owner. |
  | Staging banner | TEST COPY – entries here are not real. |
  | Last owner (BR-USR-04) | At least one active owner is required. |
@@ -104,7 +104,7 @@ diff --git a/docs/requirements.md b/docs/requirements.md
 index f751715..ad3146e 100644
 --- a/docs/requirements.md
 +++ b/docs/requirements.md
-@@ -373,7 +373,7 @@ Who: Both = owner and accountant. Owner = owner only.
+@@ -373,7 +373,7 @@ ## Access
  | **#** | **Page** | **Who** | **What it contains** |
  | --- | --- | --- | --- |
  | 1 | Login | Both | Username and password. Every login recorded |
@@ -117,7 +117,7 @@ diff --git a/docs/security.md b/docs/security.md
 index 4143cdb..cf7f8e7 100644
 --- a/docs/security.md
 +++ b/docs/security.md
-@@ -85,6 +85,7 @@ What we protect, from whom, and exactly where each protection lives and how it i
+@@ -85,6 +85,7 @@ ## 4. Rule index: where enforced, how proven
  | BR-SEC-16 no debug output | `.env`, error pages | T1.12 test |
  | BR-SEC-17 log rules | `config/logging.php`, code review | T1.12 test (no password in logs) |
  | BR-SEC-18 dependency and secret checks | CI, `check-all.sh`, Dependabot (alerts and monthly pull requests) | CI |
@@ -126,10 +126,10 @@ index 4143cdb..cf7f8e7 100644
  
  ## 5. If something happens
 diff --git a/docs/spec.md b/docs/spec.md
-index d28c8ea..cd3bb08 100644
+index c0f495f..74b4176 100644
 --- a/docs/spec.md
 +++ b/docs/spec.md
-@@ -353,6 +353,7 @@ Two roles exist in version 1: Owner and Accountant (C). Permissions are stored i
+@@ -353,6 +353,7 @@ ## 7. Users, roles and permissions
  | `opening.manage` | Opening balances | Yes | No | A |
  | `users.manage` | Add users, assign roles, disable users | Yes | No | A |
  | `backup.view` | Backup status (no download: backups are readable only with the offline key, ADR-0006) | Yes | No | A + P |
@@ -137,7 +137,7 @@ index d28c8ea..cd3bb08 100644
  
  ### Rules
  
-@@ -471,6 +472,8 @@ PostgreSQL, 27 tables plus the permission package's tables (P for names and exac
+@@ -471,6 +472,8 @@ ### 9.1 Columns every table has
  | `created_by`, `updated_by` | bigint, FK users | Set by the system |
  | `created_at`, `updated_at` | timestamptz | Stored in UTC, shown in Asia/Karachi |
  
@@ -146,7 +146,7 @@ index d28c8ea..cd3bb08 100644
  **Transaction tables** (purchases, sales, adjustments, payments, expenses, partner_transactions, transfers) also have: `voucher_no` varchar(20) unique per company, `entry_date` date, `status` (active / cancelled), `cancel_reason` text, `cancelled_by`, `cancelled_at`, `journal_entry_id` (FK, latest journal, nullable), `idempotency_key` uuid nullable with a unique index on (`company_id`, `idempotency_key`) (BR-GEN-11).
  
  ### 9.2 Master tables
-@@ -772,7 +775,7 @@ Every purchase rule BR-PUR-02 to BR-PUR-14 also applies to sales, reading "suppl
+@@ -772,7 +775,7 @@ ### 10.11 Month-end close
  
  ## 11. Page specifications
  
@@ -155,7 +155,7 @@ index d28c8ea..cd3bb08 100644
  
  ### 11.1 Page list
  
-@@ -838,9 +841,10 @@ The system has 48 pages (A, Requirements v1.1 Appendix A). Routes are proposed (
+@@ -838,9 +841,10 @@ ### 11.2 Rules for all list pages (P)
  ### 11.3 Dashboard (page 2)
  
  - **Today:** kg bought per item, kg sold per product, money received, money paid, expenses total.
@@ -167,7 +167,7 @@ index d28c8ea..cd3bb08 100644
  
  ### 11.4 Form: New purchase (page 4)
  
-@@ -937,6 +941,9 @@ Money figures come only from journal lines; kg figures come only from purchases
+@@ -937,6 +941,9 @@ ### 12.1 Data rules for all reports
  - **BR-RPT-03 (P):** rate averages use the original entry amounts, before agreed adjustments. Adjustments are reported separately (R-12).
  - **BR-RPT-04 (A):** party balances are shown in words, never with a minus sign (Section 8.2).
  - **BR-RPT-05 (A):** numbers and dates follow `number_format` and `date_format`.
@@ -177,7 +177,7 @@ index d28c8ea..cd3bb08 100644
  
  ### 12.2 Report list
  
-@@ -947,12 +954,12 @@ Money figures come only from journal lines; kg figures come only from purchases
+@@ -947,12 +954,12 @@ ### 12.2 Report list
  | R-03 | Rate pending list (26) | Type, party | Entry, date, party, item, kg, age in days (red if over `rate_pending_age_days`) |
  | R-04 | Daily summary (29) | Date | Kg bought per item, kg sold per product, money received, money paid, expenses by category, closing balance per money account, pending-rate count |
  | R-05 | Expense report (34) | Date range, category, party | Total per category, then each expense with note, mode and party |
@@ -193,7 +193,7 @@ index d28c8ea..cd3bb08 100644
  | R-12 | Adjustments report (39) | Type, party, reason, date range | Total, count and % of sales or purchases per party and reason |
  | R-13 | Business insights (40) | Period (default `insights_period_months` = 3) | Indicators in 12.5, each labelled "rough indicator" |
  
-@@ -1025,7 +1032,7 @@ Two PDFs are generated on the server: the party statement and the entry slip (D-
+@@ -1025,7 +1032,7 @@ ### 13.1 Party statement
  
  | Part | Content |
  | --- | --- |
@@ -202,7 +202,7 @@ index d28c8ea..cd3bb08 100644
  | Opening | Balance at the start of the period, in words (Section 8.2) |
  | Rows | Date, voucher number, description (item, kg × rate, or payment method and reference), amount that increases the balance, amount that reduces it, running balance in words |
  | Pending | Rate-pending entries listed with kg and "Rate pending", no amount |
-@@ -1079,6 +1086,7 @@ Every action is logged permanently, every request is permission-checked on the s
+@@ -1079,6 +1086,7 @@ ### 14.2 Security
  - **BR-SEC-15 (P):** the session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`; session data is encrypted in the database.
  - **BR-SEC-16 (P):** staging and production run with `APP_ENV=production` and `APP_DEBUG=false`: users never see technical error details. Models are strict (no lazy loading, no silently discarded attributes) outside production.
  - **BR-SEC-17 (P):** logs never contain passwords, tokens, session IDs, request bodies, party names, mobiles, bank details or amounts. Application logs rotate daily and are kept 14 days; web server logs leave out query strings.
@@ -210,19 +210,19 @@ index d28c8ea..cd3bb08 100644
  - **BR-SEC-18 (P):** dependency lock files are committed; CI checks known vulnerabilities (`composer audit`, `npm audit`) Dependabot opens grouped pull requests for minor and patch updates monthly, and its alerts e-mail security warnings at once. Only packages named in a task card are installed.
  
  ### 14.3 Operations (P unless stated)
-@@ -1418,6 +1426,7 @@ Anything not described in this document is not part of version 1. Asking for it
+@@ -1418,6 +1426,7 @@ ### 20.4 Change log
  
  | Version | Date | Change |
  | --- | --- | --- |
-+| 1.0 (update 7) | 14 October 2026 | M9 (G-31), approved by the client in writing: simple dashboard for the Accountant (`dashboard.balances`, BR-DSH-01); account statement in pages of 100 (BR-RPT-09); monthly lines in the rate and weight reports over 3 months (BR-RPT-10); statement PDF at most 3 months (BR-RPT-11); random public ids in links and filters (BR-SEC-19, `public_id` in §9.1). Cards `docs/cards/M9.md` |
++| 1.0 (update 8) | 14 October 2026 | M9 (G-31), approved by the client in writing: simple dashboard for the Accountant (`dashboard.balances`, BR-DSH-01); account statement in pages of 100 (BR-RPT-09); monthly lines in the rate and weight reports over 3 months (BR-RPT-10); statement PDF at most 3 months (BR-RPT-11); random public ids in links and filters (BR-SEC-19, `public_id` in §9.1). Cards `docs/cards/M9.md` |
+ | 1.0 (update 7) | 13 October 2026 | G-30: cloud sessions install PHP packages through `scripts/cloud-composer-cache.sh` (zips built from git into Composer's cache), because the cloud GitHub proxy refuses GitHub zip downloads; the cloud start script runs it; card T0.1 gets cloud blocks for steps 2 and 4; `docs/stack-baseline.md` records the proxy fact and the starter kit's `laravel/pao`, `.npmrc` and `pnpm-workspace.yaml` (kept). No change to the system's rules, laptop or CI |
  | 1.0 (update 6) | 13 October 2026 | Pack v4.1: Claude Code builds in cloud sessions and opens pull requests; the developer merges on GitHub and pulls and runs on a Linux Mint laptop. Cloud sessions are prepared by `scripts/cloud-session-start.sh` (PostgreSQL, both test databases, packages, `.env`). Main guard checks every push to `main`; Dependabot pull requests monthly, grouped (BR-SEC-18). Keeps the v4 documents (`README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`) and the laptop setup (`scripts/setup-local.sh`) |
  | 1.0 (update 5) | 13 October 2026 | Pack v4, laptop edition: Claude Code runs on the developer's Linux Mint laptop (no cloud sessions). Code reaches `main` only through `scripts/finish-task.sh`; CI checks every push to `main`; protected files change only with `[spec-change]`. Dependabot pull requests replaced by alerts plus a monthly update session (BR-SEC-18). New documents: `README.md`, `docs/README.md`, `docs/frontend.md`, `docs/backend.md`, `docs/templates/task-report.md`. Laptop app uses database `zb_mill_dev`; tests `zb_mill_test` |
- | 1.0 (update 4) | 13 October 2026 | Corrections G-25 to G-29 (`docs/requirements-audit.md`). New: BR-OPS-11 (system data on servers through `SystemDataSeeder`, run by `zb-deploy-release`; local seeders refuse production). Changed: GitHub Free accepted, with a push guard in the hook, a CI main guard and a release gate instead of branch protection (ADR-0012), CI trimmed for 2,000 free Actions minutes, Dependabot monthly (BR-SEC-18); cloud-session network facts; local test user gets the Owner role in local and testing only (T1.3); trial-month notes and restore records in git hold voucher numbers and counts only, never names or amounts (T8.5, BR-OPS-04, runbook §4, `docs/data-handling.md` rule 9) |
 diff --git a/docs/traceability.md b/docs/traceability.md
 index ce1d25f..e3fa67b 100644
 --- a/docs/traceability.md
 +++ b/docs/traceability.md
-@@ -140,6 +140,11 @@ Every confirmed fact (F) and decision (D) from the specification, the rules that
+@@ -140,6 +140,11 @@ ## Corrections (spec update 4, 13 October 2026)
  
  | Gap | Rules | Built in | Proof |
  | --- | --- | --- | --- |

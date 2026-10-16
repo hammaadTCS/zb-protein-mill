@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('transfers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('voucher_no', 20);
+            $table->string('voucher_no', 20)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->date('entry_date');
             $table->foreignId('from_account_id')->constrained('money_accounts');
             $table->foreignId('to_account_id')->constrained('money_accounts');
@@ -23,12 +23,13 @@ return new class extends Migration
             $table->string('status', 10)->default('active');
             $table->text('cancel_reason')->nullable();
             $table->foreignId('cancelled_by')->nullable()->constrained('users');
-            $table->timestampTz('cancelled_at')->nullable();
+            $table->dateTime('cancelled_at', 3)->nullable();
             $table->foreignId('journal_entry_id')->nullable()->constrained('journal_entries');
-            $table->uuid('idempotency_key')->nullable();
+            $table->uuid('idempotency_key')->nullable()->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'voucher_no']);
             $table->unique(['company_id', 'idempotency_key']); // BR-GEN-11
@@ -41,7 +42,7 @@ return new class extends Migration
             ALTER TABLE transfers ADD CONSTRAINT transfers_accounts_check CHECK (from_account_id <> to_account_id);
 
             CREATE TRIGGER transfers_prevent_delete BEFORE DELETE ON transfers
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in transfers cannot be deleted';
             SQL);
     }
 

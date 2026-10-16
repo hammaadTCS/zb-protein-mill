@@ -23,14 +23,14 @@ return new class extends Migration
             $table->decimal('difference', 16, 2);
             $table->text('note')->nullable();
             $table->foreignId('entered_by')->constrained('users');
-            $table->timestampTz('entered_at')->useCurrent();
+            $table->dateTime('entered_at', 3)->useCurrent();
 
             $table->index(['period_id', 'money_account_id']);
         });
 
         DB::unprepared(<<<'SQL'
             CREATE TRIGGER bank_reconciliations_prevent_delete BEFORE DELETE ON bank_reconciliations
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in bank_reconciliations cannot be deleted';
             SQL);
     }
 

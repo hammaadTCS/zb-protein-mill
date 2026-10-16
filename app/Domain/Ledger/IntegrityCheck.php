@@ -59,6 +59,7 @@ final class IntegrityCheck
     {
         return [
             self::result('journals_balance', self::unbalancedJournals()),
+            self::result('seals', self::seals()),
             self::result('trial_balance', self::trialBalance()),
             self::result('voucher_numbers', self::voucherNumbers()),
             self::result('control_account_parties', self::controlAccountParties()),
@@ -79,7 +80,37 @@ final class IntegrityCheck
     }
 
     /**
-     * 2. Trial balance totals are equal (T1.10 query), for each company.
+     * 2. Every journal entry carries a seal row that still matches its lines (BR-LED-11). The
+     * seal records the entry's line count and its debit and credit totals when the entry was
+     * saved; a line added or removed afterwards — or an entry written without a seal at all —
+     * leaves a difference here. The seal row itself is refused UPDATE and DELETE by a trigger,
+     * so this is the check that catches a change made with the application's own database user.
+     *
+     * @return list<string>
+     */
+    private static function seals(): array
+    {
+        // The lines are summed in a subquery so the comparison works under ONLY_FULL_GROUP_BY,
+        // and a LEFT JOIN finds an entry whose seal row is missing. ("lines" is a MariaDB
+        // keyword, so the subquery is named "summed".)
+        return self::column(DB::select(
+            'SELECT summed.journal_entry_id AS id
+             FROM (
+                 SELECT journal_entry_id, COUNT(*) AS line_count, SUM(debit) AS total_debit, SUM(credit) AS total_credit
+                 FROM journal_lines
+                 GROUP BY journal_entry_id
+             ) AS summed
+             LEFT JOIN journal_seals AS seal ON seal.journal_entry_id = summed.journal_entry_id
+             WHERE seal.id IS NULL
+                OR summed.line_count <> seal.line_count
+                OR summed.total_debit <> seal.total_debit
+                OR summed.total_credit <> seal.total_credit
+             ORDER BY summed.journal_entry_id'
+        ), 'journal ');
+    }
+
+    /**
+     * 3. Trial balance totals are equal (T1.10 query), for each company.
      *
      * @return list<string>
      */
@@ -98,7 +129,7 @@ final class IntegrityCheck
     }
 
     /**
-     * 3. Voucher numbers 1 to next_number − 1, each once, for every document type.
+     * 4. Voucher numbers 1 to next_number − 1, each once, for every document type.
      *
      * @return list<string>
      */
@@ -144,7 +175,7 @@ final class IntegrityCheck
     }
 
     /**
-     * 4. Lines on a control account (ledger account with a party type) carry a party;
+     * 5. Lines on a control account (ledger account with a party type) carry a party;
      * no other line does.
      *
      * @return list<string>
@@ -162,7 +193,7 @@ final class IntegrityCheck
     }
 
     /**
-     * 5. An active posted entry points to a journal of its own; a cancelled posted entry
+     * 6. An active posted entry points to a journal of its own; a cancelled posted entry
      * has a reversal journal.
      *
      * @return list<string>

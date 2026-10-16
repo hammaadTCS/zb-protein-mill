@@ -28,7 +28,8 @@ return new class extends Migration
             $table->foreignId('replaced_by_id')->nullable()->constrained('attachments');
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->index(['attachable_type', 'attachable_id']);
         });
@@ -37,7 +38,7 @@ return new class extends Migration
             ALTER TABLE attachments ADD CONSTRAINT attachments_kind_check CHECK (kind IN ('slip_photo', 'receipt_photo', 'other'));
 
             CREATE TRIGGER attachments_prevent_delete BEFORE DELETE ON attachments
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in attachments cannot be deleted';
             SQL);
     }
 

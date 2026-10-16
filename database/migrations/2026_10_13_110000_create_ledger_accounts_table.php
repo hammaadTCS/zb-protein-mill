@@ -15,8 +15,8 @@ return new class extends Migration
         Schema::create('ledger_accounts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('code', 10);
-            $table->string('name', 150);
+            $table->string('code', 10)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
+            $table->string('name', 150)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->string('type', 20);
             $table->string('normal_side', 10);
             $table->string('party_type', 20)->nullable();
@@ -24,7 +24,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'code']);
         });

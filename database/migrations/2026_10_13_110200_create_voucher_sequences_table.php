@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('voucher_sequences', function (Blueprint $table) {
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('doc_type', 40);
+            $table->string('doc_type', 40)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->string('prefix', 10);
             $table->smallInteger('width');
             $table->bigInteger('next_number')->default(1);

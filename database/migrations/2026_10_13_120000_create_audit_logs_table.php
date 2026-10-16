@@ -9,7 +9,7 @@ return new class extends Migration
 {
     /**
      * Spec §9.5 audit_logs (BR-AUD-01). BR-AUD-02: rows are never changed or deleted;
-     * the prevent_change() trigger from the journal migration refuses it.
+     * the table's own triggers refuse both (§9.7).
      */
     public function up(): void
     {
@@ -20,12 +20,12 @@ return new class extends Migration
             $table->string('action', 60);
             $table->string('auditable_type', 40)->nullable();
             $table->unsignedBigInteger('auditable_id')->nullable();
-            $table->jsonb('old_values')->nullable();
-            $table->jsonb('new_values')->nullable();
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
             $table->text('reason')->nullable();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
-            $table->timestampTz('created_at')->useCurrent();
+            $table->dateTime('created_at', 3)->useCurrent();
 
             $table->index(['auditable_type', 'auditable_id']);
             $table->index(['company_id', 'created_at']);
@@ -33,8 +33,11 @@ return new class extends Migration
         });
 
         DB::unprepared(<<<'SQL'
-            CREATE TRIGGER audit_logs_prevent_change BEFORE UPDATE OR DELETE ON audit_logs
-                FOR EACH ROW EXECUTE FUNCTION prevent_change();
+            -- MariaDB has one trigger per event, so each protected event has its own trigger.
+            CREATE TRIGGER audit_logs_prevent_update BEFORE UPDATE ON audit_logs
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in audit_logs cannot be updated or deleted';
+            CREATE TRIGGER audit_logs_prevent_delete BEFORE DELETE ON audit_logs
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in audit_logs cannot be updated or deleted';
             SQL);
     }
 

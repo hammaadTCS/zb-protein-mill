@@ -15,9 +15,9 @@ return new class extends Migration
         Schema::create('parties', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('code', 10);
+            $table->string('code', 10)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->string('type', 10);
-            $table->string('name', 150);
+            $table->string('name', 150)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->string('name_ur', 150)->nullable();
             $table->string('business_name', 150)->nullable();
             $table->string('contact_person', 150)->nullable();
@@ -39,10 +39,11 @@ return new class extends Migration
             $table->boolean('needs_review')->default(false);
             $table->boolean('bank_change_needs_review')->default(false);
             $table->foreignId('reviewed_by')->nullable()->constrained('users');
-            $table->timestampTz('reviewed_at')->nullable();
+            $table->dateTime('reviewed_at', 3)->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'code']);
             $table->index(['company_id', 'type', 'status']);
@@ -56,7 +57,7 @@ return new class extends Migration
             ALTER TABLE parties ADD CONSTRAINT parties_partner_fields_check CHECK (type = 'partner' OR (profit_share_percent IS NULL AND joining_date IS NULL));
 
             CREATE TRIGGER parties_prevent_delete BEFORE DELETE ON parties
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in parties cannot be deleted';
             SQL);
 
         Schema::table('journal_lines', function (Blueprint $table) {

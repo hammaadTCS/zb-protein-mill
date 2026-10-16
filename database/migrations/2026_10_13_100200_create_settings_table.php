@@ -15,10 +15,11 @@ return new class extends Migration
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('key', 80);
+            $table->string('key', 80)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->text('value')->nullable();
             $table->string('value_type', 20);
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'key']);
         });

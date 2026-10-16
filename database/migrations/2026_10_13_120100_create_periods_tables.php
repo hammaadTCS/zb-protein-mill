@@ -19,10 +19,11 @@ return new class extends Migration
             $table->smallInteger('month');
             $table->string('status', 10)->default('open');
             $table->foreignId('closed_by')->nullable()->constrained('users');
-            $table->timestampTz('closed_at')->nullable();
+            $table->dateTime('closed_at', 3)->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'year', 'month']);
         });
@@ -34,7 +35,7 @@ return new class extends Migration
             $table->string('event', 10);
             $table->foreignId('user_id')->constrained('users');
             $table->text('reason')->nullable();
-            $table->timestampTz('created_at')->useCurrent();
+            $table->dateTime('created_at', 3)->useCurrent();
         });
 
         DB::unprepared(<<<'SQL'
@@ -43,8 +44,11 @@ return new class extends Migration
             ALTER TABLE period_events ADD CONSTRAINT period_events_event_check CHECK (event IN ('closed', 'reopened'));
 
             -- Spec §9.7: period events are never changed or deleted.
-            CREATE TRIGGER period_events_prevent_change BEFORE UPDATE OR DELETE ON period_events
-                FOR EACH ROW EXECUTE FUNCTION prevent_change();
+            -- MariaDB has one trigger per event, so each protected event has its own trigger.
+            CREATE TRIGGER period_events_prevent_update BEFORE UPDATE ON period_events
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in period_events cannot be updated or deleted';
+            CREATE TRIGGER period_events_prevent_delete BEFORE DELETE ON period_events
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in period_events cannot be updated or deleted';
             SQL);
     }
 

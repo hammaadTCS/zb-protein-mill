@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('rate_corrections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('voucher_no', 20);
+            $table->string('voucher_no', 20)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->date('correction_date');
             $table->string('target_type', 10);
             $table->foreignId('purchase_id')->nullable()->constrained('purchases');
@@ -27,7 +27,8 @@ return new class extends Migration
             $table->foreignId('journal_entry_id')->nullable()->constrained('journal_entries');
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'voucher_no']);
             $table->index(['company_id', 'correction_date']);
@@ -43,7 +44,7 @@ return new class extends Migration
             );
 
             CREATE TRIGGER rate_corrections_prevent_delete BEFORE DELETE ON rate_corrections
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in rate_corrections cannot be deleted';
             SQL);
     }
 

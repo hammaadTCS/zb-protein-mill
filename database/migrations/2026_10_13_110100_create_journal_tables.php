@@ -8,14 +8,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Spec §9.4 journal tables and §9.7 protections (BR-LED-02, BR-LED-03, BR-LED-05).
+     * Spec §9.4 journal tables, §9.5 journal_seals and §9.7 protections
+     * (BR-LED-02, BR-LED-03, BR-LED-05, BR-LED-11, ADR-0016).
      */
     public function up(): void
     {
         Schema::create('journal_entries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('entry_no', 20);
+            $table->string('entry_no', 20)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->date('posting_date');
             $table->string('source_type', 40);
             $table->unsignedBigInteger('source_id');
@@ -23,7 +24,7 @@ return new class extends Migration
             // BR-LED-05: a journal is reversed at most once.
             $table->foreignId('reversal_of_id')->nullable()->unique()->constrained('journal_entries');
             $table->foreignId('created_by')->constrained('users');
-            $table->timestampTz('created_at')->useCurrent();
+            $table->dateTime('created_at', 3)->useCurrent();
 
             $table->unique(['company_id', 'entry_no']);
             $table->index('posting_date');
@@ -40,9 +41,22 @@ return new class extends Migration
             $table->unsignedBigInteger('item_id')->nullable(); // foreign key added in T2.3
             $table->decimal('debit', 16, 2)->default(0);
             $table->decimal('credit', 16, 2)->default(0);
-            $table->timestampTz('created_at')->useCurrent();
+            $table->dateTime('created_at', 3)->useCurrent();
 
             $table->unique(['journal_entry_id', 'line_no']);
+        });
+
+        Schema::create('journal_seals', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('company_id')->constrained('companies');
+            // One seal row per journal entry (BR-LED-11).
+            $table->foreignId('journal_entry_id')->unique()->constrained('journal_entries');
+            // What wrote the seal. PostingService is the only writer today (BR-LED-11).
+            $table->string('source', 20)->default('posting');
+            $table->unsignedInteger('line_count');
+            $table->decimal('total_debit', 16, 2);
+            $table->decimal('total_credit', 16, 2);
+            $table->dateTime('sealed_at', 3)->useCurrent();
         });
 
         DB::unprepared(<<<'SQL'
@@ -50,54 +64,66 @@ return new class extends Migration
             ALTER TABLE journal_lines ADD CONSTRAINT journal_lines_one_side
                 CHECK ((debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0));
 
-            -- BR-LED-05: journal rows are never updated or deleted. Reused by later tables.
-            CREATE OR REPLACE FUNCTION prevent_change() RETURNS trigger AS $$
-            BEGIN
-                RAISE EXCEPTION 'Rows in % cannot be updated or deleted', TG_TABLE_NAME;
-            END;
-            $$ LANGUAGE plpgsql;
+            -- BR-LED-05: journal rows are never updated or deleted. MariaDB has one trigger
+            -- per event, so each protected event gets its own trigger (ADR-0016).
+            CREATE TRIGGER journal_entries_prevent_update BEFORE UPDATE ON journal_entries
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in journal_entries cannot be updated or deleted';
+            CREATE TRIGGER journal_entries_prevent_delete BEFORE DELETE ON journal_entries
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in journal_entries cannot be updated or deleted';
+            CREATE TRIGGER journal_lines_prevent_update BEFORE UPDATE ON journal_lines
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in journal_lines cannot be updated or deleted';
+            CREATE TRIGGER journal_lines_prevent_delete BEFORE DELETE ON journal_lines
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in journal_lines cannot be updated or deleted';
 
-            CREATE TRIGGER journal_entries_prevent_change BEFORE UPDATE OR DELETE ON journal_entries
-                FOR EACH ROW EXECUTE FUNCTION prevent_change();
-            CREATE TRIGGER journal_lines_prevent_change BEFORE UPDATE OR DELETE ON journal_lines
-                FOR EACH ROW EXECUTE FUNCTION prevent_change();
+            -- BR-LED-11: seal rows are never updated or deleted either.
+            CREATE TRIGGER journal_seals_prevent_update BEFORE UPDATE ON journal_seals
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in journal_seals cannot be updated or deleted';
+            CREATE TRIGGER journal_seals_prevent_delete BEFORE DELETE ON journal_seals
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in journal_seals cannot be updated or deleted';
 
-            -- BR-LED-03: at commit (or SET CONSTRAINTS ... IMMEDIATE) every entry has at least
-            -- two lines and its debit total equals its credit total.
-            CREATE OR REPLACE FUNCTION check_journal_balance() RETURNS trigger AS $$
-            DECLARE
-                total_debit numeric;
-                total_credit numeric;
-                line_count integer;
+            -- BR-LED-03/BR-LED-11: PostingService writes the seal row at the end of the saving
+            -- transaction. Summing the entry's lines again here and refusing the insert makes
+            -- the whole save fail when an entry has fewer than two lines or its debit total
+            -- does not equal its credit total — the MariaDB replacement for PostgreSQL's
+            -- deferred constraint trigger, which MariaDB does not have (D-45, ADR-0016).
+            CREATE TRIGGER journal_seals_before_insert BEFORE INSERT ON journal_seals
+            FOR EACH ROW
             BEGIN
-                SELECT COALESCE(SUM(debit), 0), COALESCE(SUM(credit), 0), COUNT(*)
-                    INTO total_debit, total_credit, line_count
+                DECLARE v_line_count INT DEFAULT 0;
+                DECLARE v_total_debit DECIMAL(16, 2) DEFAULT 0.00;
+                DECLARE v_total_credit DECIMAL(16, 2) DEFAULT 0.00;
+                DECLARE v_message VARCHAR(128) DEFAULT '';
+
+                SELECT COUNT(*), COALESCE(SUM(debit), 0), COALESCE(SUM(credit), 0)
+                    INTO v_line_count, v_total_debit, v_total_credit
                     FROM journal_lines WHERE journal_entry_id = NEW.journal_entry_id;
 
-                IF line_count < 2 THEN
-                    RAISE EXCEPTION 'Journal entry % has fewer than 2 lines', NEW.journal_entry_id;
+                IF v_line_count < 2 THEN
+                    SET v_message = CONCAT('Journal entry ', NEW.journal_entry_id, ' has fewer than 2 lines');
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_message;
                 END IF;
 
-                IF total_debit <> total_credit THEN
-                    RAISE EXCEPTION 'Journal entry % is not balanced: debit %, credit %',
-                        NEW.journal_entry_id, total_debit, total_credit;
+                IF v_total_debit <> v_total_credit THEN
+                    SET v_message = CONCAT('Journal entry ', NEW.journal_entry_id, ' is not balanced: debit ', v_total_debit, ', credit ', v_total_credit);
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_message;
                 END IF;
-
-                RETURN NULL;
             END;
-            $$ LANGUAGE plpgsql;
-
-            CREATE CONSTRAINT TRIGGER journal_balance_check AFTER INSERT ON journal_lines
-                DEFERRABLE INITIALLY DEFERRED
-                FOR EACH ROW EXECUTE FUNCTION check_journal_balance();
             SQL);
     }
 
     public function down(): void
     {
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_seals_before_insert');
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_seals_prevent_delete');
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_seals_prevent_update');
+        Schema::dropIfExists('journal_seals');
+
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_lines_prevent_delete');
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_lines_prevent_update');
         Schema::dropIfExists('journal_lines');
+
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_entries_prevent_delete');
+        DB::unprepared('DROP TRIGGER IF EXISTS journal_entries_prevent_update');
         Schema::dropIfExists('journal_entries');
-        DB::unprepared('DROP FUNCTION IF EXISTS check_journal_balance()');
-        // prevent_change() stays: later migrations' triggers use it and drop it themselves.
     }
 };

@@ -46,7 +46,7 @@ it('BR-SEC-19 every linked table has a public id the database fills when a row i
 
         expect($column)->not->toBeNull($table)
             ->and($column->is_nullable)->toBe('NO', $table)
-            ->and($column->column_default)->toBe('gen_random_uuid()', $table);
+            ->and($column->column_default)->toBe('uuid()', $table);
     }
 });
 

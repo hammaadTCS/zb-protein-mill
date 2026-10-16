@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->boolean('must_change_password')->default(false);
-            $table->timestampTz('password_changed_at')->nullable();
+            $table->dateTime('password_changed_at', 3)->nullable();
         });
     }
 

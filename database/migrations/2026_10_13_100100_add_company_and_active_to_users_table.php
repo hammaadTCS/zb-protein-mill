@@ -29,7 +29,7 @@ return new class extends Migration
             DB::table('users')->whereNull('company_id')->update(['company_id' => $companyId]);
         }
 
-        DB::statement('ALTER TABLE users ALTER COLUMN company_id SET NOT NULL');
+        DB::statement('ALTER TABLE users MODIFY company_id BIGINT UNSIGNED NOT NULL');
     }
 
     public function down(): void

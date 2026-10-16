@@ -6,6 +6,7 @@ namespace App\Domain\Ledger;
 
 use App\Domain\Ledger\Models\JournalEntry;
 use App\Domain\Ledger\Models\JournalLine;
+use App\Domain\Ledger\Models\JournalSeal;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Numbering\VoucherNumberService;
 use App\Domain\Parties\Models\Party;
@@ -22,7 +23,7 @@ use LogicException;
  * Every request is checked in PHP before anything is written: at least two lines,
  * positive 2-decimal amounts, active accounts of the company, the party rule
  * (BR-LED-04) and debit = credit (BR-LED-03). The database checks the balance again
- * (journal_balance_check) before this method returns.
+ * (BR-LED-11) before this method returns.
  */
 final class PostingService
 {
@@ -243,6 +244,9 @@ final class PostingService
                 'created_by' => $by->id,
             ]);
 
+            $totalDebit = '0.00';
+            $totalCredit = '0.00';
+
             foreach ($lines as $index => [$line, $account]) {
                 JournalLine::query()->create([
                     'company_id' => $by->company_id,
@@ -254,13 +258,27 @@ final class PostingService
                     'debit' => $line->side === PostingLine::DEBIT ? $line->amount : '0.00',
                     'credit' => $line->side === PostingLine::CREDIT ? $line->amount : '0.00',
                 ]);
+
+                if ($line->side === PostingLine::DEBIT) {
+                    $totalDebit = Decimal::add($totalDebit, $line->amount);
+                } else {
+                    $totalCredit = Decimal::add($totalCredit, $line->amount);
+                }
             }
 
-            // BR-LED-03 in the database, now (also inside tests, which never commit).
-            // Then back to deferred, so the next journal of the same save is checked
-            // only once all of its lines exist.
-            DB::statement('SET CONSTRAINTS journal_balance_check IMMEDIATE');
-            DB::statement('SET CONSTRAINTS journal_balance_check DEFERRED');
+            // BR-LED-03/BR-LED-11: seal the entry in the same transaction. The BEFORE INSERT
+            // trigger on journal_seals sums the lines again and refuses the whole save if the
+            // entry has fewer than two lines or its totals differ (MariaDB replacement for the
+            // deferred constraint trigger of ADR-0002/D-45).
+            JournalSeal::query()->create([
+                'company_id' => $by->company_id,
+                'journal_entry_id' => $entry->id,
+                'source' => 'posting',
+                'line_count' => count($lines),
+                'total_debit' => $totalDebit,
+                'total_credit' => $totalCredit,
+                'sealed_at' => now(),
+            ]);
         } finally {
             self::$posting = false;
         }

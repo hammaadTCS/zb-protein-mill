@@ -16,8 +16,8 @@ return new class extends Migration
         Schema::create('items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('code', 10);
-            $table->string('name', 100);
+            $table->string('code', 10)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
+            $table->string('name', 100)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->string('type', 20);
             $table->string('unit', 10)->default('kg');
             $table->foreignId('purchase_ledger_account_id')->nullable()->constrained('ledger_accounts');
@@ -26,7 +26,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'code']);
         });
@@ -39,7 +40,7 @@ return new class extends Migration
             );
 
             CREATE TRIGGER items_prevent_delete BEFORE DELETE ON items
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in items cannot be deleted';
             SQL);
 
         Schema::table('journal_lines', function (Blueprint $table) {

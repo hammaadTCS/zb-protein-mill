@@ -10,29 +10,25 @@ return new class extends Migration
 
     /**
      * Spec §9.7: block DELETE on every master and transaction table (BR-GEN-03).
-     * The web role also has no DELETE privilege on them (ADR-0007); this is the second lock.
+     * Shared hosting gives one all-rights database user (BR-SEC-12, ADR-0014), so the trigger
+     * is not a second lock behind a privilege: it is the only lock, and it is the one that
+     * cannot be forgotten. MariaDB has one trigger per event, so each table names its own
+     * (ADR-0016).
      */
     public function up(): void
     {
-        DB::unprepared(<<<'SQL'
-            CREATE OR REPLACE FUNCTION prevent_delete() RETURNS trigger AS $$
-            BEGIN
-                RAISE EXCEPTION 'Rows in % cannot be deleted', TG_TABLE_NAME;
-            END;
-            $$ LANGUAGE plpgsql;
-            SQL);
-
         foreach (self::TABLES as $table) {
-            DB::unprepared("CREATE TRIGGER {$table}_prevent_delete BEFORE DELETE ON {$table} FOR EACH ROW EXECUTE FUNCTION prevent_delete()");
+            DB::unprepared(
+                "CREATE TRIGGER {$table}_prevent_delete BEFORE DELETE ON {$table}"
+                ." FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in {$table} cannot be deleted'"
+            );
         }
     }
 
     public function down(): void
     {
         foreach (self::TABLES as $table) {
-            DB::unprepared("DROP TRIGGER IF EXISTS {$table}_prevent_delete ON {$table}");
+            DB::unprepared("DROP TRIGGER IF EXISTS {$table}_prevent_delete");
         }
-
-        DB::unprepared('DROP FUNCTION IF EXISTS prevent_delete()');
     }
 };

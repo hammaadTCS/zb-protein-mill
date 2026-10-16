@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  * how many entries exist. Permission checks and the company scope stay the protection;
  * this keeps the internal number out of sight.
  *
- * The database also fills the column (gen_random_uuid()), so rows saved by a release
+ * The database also fills the column (UUID()), so rows saved by a release
  * without this trait still get one.
  *
  * @mixin Model

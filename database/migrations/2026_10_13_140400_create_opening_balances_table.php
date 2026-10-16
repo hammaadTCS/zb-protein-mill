@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('opening_balances', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('voucher_no', 20);
+            $table->string('voucher_no', 20)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->date('as_of_date');
             $table->foreignId('money_account_id')->nullable()->constrained('money_accounts');
             $table->foreignId('party_id')->nullable()->constrained('parties');
@@ -25,7 +25,8 @@ return new class extends Migration
             $table->foreignId('journal_entry_id')->nullable()->constrained('journal_entries');
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'voucher_no']);
         });
@@ -37,11 +38,13 @@ return new class extends Migration
                 (money_account_id IS NOT NULL AND side = 'balance')
                 OR (party_id IS NOT NULL AND side IN ('we_owe', 'they_owe', 'capital'))
             );
-            CREATE UNIQUE INDEX opening_balances_money_account_unique ON opening_balances (company_id, money_account_id) WHERE money_account_id IS NOT NULL;
-            CREATE UNIQUE INDEX opening_balances_party_unique ON opening_balances (company_id, party_id) WHERE party_id IS NOT NULL;
+            -- BR-OPB-02 (Q-8): MariaDB has no partial index, but a plain unique index lets a
+            -- column hold many NULLs, so the row that does not use the column is not blocked.
+            ALTER TABLE opening_balances ADD CONSTRAINT opening_balances_money_account_unique UNIQUE (company_id, money_account_id);
+            ALTER TABLE opening_balances ADD CONSTRAINT opening_balances_party_unique UNIQUE (company_id, party_id);
 
             CREATE TRIGGER opening_balances_prevent_delete BEFORE DELETE ON opening_balances
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in opening_balances cannot be deleted';
             SQL);
     }
 

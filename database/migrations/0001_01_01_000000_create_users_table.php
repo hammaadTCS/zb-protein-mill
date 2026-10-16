@@ -14,17 +14,19 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
+            $table->string('email')->unique()->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
+            $table->dateTime('email_verified_at', 3)->nullable();
             $table->string('password');
             $table->rememberToken();
-            $table->timestamps();
+            // §14d: DATETIME(3), always UTC (was $table->timestamps()).
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
-            $table->timestamp('created_at')->nullable();
+            $table->dateTime('created_at', 3)->nullable();
         });
 
         Schema::create('sessions', function (Blueprint $table) {

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->boolean('business_closed')->default(false);
             $table->foreignId('counted_by')->constrained('users');
-            $table->timestampTz('created_at')->useCurrent();
+            $table->dateTime('created_at', 3)->useCurrent();
 
             $table->index(['company_id', 'count_date']);
             $table->index(['money_account_id', 'count_date']);
@@ -34,7 +34,7 @@ return new class extends Migration
             );
 
             CREATE TRIGGER cash_counts_prevent_delete BEFORE DELETE ON cash_counts
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in cash_counts cannot be deleted';
             SQL);
     }
 

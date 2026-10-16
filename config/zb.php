@@ -11,31 +11,45 @@ return [
 
     // Card T10.1 / conventions.md §14a: the protection triggers that must exist, because
     // "the database itself" is what enforces the ledger and the delete/change rules
-    // (ADR-0002). `zb:db-check` and `zb:verify` refuse to pass when one is missing. The
-    // names are the table's prevent_delete/prevent_change trigger plus the seal-row
-    // trigger (T10.2 rebuilds them in MariaDB syntax; BR-LED-11, ADR-0016).
+    // (ADR-0014, ADR-0016). `zb:db-check` and `zb:verify` refuse to pass when one is
+    // missing. Every protected table has one trigger per refused event (MariaDB has no
+    // multi-event trigger): <table>_prevent_update and <table>_prevent_delete where both
+    // are refused, <table>_prevent_delete where only deletion is, plus the seal-row
+    // trigger that balances each journal entry (T10.2, BR-LED-11).
     'required_triggers' => [
         'adjustments_prevent_delete',
         'attachments_prevent_delete',
-        'audit_logs_prevent_change',
+        'audit_logs_prevent_delete',
+        'audit_logs_prevent_update',
         'bank_reconciliations_prevent_delete',
         'cash_counts_prevent_delete',
+        'companies_prevent_delete',
         'expense_categories_prevent_delete',
         'expenses_prevent_delete',
         'items_prevent_delete',
-        'journal_entries_prevent_change',
-        'journal_lines_prevent_change',
+        'journal_entries_prevent_delete',
+        'journal_entries_prevent_update',
+        'journal_lines_prevent_delete',
+        'journal_lines_prevent_update',
         'journal_seals_before_insert',
+        'journal_seals_prevent_delete',
+        'journal_seals_prevent_update',
+        'ledger_accounts_prevent_delete',
         'money_accounts_prevent_delete',
         'opening_balances_prevent_delete',
         'parties_prevent_delete',
         'partner_transactions_prevent_delete',
         'payments_prevent_delete',
-        'period_events_prevent_change',
+        'period_events_prevent_delete',
+        'period_events_prevent_update',
         'purchases_prevent_delete',
-        'rate_changes_prevent_change',
+        'rate_changes_prevent_delete',
+        'rate_changes_prevent_update',
         'rate_corrections_prevent_delete',
         'sales_prevent_delete',
+        'settings_prevent_delete',
         'transfers_prevent_delete',
+        'users_prevent_delete',
+        'voucher_sequences_prevent_delete',
     ],
 ];

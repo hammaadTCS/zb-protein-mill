@@ -22,7 +22,7 @@ return new class extends Migration
     {
         foreach (self::TABLES as $name) {
             Schema::table($name, function (Blueprint $table) {
-                $table->uuid('public_id')->default(new Expression('gen_random_uuid()'))->unique();
+                $table->uuid('public_id')->default(new Expression('(UUID())'))->unique()->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             });
         }
     }

@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('money_accounts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('name', 100);
+            $table->string('name', 100)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->string('type', 10);
             $table->string('bank_name', 150)->nullable();
             $table->string('account_title', 150)->nullable();
@@ -25,14 +25,15 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
         });
 
         DB::unprepared(<<<'SQL'
             ALTER TABLE money_accounts ADD CONSTRAINT money_accounts_type_check CHECK (type IN ('cash', 'bank'));
 
             CREATE TRIGGER money_accounts_prevent_delete BEFORE DELETE ON money_accounts
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in money_accounts cannot be deleted';
             SQL);
     }
 

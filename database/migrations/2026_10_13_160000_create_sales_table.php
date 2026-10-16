@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
-            $table->string('voucher_no', 20);
+            $table->string('voucher_no', 20)->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->date('entry_date');
             $table->foreignId('party_id')->constrained('parties');
             $table->foreignId('item_id')->constrained('items');
@@ -24,19 +24,20 @@ return new class extends Migration
             $table->decimal('rate', 14, 4)->nullable();
             $table->decimal('amount', 16, 2)->nullable();
             $table->string('rate_status', 10);
-            $table->timestampTz('rate_fixed_at')->nullable();
+            $table->dateTime('rate_fixed_at', 3)->nullable();
             $table->string('slip_no', 50)->nullable();
             $table->decimal('our_weight_kg', 14, 3)->nullable();
             $table->text('note')->nullable();
             $table->string('status', 10)->default('active');
             $table->text('cancel_reason')->nullable();
             $table->foreignId('cancelled_by')->nullable()->constrained('users');
-            $table->timestampTz('cancelled_at')->nullable();
+            $table->dateTime('cancelled_at', 3)->nullable();
             $table->foreignId('journal_entry_id')->nullable()->constrained('journal_entries');
-            $table->uuid('idempotency_key')->nullable();
+            $table->uuid('idempotency_key')->nullable()->collation('utf8mb4_nopad_bin'); // §14c unique-rule column
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
-            $table->timestampsTz();
+            $table->dateTime('created_at', 3)->nullable();
+            $table->dateTime('updated_at', 3)->nullable();
 
             $table->unique(['company_id', 'voucher_no']);
             $table->unique(['company_id', 'idempotency_key']); // BR-GEN-11
@@ -59,7 +60,7 @@ return new class extends Migration
             );
 
             CREATE TRIGGER sales_prevent_delete BEFORE DELETE ON sales
-                FOR EACH ROW EXECUTE FUNCTION prevent_delete();
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Rows in sales cannot be deleted';
             SQL);
     }
 

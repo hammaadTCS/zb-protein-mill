@@ -53,11 +53,19 @@ only then is PostgreSQL removed (T10.3).
 | Gate | How verified | Result |
 | --- | --- | --- |
 | Full suite green on MariaDB (stop-gate 1) | `php artisan test` | 597 tests, 597 passed, 6,557 assertions |
-| Same answers, same rows, same order (stop-gate 2) | AT-1…AT-6, which compare the live answers to `tests/Acceptance/…/controls.json` recorded from the PostgreSQL system | 6 tests, 131 assertions — pass, no difference |
+| Same answers, same rows, same order (stop-gate 2) | the acceptance world (AT-1…AT-6) and every report, statement, ageing, dashboard and PDF test, run on **both** engines: PostgreSQL 16.15 with the pre-migration code (`main`, 76707e1, in a worktree) and MariaDB 11.8.9 with the ported code | PostgreSQL: 588 tests, 6,522 assertions, pass. MariaDB: 597 tests, 6,557 assertions, pass. AT-1…AT-6 alone: 6 tests and 131 assertions on both engines, both green. No difference |
 | PostgreSQL removed (stop-gate 3) | `config/database.php` no longer defines `pgsql` or `pgsql_migrator`; `MigratorConnectionTest` (BR-SEC-12, D-43) | Pass |
 | The 7 `zb:verify` checks (T10.2) | `php artisan zb:verify` | All OK: database, journals_balance, seals, trial_balance, voucher_numbers, control_account_parties, entry_journals |
 | Startup connection check | `php artisan zb:db-check` | OK — "MariaDB with the enforced connection settings" |
 | No PostgreSQL-only SQL left | `bash scripts/guard.sh` (conventions §14b) | Pass |
+
+**How stop-gate 2 was read.** The expectation files (`docs/acceptance/*.json`) are an independent
+simulation of the posting rules, not a recording of either engine (docs/acceptance/README.md), and they
+are byte-identical in both trees, and so is every test file that asserts a report, statement, ageing,
+dashboard or PDF figure — none of those changed. What did change is the database-rule tests (T10.1,
+T10.2) and the three files listed below (T10.3). The assertions compare
+with strict identity, so two engines that satisfy the same expectations satisfy each other key by key.
+AT-1…AT-6 are part of each suite, so the acceptance world ran on both engines there.
 
 **Row order (Q-2).** Every `ORDER BY` in the app was checked in T10.3 to be on a `NOT NULL` column (or
 an alias of one), so MariaDB's NULL-sorts-first made no result order differ from PostgreSQL's

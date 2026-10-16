@@ -476,7 +476,7 @@ MariaDB 11.8, 27 tables plus the permission package's tables (P for names and ex
 | `created_by`, `updated_by` | bigint, FK users | Set by the system |
 | `created_at`, `updated_at` | datetime(3) | Stored in UTC, shown in Asia/Karachi |
 
-**Tables opened from a link** (parties, purchases, sales, payments, expenses, transfers, partner_transactions, adjustments, attachments, money_accounts, items, expense_categories, users) also have `public_id` uuid, not null, default `gen_random_uuid()`, unique (BR-SEC-19).
+**Tables opened from a link** (parties, purchases, sales, payments, expenses, transfers, partner_transactions, adjustments, attachments, money_accounts, items, expense_categories, users) also have `public_id` uuid, not null, default `(UUID())`, unique (BR-SEC-19).
 
 **Transaction tables** (purchases, sales, adjustments, payments, expenses, partner_transactions, transfers) also have: `voucher_no` varchar(20) unique per company, `entry_date` date, `status` (active / cancelled), `cancel_reason` text, `cancelled_by`, `cancelled_at`, `journal_entry_id` (FK, latest journal, nullable), `idempotency_key` uuid nullable with a unique index on (`company_id`, `idempotency_key`) (BR-GEN-11).
 
@@ -611,7 +611,7 @@ MariaDB 11.8, 27 tables plus the permission package's tables (P for names and ex
 
 **audit_logs:** `user_id`, `action`, `auditable_type`, `auditable_id`, `old_values` json, `new_values` json, `reason`, `ip_address`, `user_agent`, `created_at`.
 
-**journal_seals:** `journal_entry_id` (unique), `line_count`, `total_debit`, `total_credit`, `sealed_at`. One row per journal entry, created at the end of the saving transaction; never updated or deleted (BR-LED-11, §9.7). A trigger on this table refuses an entry whose lines have fewer than two rows or whose debit does not equal its credit.
+**journal_seals:** `company_id`, `journal_entry_id` (unique), `source` (`posting`), `line_count`, `total_debit`, `total_credit`, `sealed_at`. One row per journal entry, created at the end of the saving transaction; never updated or deleted (BR-LED-11, §9.7). A trigger on this table refuses an entry whose lines have fewer than two rows or whose debit does not equal its credit.
 
 ### 9.6 Settings keys
 
@@ -639,11 +639,11 @@ MariaDB 11.8, 27 tables plus the permission package's tables (P for names and ex
 
 ### 9.7 Database protections (P)
 
-- Trigger: block UPDATE and DELETE on `journal_entries`, `journal_lines`, `audit_logs`, `rate_changes`, `period_events`.
+- Trigger: block UPDATE and DELETE on `journal_entries`, `journal_lines`, `audit_logs`, `rate_changes`, `period_events`, `journal_seals`.
 - Trigger: block DELETE on every master and transaction table.
 - **Seal row (`journal_seals`, BR-LED-11):** one row per journal entry, written by `PostingService` at the end of the saving transaction. A `BEFORE INSERT` trigger on `journal_seals` sums that entry's `journal_lines` and refuses the whole save (`SIGNAL SQLSTATE '45000'`) when the entry has fewer than two lines or its total debit does not equal its total credit. This replaces the deferred constraint trigger, which MariaDB does not have (D-45, ADR-0016).
 - Indexes: (`company_id`, `entry_date`) and (`party_id`, `entry_date`) on transaction tables; (`rate_status`) on purchases and sales; (`ledger_account_id`), (`party_id`) on journal_lines; (`posting_date`), (`source_type`, `source_id`) on journal_entries.
-- Unique-rule columns (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the **binary collation** `utf8mb4_bin`, so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
+- Unique-rule columns (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the **binary no-pad collation** `utf8mb4_nopad_bin` — not `utf8mb4_bin`, which is PAD SPACE on MariaDB and would treat "Aslam" and "Aslam " as the same value — so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
 - `CHECK` constraints are enforced on MariaDB 10.2 and newer; the application refuses to start on an older version (Q-9, T10.1).
 - InnoDB only, `utf8mb4` only.
 

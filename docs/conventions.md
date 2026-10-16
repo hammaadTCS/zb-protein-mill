@@ -151,7 +151,7 @@ Use `Relation::enforceMorphMap` in `AppServiceProvider` with exactly these alias
 - Shared props (via `HandleInertiaRequests`): `auth.user` (id, name, roles, permissions list), `settings.formats` (`kg_decimals`, `rate_decimals`, `amount_rounding`, `number_format`, `date_format`), `flash.success`, `flash.voucher`, `app.env_name` (`staging` shows a banner; from `ZB_ENV_NAME`). Never share secrets, `.env` values or other users' data.
 - Forms use Inertia's `useForm` (spec §5, D-44). Server validation errors always show under the field.
 - Routes in React come from **Wayfinder** (generated in `resources/js/actions` and `resources/js/routes`; git-ignored, rebuilt by `npm run build` or `php artisan wayfinder:generate --with-form`). Never hard-code URLs; never add Ziggy.
-- **Public ids (BR-SEC-19):** a model whose rows open from a link uses `App\Support\HasPublicId` and its migration adds `public_id uuid` with `DEFAULT gen_random_uuid()`, unique; its route parameter gets the UUID pattern in `AppServiceProvider::configureRoutePatterns()`. Props that build a link send `public_id`; React passes `x.public_id` to Wayfinder. An address-bar filter takes the public id (`Model::idFromPublic()`) and is sent back with `shownFilters()`. Form bodies and background lookups keep internal ids.
+- **Public ids (BR-SEC-19):** a model whose rows open from a link uses `App\Support\HasPublicId` and its migration adds `public_id uuid` with `DEFAULT (UUID())`, unique; its route parameter gets the UUID pattern in `AppServiceProvider::configureRoutePatterns()`. Props that build a link send `public_id`; React passes `x.public_id` to Wayfinder. An address-bar filter takes the public id (`Model::idFromPublic()`) and is sent back with `shownFilters()`. Form bodies and background lookups keep internal ids.
 - No `dangerouslySetInnerHTML`, no inline event-handler strings, no `eval`, no scripts, styles, fonts or images from other sites (CSP, BR-SEC-14). Inline `<script>` in Blade must carry `nonce="{{ Vite::cspNonce() }}"`.
 - Lint and format with `npm run check` (vite-plus); fix with `npm run check:fix`. Type check with `npm run types:check`. Unit tests with `npm test` (`vp test`, from T2.1).
 - All interface words come from `docs/glossary.md`. Do not invent labels.
@@ -255,7 +255,7 @@ Never write PostgreSQL-only SQL. `scripts/guard.sh` and a test fail on the old f
 
 ### 14c. Collation and ordering
 
-- Columns with a **unique rule** (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the binary collation **`utf8mb4_bin`**, so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
+- Columns with a **unique rule** (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the binary collation **`utf8mb4_nopad_bin`** — MariaDB's `utf8mb4_bin` is PAD SPACE, so it would treat "Aslam" and "Aslam " as equal — so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
 - **Every `ORDER BY` on a column that can be empty states the NULL order explicitly** (`ORDER BY code IS NULL, code` style), because MariaDB sorts `NULL` first where PostgreSQL sorted it last (Q-2). A guard rule and a test check report order.
 
 ### 14d. Types
@@ -263,4 +263,4 @@ Never write PostgreSQL-only SQL. `scripts/guard.sh` and a test fail on the old f
 - Money `DECIMAL(16,2)`, kg `DECIMAL(14,3)`, rate `DECIMAL(14,4)` (`numeric` is the synonym). Precise decimals with too many digits are **rounded silently** by MariaDB, so the app refuses them before saving (`Decimal` helpers, Q-10) exactly as the PostgreSQL error did.
 - Timestamps are `DATETIME(3)`, always UTC. There is no `timestamptz`; there are no partial indexes (`UNIQUE … WHERE …`) — a plain unique index on a nullable column is used instead (MariaDB allows many `NULL`s; Q-8).
 - `json` columns are MariaDB's `JSON` (a `LONGTEXT` with a validity check), not PostgreSQL's `jsonb`.
-- `public_id` is a `uuid` column with `DEFAULT gen_random_uuid()` (MariaDB 11.8), unique.
+- `public_id` is a `uuid` column with `DEFAULT (UUID())` (MariaDB 11.8 has no `gen_random_uuid()`), unique.

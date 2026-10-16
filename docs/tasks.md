@@ -124,8 +124,8 @@ Tasks marked **[Human]** are yours; Claude only prepares what the card says.
 
 ## M10: Run on Hostinger shared hosting (MariaDB)  ·  card file `docs/cards/M10.md`
 
-- [ ] **T10.1** The same MariaDB everywhere. *Done when:* the existing suite boots against MariaDB 11.8 with the PostgreSQL code still in place; `DbSettingsTest` passes (the full suite goes green in T10.3).
-- [ ] **T10.2** Migrations and database rules (33 migration files). *Done when:* every schema-refusal test and the 7 check scripts pass on MariaDB; the seal trigger refuses an entry with one line and an entry whose debits do not equal its credits.
+- [x] **T10.1** The same MariaDB everywhere. *Done when:* the existing suite boots against MariaDB 11.8 with the PostgreSQL code still in place; `DbSettingsTest` passes (the full suite goes green in T10.3). (16 October 2026: `DbSettingsTest` and `DatabaseGuardTest` pass on MariaDB 11.8.9 — 5 tests, 12 assertions.)
+- [ ] **T10.2** Migrations and database rules (33 migration files). *Done when:* every schema-refusal test and the 7 check scripts pass on MariaDB; the seal trigger refuses an entry with one line and an entry whose debits do not equal its credits. (16 October 2026: all 33 migrations, the 34 triggers and every schema-refusal test are green on MariaDB 11.8.9; the `zb:verify` check scripts need T10.3's query ports before they can run.)
 - [ ] **T10.3** Queries: the PostgreSQL-only SQL, and the stop-gate. *Done when:* the full suite is green on MariaDB 11.8, the same-answer check shows no difference and PostgreSQL is removed, all recorded in `docs/release-checks.md`.
 - [ ] **T10.4** Books fingerprint. *(deferred by the owner 15 October 2026 — not built now)*
 - [ ] **T10.5** Security headers in the app. *Done when:* tests pass; the T8.1 "verify on staging" header rows are filled from staging.

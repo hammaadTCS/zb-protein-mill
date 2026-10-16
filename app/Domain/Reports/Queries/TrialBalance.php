@@ -27,10 +27,10 @@ final class TrialBalance
             ->havingRaw('SUM(journal_lines.debit) <> 0 OR SUM(journal_lines.credit) <> 0')
             ->orderBy('ledger_accounts.code')
             ->select('ledger_accounts.code', 'ledger_accounts.name')
-            ->selectRaw('SUM(journal_lines.debit)::numeric(16,2)::text AS debit_total')
-            ->selectRaw('SUM(journal_lines.credit)::numeric(16,2)::text AS credit_total')
-            ->selectRaw('GREATEST(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(16,2)::text AS balance_debit')
-            ->selectRaw('GREATEST(SUM(journal_lines.credit) - SUM(journal_lines.debit), 0)::numeric(16,2)::text AS balance_credit');
+            ->selectRaw('CAST(SUM(journal_lines.debit) AS DECIMAL(16,2)) AS debit_total')
+            ->selectRaw('CAST(SUM(journal_lines.credit) AS DECIMAL(16,2)) AS credit_total')
+            ->selectRaw('CAST(GREATEST(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0) AS DECIMAL(16,2)) AS balance_debit')
+            ->selectRaw('CAST(GREATEST(SUM(journal_lines.credit) - SUM(journal_lines.debit), 0) AS DECIMAL(16,2)) AS balance_credit');
 
         if ($withParties) {
             // Control accounts split by party, with the party's code and name.

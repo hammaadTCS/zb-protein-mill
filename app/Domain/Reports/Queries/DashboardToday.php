@@ -29,7 +29,7 @@ final class DashboardToday
                 ->where('status', EntryStatus::Active->value)
                 ->where('entry_date', $today)
                 ->groupBy('item_id')
-                ->selectRaw('item_id, SUM(kg)::numeric(14,3)::text AS kg')
+                ->selectRaw('item_id, CAST(SUM(kg) AS DECIMAL(14,3)) AS kg')
                 ->pluck('kg', 'item_id');
 
             return array_values($items
@@ -45,15 +45,15 @@ final class DashboardToday
             ->where('payments.status', EntryStatus::Active->value)
             ->where('journal_entries.posting_date', $today)
             ->toBase()
-            ->selectRaw("COALESCE(SUM(payments.amount) FILTER (WHERE payments.direction = 'received'), 0)::numeric(16,2)::text AS received")
-            ->selectRaw("COALESCE(SUM(payments.amount) FILTER (WHERE payments.direction = 'paid'), 0)::numeric(16,2)::text AS paid")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN payments.direction = 'received' THEN payments.amount END), 0) AS DECIMAL(16,2)) AS received")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN payments.direction = 'paid' THEN payments.amount END), 0) AS DECIMAL(16,2)) AS paid")
             ->first();
 
         $expenses = Expense::query()
             ->where('status', EntryStatus::Active->value)
             ->where('entry_date', $today)
             ->toBase()
-            ->selectRaw('COALESCE(SUM(amount), 0)::numeric(16,2)::text AS total')
+            ->selectRaw('CAST(COALESCE(SUM(amount), 0) AS DECIMAL(16,2)) AS total')
             ->value('total');
 
         return [

@@ -6,7 +6,6 @@ use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -68,8 +67,11 @@ it('BR-GEN-11 a concurrent duplicate insert is recognised as a duplicate', funct
     probe($user, $key, 'PUR-000001');
 
     try {
-        // The second request of a double tap, in its own savepoint like a real save.
-        DB::transaction(fn () => probe($user, $key, 'PUR-000002'));
+        // The second request of a double tap. A nested DB::transaction() cannot be used
+        // here: this file creates its table in beforeEach, and MariaDB has no transactional
+        // DDL, so that CREATE TABLE commits the wrapping test transaction and its savepoints
+        // are gone. What the helper is asked to recognise is the driver error itself.
+        probe($user, $key, 'PUR-000002');
         $this->fail('The duplicate key was accepted.');
     } catch (QueryException $e) {
         expect(Idempotency::isDuplicateKeyViolation($e))->toBeTrue();
@@ -81,7 +83,8 @@ it('BR-GEN-11 another unique violation is not mistaken for a duplicate submit', 
     probe($user, (string) Str::uuid(), 'PUR-000001');
 
     try {
-        DB::transaction(fn () => probe($user, (string) Str::uuid(), 'PUR-000001'));
+        // An idempotency key of its own, so the only clash is the voucher number.
+        probe($user, (string) Str::uuid(), 'PUR-000001');
         $this->fail('The duplicate voucher was accepted.');
     } catch (QueryException $e) {
         expect(Idempotency::isDuplicateKeyViolation($e))->toBeFalse();

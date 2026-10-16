@@ -32,13 +32,13 @@ final class AccountStatement
         $opening = (string) self::lines($account)
             ->where(fn (Builder $q) => $q->where('journal_entries.posting_date', '<', $from)->orWhere('journal_entries.source_type', 'opening_balance'))
             ->where('journal_entries.posting_date', '<=', $to)
-            ->selectRaw('COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(20, 2)::text AS net')
+            ->selectRaw('CAST(COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0) AS DECIMAL(20,2)) AS net')
             ->value('net');
 
         $totals = self::movements($account, $from, $to)
             ->selectRaw('COUNT(*) AS count')
-            ->selectRaw('COALESCE(SUM(journal_lines.debit), 0)::numeric(20, 2)::text AS total_in')
-            ->selectRaw('COALESCE(SUM(journal_lines.credit), 0)::numeric(20, 2)::text AS total_out')
+            ->selectRaw('CAST(COALESCE(SUM(journal_lines.debit), 0) AS DECIMAL(20,2)) AS total_in')
+            ->selectRaw('CAST(COALESCE(SUM(journal_lines.credit), 0) AS DECIMAL(20,2)) AS total_out')
             ->first();
 
         $count = (int) ($totals->count ?? 0);
@@ -55,7 +55,7 @@ final class AccountStatement
             'journal_entries.reversal_of_id', 'journal_entries.description AS journal_description',
         ])
             ->selectRaw('ROW_NUMBER() OVER (ORDER BY journal_entries.posting_date, journal_entries.id, journal_lines.line_no) AS row_no')
-            ->selectRaw('(SUM(journal_lines.debit - journal_lines.credit) OVER (ORDER BY journal_entries.posting_date, journal_entries.id, journal_lines.line_no ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))::numeric(20, 2)::text AS running');
+            ->selectRaw('CAST(SUM(journal_lines.debit - journal_lines.credit) OVER (ORDER BY journal_entries.posting_date, journal_entries.id, journal_lines.line_no ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS DECIMAL(20,2)) AS running');
 
         $lines = DB::query()->fromSub($numbered, 'm')
             ->select('m.*')

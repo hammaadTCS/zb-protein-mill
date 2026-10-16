@@ -38,7 +38,7 @@ final class ExpenseReport
             ->orderBy('expense_categories.sort_order')
             ->orderBy('expense_categories.name')
             ->toBase()
-            ->selectRaw('expense_categories.name AS category, (SUM(journal_lines.debit) - SUM(journal_lines.credit))::numeric(16,2)::text AS amount')
+            ->selectRaw('expense_categories.name AS category, CAST(SUM(journal_lines.debit) - SUM(journal_lines.credit) AS DECIMAL(16,2)) AS amount')
             ->get()
             ->map(fn (object $row): array => ['category' => (string) $row->category, 'amount' => (string) $row->amount])
             ->values()

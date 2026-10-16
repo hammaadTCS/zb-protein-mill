@@ -53,15 +53,15 @@ class PaymentController extends Controller
             ->when(in_array($filters['status'], ['active', 'cancelled'], true), fn (Builder $q) => $q->where('status', $filters['status']))
             ->when($filters['q'] !== '', function (Builder $q) use ($filters): void {
                 $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
-                $q->where(fn (Builder $inner) => $inner->where('voucher_no', 'ilike', $like)
-                    ->orWhereHas('party', fn (Builder $party) => $party->where('name', 'ilike', $like)));
+                $q->where(fn (Builder $inner) => $inner->whereRaw('voucher_no COLLATE utf8mb4_unicode_ci LIKE ?', [$like])
+                    ->orWhereHas('party', fn (Builder $party) => $party->whereRaw('name COLLATE utf8mb4_unicode_ci LIKE ?', [$like])));
             });
 
         // Spec §11.2: totals of active entries only; paid and received apart.
         $totals = (clone $query)->reorder()->where('status', EntryStatus::Active->value)->whereIn('approval_status', ['not_required', 'approved'])
             ->toBase()
-            ->selectRaw("COALESCE(SUM(amount) FILTER (WHERE direction = 'paid'), 0)::numeric(20, 2)::text AS paid")
-            ->selectRaw("COALESCE(SUM(amount) FILTER (WHERE direction = 'received'), 0)::numeric(20, 2)::text AS received")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN direction = 'paid' THEN amount END), 0) AS DECIMAL(20,2)) AS paid")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN direction = 'received' THEN amount END), 0) AS DECIMAL(20,2)) AS received")
             ->first();
 
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();

@@ -61,7 +61,7 @@ class SaleController extends Controller
         // Spec §11.2: totals of active entries only, for the whole filtered list.
         $totals = (clone $query)->reorder()->where('status', EntryStatus::Active->value)
             ->toBase()
-            ->selectRaw('COALESCE(SUM(kg), 0)::numeric(20, 3)::text AS kg, COALESCE(SUM(amount), 0)::numeric(20, 2)::text AS amount')
+            ->selectRaw('CAST(COALESCE(SUM(kg), 0) AS DECIMAL(20,3)) AS kg, CAST(COALESCE(SUM(amount), 0) AS DECIMAL(20,2)) AS amount')
             ->first();
 
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();
@@ -269,8 +269,8 @@ class SaleController extends Controller
         $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $text).'%';
 
         $query->where(fn (Builder $q) => $q
-            ->where('voucher_no', 'ilike', $like)
-            ->orWhereHas('party', fn (Builder $party) => $party->where('name', 'ilike', $like)));
+            ->whereRaw('voucher_no COLLATE utf8mb4_unicode_ci LIKE ?', [$like])
+            ->orWhereHas('party', fn (Builder $party) => $party->whereRaw('name COLLATE utf8mb4_unicode_ci LIKE ?', [$like])));
     }
 
     /**

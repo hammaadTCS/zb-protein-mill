@@ -307,9 +307,9 @@ class PartyController extends Controller
         $digits = preg_replace('/\D/', '', $text) ?? '';
 
         return $query->where(function (Builder $query) use ($like, $digits): void {
-            $query->where('name', 'ilike', $like)
-                ->orWhere('name_ur', 'ilike', $like)
-                ->orWhere('code', 'ilike', $like);
+            $query->whereRaw('name COLLATE utf8mb4_unicode_ci LIKE ?', [$like])
+                ->orWhere('name_ur', 'like', $like)
+                ->orWhereRaw('code COLLATE utf8mb4_unicode_ci LIKE ?', [$like]);
 
             if (strlen($digits) >= 3) {
                 $query->orWhere('mobile', 'like', '%'.$digits.'%');

@@ -201,7 +201,7 @@ class Party extends Model
                 ->where('status', 'active')
                 ->where('rate_status', 'pending')
                 ->groupBy('party_id')
-                ->selectRaw('party_id, SUM(kg)::numeric(20, 3)::text AS kg')
+                ->selectRaw('party_id, CAST(SUM(kg) AS DECIMAL(20,3)) AS kg')
                 ->pluck('kg', 'party_id');
 
             foreach ($rows as $partyId => $sum) {

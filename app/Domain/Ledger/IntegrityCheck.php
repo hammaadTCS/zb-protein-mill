@@ -44,7 +44,7 @@ final class IntegrityCheck
         'rate_correction' => ['rate_corrections', 'voucher_no', null],
         'journal' => ['journal_entries', 'entry_no', null],
         // Conventions §7: a month-end cash adjustment keeps its CSH voucher in the journal description.
-        'cash_adjustment' => ['journal_entries', "substring(description from 'CSH-[0-9]{6}')", "source_type = 'month_end_adjustment' AND reversal_of_id IS NULL"],
+        'cash_adjustment' => ['journal_entries', "REGEXP_SUBSTR(description, 'CSH-[0-9]{6}')", "source_type = 'month_end_adjustment' AND reversal_of_id IS NULL"],
         'party_supplier' => ['parties', 'code', "type = 'supplier'"],
         'party_buyer' => ['parties', 'code', "type = 'buyer'"],
         'party_partner' => ['parties', 'code', "type = 'partner'"],

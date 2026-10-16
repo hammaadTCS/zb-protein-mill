@@ -26,7 +26,7 @@ final class LedgerBalance
                 ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
                 ->where('journal_entries.posting_date', '<=', $asOf))
             ->toBase()
-            ->selectRaw('COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(20, 2)::text AS balance')
+            ->selectRaw('CAST(COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0) AS DECIMAL(20,2)) AS balance')
             ->value('balance');
 
         return (string) $balance;
@@ -72,7 +72,7 @@ final class LedgerBalance
                 ->where('journal_entries.posting_date', '<=', $asOf))
             ->groupBy('journal_lines.party_id', 'ledger_accounts.code')
             ->toBase()
-            ->selectRaw('journal_lines.party_id, ledger_accounts.code, (SUM(journal_lines.debit) - SUM(journal_lines.credit))::numeric(20, 2)::text AS net')
+            ->selectRaw('journal_lines.party_id, ledger_accounts.code, CAST(SUM(journal_lines.debit) - SUM(journal_lines.credit) AS DECIMAL(20,2)) AS net')
             ->get();
 
         $nets = [];
@@ -93,7 +93,7 @@ final class LedgerBalance
             ->where('ledger_accounts.code', $code)
             ->where('journal_lines.party_id', $partyId)
             ->toBase()
-            ->selectRaw('COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(20, 2)::text AS net')
+            ->selectRaw('CAST(COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0) AS DECIMAL(20,2)) AS net')
             ->value('net');
 
         return (string) $net;
@@ -106,7 +106,7 @@ final class LedgerBalance
             ->where('journal_entry_id', $journalEntryId)
             ->where('ledger_account_id', $ledgerAccountId)
             ->toBase()
-            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0)::numeric(20, 2)::text AS net')
+            ->selectRaw('CAST(COALESCE(SUM(debit) - SUM(credit), 0) AS DECIMAL(20,2)) AS net')
             ->value('net');
 
         return (string) $net;

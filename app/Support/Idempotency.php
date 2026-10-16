@@ -36,14 +36,18 @@ final class Idempotency
     /**
      * True when the insert failed only because another request with the same key
      * was saved at the same moment (unique index on company_id + idempotency_key).
+     *
+     * MariaDB reports it as SQLSTATE 23000 with driver code 1062 (ER_DUP_ENTRY) and
+     * the message "Duplicate entry '…' for key '<index>'"; the index name is what
+     * tells an idempotency clash from any other unique rule (Q-11, conventions §14b).
      */
     public static function isDuplicateKeyViolation(QueryException $e): bool
     {
-        if ($e->getCode() !== '23505' && ($e->errorInfo[0] ?? null) !== '23505') {
+        if (($e->errorInfo[1] ?? null) !== 1062) {
             return false;
         }
 
-        return preg_match('/unique constraint "([^"]+)"/', $e->getMessage(), $m) === 1
+        return preg_match("/for key '([^']+)'/", $e->getMessage(), $m) === 1
             && str_ends_with($m[1], '_idempotency_key_unique');
     }
 

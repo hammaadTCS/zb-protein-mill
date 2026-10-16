@@ -35,7 +35,7 @@ final class PartyKhata
         if ($from !== null) {
             $opening = (string) self::lines($party, $accountIds)
                 ->where('journal_entries.posting_date', '<', $from)
-                ->selectRaw('COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(20, 2)::text AS net')
+                ->selectRaw('CAST(COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0) AS DECIMAL(20,2)) AS net')
                 ->value('net');
         }
 

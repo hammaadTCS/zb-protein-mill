@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 it('NFR-02 inside remember() each setting is read once; outside it every read is fresh', function () {
     $queries = 0;
     DB::listen(function ($query) use (&$queries) {
-        if (str_contains($query->sql, '"settings"')) {
+        if (str_contains($query->sql, '`settings`')) {
             $queries++;
         }
     });
@@ -39,7 +39,7 @@ it('NFR-02 a GET request reads each setting at most once', function () {
     $owner = owner();
     $queries = 0;
     DB::listen(function ($query) use (&$queries) {
-        if (str_contains($query->sql, 'from "settings"')) {
+        if (str_contains($query->sql, 'from `settings`')) {
             $queries++;
         }
     });

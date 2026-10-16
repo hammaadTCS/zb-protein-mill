@@ -87,7 +87,7 @@ final class AuditTrail
     private static function search(Builder $query, string $text): void
     {
         $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $text).'%';
-        $partyIds = Party::query()->where(fn (Builder $q) => $q->where('name', 'ilike', $like)->orWhere('code', 'ilike', $like))->pluck('id')->all();
+        $partyIds = Party::query()->where(fn (Builder $q) => $q->whereRaw('name COLLATE utf8mb4_unicode_ci LIKE ?', [$like])->orWhereRaw('code COLLATE utf8mb4_unicode_ci LIKE ?', [$like]))->pluck('id')->all();
 
         $query->where(function (Builder $outer) use ($like, $partyIds): void {
             $outer->where(fn (Builder $q) => $q->where('auditable_type', 'party')->whereIn('auditable_id', $partyIds));
@@ -100,7 +100,7 @@ final class AuditTrail
                 }
 
                 /** @var Builder<Model> $records */
-                $records = $model::query()->where('voucher_no', 'ilike', $like);
+                $records = $model::query()->whereRaw('voucher_no COLLATE utf8mb4_unicode_ci LIKE ?', [$like]);
 
                 if (in_array($type, ['purchase', 'sale', 'payment', 'expense', 'adjustment', 'partner_transaction'], true) && $partyIds !== []) {
                     $records->orWhereIn('party_id', $partyIds);

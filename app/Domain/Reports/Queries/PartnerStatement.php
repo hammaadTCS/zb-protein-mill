@@ -34,8 +34,8 @@ final class PartnerStatement
             ->groupBy('journal_lines.party_id')
             ->select('journal_lines.party_id')
             // Reversals of cancelled or edited entries cancel out inside each sum.
-            ->selectRaw("COALESCE(SUM(journal_lines.credit - journal_lines.debit) FILTER (WHERE ledger_accounts.code = '3000'), 0)::numeric(16,2)::text AS invested")
-            ->selectRaw("COALESCE(SUM(journal_lines.debit - journal_lines.credit) FILTER (WHERE ledger_accounts.code = '3100'), 0)::numeric(16,2)::text AS withdrawn")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN ledger_accounts.code = '3000' THEN journal_lines.credit - journal_lines.debit END), 0) AS DECIMAL(16,2)) AS invested")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN ledger_accounts.code = '3100' THEN journal_lines.debit - journal_lines.credit END), 0) AS DECIMAL(16,2)) AS withdrawn")
             ->get()
             ->keyBy('party_id');
 

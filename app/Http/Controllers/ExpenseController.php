@@ -53,15 +53,15 @@ class ExpenseController extends Controller
             ->when($filters['status'] !== '', fn (Builder $q) => $q->where('status', $filters['status']))
             ->when($filters['q'] !== '', function (Builder $q) use ($filters): void {
                 $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
-                $q->where(fn (Builder $inner) => $inner->where('voucher_no', 'ilike', $like)
-                    ->orWhere('note', 'ilike', $like)
-                    ->orWhereHas('party', fn (Builder $party) => $party->where('name', 'ilike', $like)));
+                $q->where(fn (Builder $inner) => $inner->whereRaw('voucher_no COLLATE utf8mb4_unicode_ci LIKE ?', [$like])
+                    ->orWhere('note', 'like', $like)
+                    ->orWhereHas('party', fn (Builder $party) => $party->whereRaw('name COLLATE utf8mb4_unicode_ci LIKE ?', [$like])));
             });
 
         // Spec §11.2: the total of active entries only.
         $total = (clone $query)->reorder()->where('status', EntryStatus::Active->value)
             ->toBase()
-            ->selectRaw('COALESCE(SUM(amount), 0)::numeric(20, 2)::text AS amount')
+            ->selectRaw('CAST(COALESCE(SUM(amount), 0) AS DECIMAL(20,2)) AS amount')
             ->value('amount');
 
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();

@@ -31,9 +31,9 @@ use Illuminate\Support\Facades\DB;
 final class BusinessInsights
 {
     /** Kg of every entry; amount and kg of fixed-rate entries (pending ones have no amount yet). */
-    private const SUMS = "COALESCE(SUM(t.kg), 0)::numeric(16, 3)::text AS kg,
-        COALESCE(SUM(t.amount) FILTER (WHERE t.rate_status = 'fixed'), 0)::numeric(18, 2)::text AS fixed_amount,
-        COALESCE(SUM(t.kg) FILTER (WHERE t.rate_status = 'fixed'), 0)::numeric(16, 3)::text AS fixed_kg";
+    private const SUMS = "CAST(COALESCE(SUM(t.kg), 0) AS DECIMAL(16,3)) AS kg,
+        CAST(COALESCE(SUM(CASE WHEN t.rate_status = 'fixed' THEN t.amount END), 0) AS DECIMAL(18,2)) AS fixed_amount,
+        CAST(COALESCE(SUM(CASE WHEN t.rate_status = 'fixed' THEN t.kg END), 0) AS DECIMAL(16,3)) AS fixed_kg";
 
     /**
      * The default period: `insights_period_months` back from today, to today.
@@ -154,8 +154,8 @@ final class BusinessInsights
     private static function byMonth(string $table, string $column, string $from, string $to): array
     {
         return DB::query()->fromSub(self::entries($table, $from, $to), 't')
-            ->groupByRaw("to_char(t.entry_date, 'YYYY-MM'), t.{$column}")
-            ->selectRaw("to_char(t.entry_date, 'YYYY-MM') AS month, t.{$column} AS grp")
+            ->groupByRaw("DATE_FORMAT(t.entry_date, '%Y-%m'), t.{$column}")
+            ->selectRaw("DATE_FORMAT(t.entry_date, '%Y-%m') AS month, t.{$column} AS grp")
             ->selectRaw(self::SUMS)
             ->get()
             ->groupBy('month')
@@ -175,8 +175,8 @@ final class BusinessInsights
             ->groupBy('t.party_id')
             ->selectRaw('t.party_id AS grp')
             ->selectRaw(self::SUMS)
-            ->selectRaw('COALESCE(SUM(t.kg - t.our_weight_kg) FILTER (WHERE t.our_weight_kg IS NOT NULL), 0)::numeric(16, 3)::text AS difference')
-            ->selectRaw('COALESCE(SUM(t.our_weight_kg), 0)::numeric(16, 3)::text AS our_kg')
+            ->selectRaw('CAST(COALESCE(SUM(CASE WHEN t.our_weight_kg IS NOT NULL THEN t.kg - t.our_weight_kg END), 0) AS DECIMAL(16,3)) AS difference')
+            ->selectRaw('CAST(COALESCE(SUM(t.our_weight_kg), 0) AS DECIMAL(16,3)) AS our_kg')
             ->get();
         $parties = Party::query()->whereIn('id', $rows->pluck('grp')->all())->get()->keyBy('id');
         $nets = LedgerBalance::partyNets(array_values($parties->modelKeys()), $to); // one query (T9.2)
@@ -227,7 +227,7 @@ final class BusinessInsights
             ->where('status', EntryStatus::Active->value)
             ->whereBetween('entry_date', [$from, $to])
             ->groupBy('party_id')
-            ->selectRaw('party_id, SUM(amount)::numeric(18, 2)::text AS total')
+            ->selectRaw('party_id, CAST(SUM(amount) AS DECIMAL(18,2)) AS total')
             ->pluck('total', 'party_id')
             ->all();
         $allSales = Decimal::sum($rows->map(fn (object $row): string => self::row($row)['fixed_amount'])->all());

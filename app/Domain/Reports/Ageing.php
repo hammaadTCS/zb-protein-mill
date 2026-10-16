@@ -48,7 +48,7 @@ final class Ageing
      * balance: an increase that arrives while an advance is open finds no open increase
      * before it, and later ones queue behind it in full. So an increase's open part is
      * what is left of the balance after every newer increase, never below zero and never
-     * above its own amount. PostgreSQL sums that per buyer in numeric (exact, no float),
+     * above its own amount. MariaDB sums that per buyer in DECIMAL (exact, no float),
      * over the same movements as match(); tests compare it with overdueFor().
      *
      * @param  iterable<Party>  $buyers
@@ -71,12 +71,15 @@ final class Ageing
             return $result;
         }
 
-        $terms = implode(', ', array_fill(0, count($withTerms), '(?::bigint, ?::int)'));
+        // conventions §14b: a UNION ALL of one-row selects stands in for PostgreSQL's
+        // row-constructor VALUES list, and every value is cast to its own type (Q-12) so an
+        // id never compares as text.
+        $terms = implode(' UNION ALL ', array_fill(0, count($withTerms), 'SELECT CAST(? AS UNSIGNED) AS party_id, CAST(? AS SIGNED) AS days'));
         $bindings = array_merge(...array_map(fn (int $id, int $days): array => [$id, $days], array_keys($withTerms), $withTerms));
         $movements = self::buyerMovementsSql('terms');
 
         $rows = DB::select(<<<SQL
-            WITH terms (party_id, days) AS (VALUES {$terms}),
+            WITH terms (party_id, days) AS ({$terms}),
             {$movements},
             open AS (
                 SELECT party_id, source_type, date, net,
@@ -85,8 +88,8 @@ final class Ageing
                 FROM kept
             )
             SELECT open.party_id,
-                SUM(LEAST(open.net, GREATEST(open.balance - open.newer, 0)))
-                    FILTER (WHERE open.net > 0 AND open.source_type = 'sale' AND ?::date - open.date > terms.days)::numeric(16,2)::text AS overdue
+                CAST(SUM(CASE WHEN open.net > 0 AND open.source_type = 'sale' AND DATEDIFF(CAST(? AS DATE), open.date) > terms.days
+                    THEN LEAST(open.net, GREATEST(open.balance - open.newer, 0)) END) AS DECIMAL(16,2)) AS overdue
             FROM open
             JOIN terms ON terms.party_id = open.party_id
             GROUP BY open.party_id
@@ -104,8 +107,8 @@ final class Ageing
      * Oldest first always pays the first min(all increases, all reductions) of the
      * increases, so a sale is complete at the first movement, from its own on, where the
      * reductions so far reach the increases up to and including it: its own date when an
-     * advance already covered it, else the date of that receipt. PostgreSQL finds that
-     * date with window sums (numeric, exact) and sums amount × days; the division is done
+     * advance already covered it, else the date of that receipt. MariaDB finds that
+     * date with window sums (DECIMAL, exact) and sums amount × days; the division is done
      * here with Decimal, half up, as averageDaysToPay() does.
      *
      * @param  iterable<Party>  $buyers
@@ -123,11 +126,11 @@ final class Ageing
             return $result;
         }
 
-        $ids = implode(', ', array_fill(0, count($result), '(?::bigint)'));
+        $ids = implode(' UNION ALL ', array_fill(0, count($result), 'SELECT CAST(? AS UNSIGNED) AS party_id'));
         $movements = self::buyerMovementsSql('buyers');
 
         $rows = DB::select(<<<SQL
-            WITH buyers (party_id) AS (VALUES {$ids}),
+            WITH buyers (party_id) AS ({$ids}),
             {$movements},
             seq AS (
                 SELECT party_id, source_type, date, net,
@@ -156,10 +159,10 @@ final class Ageing
                 WHERE kind = 0 AND source_type = 'sale' AND paid_on IS NOT NULL
             )
             SELECT party_id,
-                SUM(amount * (completed_on - sale_date))::text AS weighted,
-                SUM(amount)::text AS total
+                SUM(amount * DATEDIFF(completed_on, sale_date)) AS weighted,
+                SUM(amount) AS total
             FROM completed
-            WHERE completed_on BETWEEN ?::date AND ?::date
+            WHERE completed_on BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
             GROUP BY party_id
             SQL, [...array_keys($result), PartyType::Buyer->controlAccountCode(), $to, $from, $to]);
 
@@ -175,6 +178,10 @@ final class Ageing
      * The `movements` and `kept` parts of a query: the buyers' movements on their control
      * account up to a date, one per source record, as movements() reads them. Bindings:
      * the account code, then the as-of date.
+     *
+     * The date is the source's newest journal that is not a reversal: MariaDB has no
+     * ARRAY_AGG(… ORDER BY …)[1], so it takes the first of a GROUP_CONCAT ordered by id
+     * descending. The cast to DATE keeps the window comparisons below date comparisons.
      */
     private static function buyerMovementsSql(string $partiesCte): string
     {
@@ -183,14 +190,14 @@ final class Ageing
                 SELECT journal_lines.party_id,
                     journal_entries.source_type,
                     SUM(journal_lines.debit - journal_lines.credit) AS net,
-                    (ARRAY_AGG(journal_entries.posting_date ORDER BY journal_entries.id DESC) FILTER (WHERE journal_entries.reversal_of_id IS NULL))[1] AS date,
+                    CAST(SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN journal_entries.reversal_of_id IS NULL THEN journal_entries.posting_date END ORDER BY journal_entries.id DESC), ',', 1) AS DATE) AS date,
                     MIN(journal_entries.id) AS first_id
                 FROM journal_lines
                 JOIN journal_entries ON journal_entries.id = journal_lines.journal_entry_id
                 JOIN ledger_accounts ON ledger_accounts.id = journal_lines.ledger_account_id
                 WHERE journal_lines.party_id IN (SELECT party_id FROM {$partiesCte})
                     AND ledger_accounts.code = ?
-                    AND journal_entries.posting_date <= ?::date
+                    AND journal_entries.posting_date <= CAST(? AS DATE)
                 GROUP BY journal_lines.party_id, journal_entries.source_type, journal_entries.source_id
             ),
             kept AS (
@@ -359,9 +366,9 @@ final class Ageing
             ->groupBy('journal_entries.source_type', 'journal_entries.source_id')
             ->toBase()
             ->select('journal_entries.source_type')
-            ->selectRaw("SUM({$sign})::numeric(16,2)::text AS net")
+            ->selectRaw("CAST(SUM({$sign}) AS DECIMAL(16,2)) AS net")
             // The date of the source's newest journal that is not a reversal.
-            ->selectRaw('(ARRAY_AGG(journal_entries.posting_date ORDER BY journal_entries.id DESC) FILTER (WHERE journal_entries.reversal_of_id IS NULL))[1]::text AS date')
+            ->selectRaw("CAST(SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN journal_entries.reversal_of_id IS NULL THEN journal_entries.posting_date END ORDER BY journal_entries.id DESC), ',', 1) AS DATE) AS date")
             ->selectRaw('MIN(journal_entries.id) AS first_id')
             ->get();
 

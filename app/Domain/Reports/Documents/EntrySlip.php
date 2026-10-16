@@ -75,7 +75,7 @@ final class EntrySlip
             ->where(fn ($q) => $q->where('journal_entries.posting_date', '<', $entry->entry_date)
                 ->orWhere(fn ($same) => $same->where('journal_entries.posting_date', $entry->entry_date)->where('journal_entries.id', '<=', $last)))
             ->toBase()
-            ->selectRaw('COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0)::numeric(20,2)::text AS net')
+            ->selectRaw('CAST(COALESCE(SUM(journal_lines.debit) - SUM(journal_lines.credit), 0) AS DECIMAL(20,2)) AS net')
             ->value('net');
 
         $balance = $party->balanceOfNet($net);

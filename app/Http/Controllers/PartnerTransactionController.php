@@ -47,15 +47,15 @@ class PartnerTransactionController extends Controller
             ->when($filters['status'] !== '', fn (Builder $q) => $q->where('status', $filters['status']))
             ->when($filters['q'] !== '', function (Builder $q) use ($filters): void {
                 $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
-                $q->where(fn (Builder $inner) => $inner->where('voucher_no', 'ilike', $like)
-                    ->orWhereHas('party', fn (Builder $party) => $party->where('name', 'ilike', $like)));
+                $q->where(fn (Builder $inner) => $inner->whereRaw('voucher_no COLLATE utf8mb4_unicode_ci LIKE ?', [$like])
+                    ->orWhereHas('party', fn (Builder $party) => $party->whereRaw('name COLLATE utf8mb4_unicode_ci LIKE ?', [$like])));
             });
 
         // Spec §11.2: totals of active entries only; investments and withdrawals apart.
         $totals = (clone $query)->reorder()->where('status', EntryStatus::Active->value)
             ->toBase()
-            ->selectRaw("COALESCE(SUM(amount) FILTER (WHERE type = 'investment'), 0)::numeric(20, 2)::text AS invested")
-            ->selectRaw("COALESCE(SUM(amount) FILTER (WHERE type = 'withdrawal'), 0)::numeric(20, 2)::text AS withdrawn")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN type = 'investment' THEN amount END), 0) AS DECIMAL(20,2)) AS invested")
+            ->selectRaw("CAST(COALESCE(SUM(CASE WHEN type = 'withdrawal' THEN amount END), 0) AS DECIMAL(20,2)) AS withdrawn")
             ->first();
 
         $page = $query->orderByDesc('entry_date')->orderByDesc('id')->paginate(50)->withQueryString();

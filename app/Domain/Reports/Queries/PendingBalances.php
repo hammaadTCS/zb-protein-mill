@@ -36,7 +36,7 @@ final class PendingBalances
             ->whereRaw("ledger_accounts.code = CASE parties.type WHEN 'supplier' THEN '2000' WHEN 'buyer' THEN '1200' WHEN 'employee' THEN '1300' WHEN 'other' THEN '2100' END")
             ->groupBy('journal_lines.party_id')
             ->toBase()
-            ->selectRaw('journal_lines.party_id, (SUM(journal_lines.debit) - SUM(journal_lines.credit))::numeric(20,2)::text AS net')
+            ->selectRaw('journal_lines.party_id, CAST(SUM(journal_lines.debit) - SUM(journal_lines.credit) AS DECIMAL(20,2)) AS net')
             ->pluck('net', 'party_id');
 
         $pendingKg = self::pendingKg($date);
@@ -92,7 +92,7 @@ final class PendingBalances
                 ->where('rate_status', 'pending')
                 ->where('entry_date', '<=', $date)
                 ->groupBy('party_id')
-                ->selectRaw('party_id, SUM(kg)::numeric(20,3)::text AS kg')
+                ->selectRaw('party_id, CAST(SUM(kg) AS DECIMAL(20,3)) AS kg')
                 ->pluck('kg', 'party_id');
 
             foreach ($rows as $partyId => $sum) {

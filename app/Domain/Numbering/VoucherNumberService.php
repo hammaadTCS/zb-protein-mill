@@ -51,7 +51,8 @@ final class VoucherNumberService
         [$prefix, $width] = self::DOC_TYPES[$docType] ?? throw new InvalidArgumentException("Unknown doc type {$docType}.");
         $companyId = CurrentCompany::id();
 
-        // First use: create the sequence. ON CONFLICT keeps two first saves from colliding.
+        // First use: create the sequence. INSERT IGNORE keeps two first saves from colliding
+        // (MariaDB's insert-or-skip; conventions §14b, the PostgreSQL upsert-ignore row).
         DB::table('voucher_sequences')->insertOrIgnore([
             'company_id' => $companyId,
             'doc_type' => $docType,

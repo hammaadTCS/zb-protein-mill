@@ -37,7 +37,7 @@ final class IncomeVsSpending
             ->orderBy('ledger_accounts.code')
             ->toBase()
             ->select('ledger_accounts.code', 'ledger_accounts.name', 'ledger_accounts.type')
-            ->selectRaw("(CASE WHEN ledger_accounts.type = 'income' THEN SUM(journal_lines.credit) - SUM(journal_lines.debit) ELSE SUM(journal_lines.debit) - SUM(journal_lines.credit) END)::numeric(16,2)::text AS amount")
+            ->selectRaw("CAST(CASE WHEN ledger_accounts.type = 'income' THEN SUM(journal_lines.credit) - SUM(journal_lines.debit) ELSE SUM(journal_lines.debit) - SUM(journal_lines.credit) END AS DECIMAL(16,2)) AS amount")
             ->get();
 
         $income = [];
@@ -78,7 +78,7 @@ final class IncomeVsSpending
                 ->where('rate_status', 'pending')
                 ->whereBetween('entry_date', [$from, $to])
                 ->toBase()
-                ->selectRaw('COALESCE(SUM(kg), 0)::text AS kg')
+                ->selectRaw('COALESCE(SUM(kg), 0) AS kg')
                 ->value('kg');
             $total = Decimal::add($total, (string) $kg);
         }

@@ -102,8 +102,8 @@ final class RateWeightReports
             ->join('items', 'items.id', '=', "{$table}.item_id")
             ->groupBy("{$table}.item_id", 'items.name')
             ->addSelect("{$table}.item_id", 'items.name AS item')
-            ->selectRaw("SUM({$table}.kg)::text AS kg")
-            ->selectRaw("SUM({$table}.amount + COALESCE((SELECT SUM(rc.difference) FROM rate_corrections AS rc WHERE rc.{$correctionColumn} = {$table}.id), 0))::text AS amount")
+            ->selectRaw("SUM({$table}.kg) AS kg")
+            ->selectRaw("SUM({$table}.amount + COALESCE((SELECT SUM(rc.difference) FROM rate_corrections AS rc WHERE rc.{$correctionColumn} = {$table}.id), 0)) AS amount")
             ->orderBy("{$table}.item_id")
             ->orderBy('party')
             ->orderBy("{$table}.party_id")
@@ -146,9 +146,9 @@ final class RateWeightReports
 
         $rows = self::monthly($filters)
             ->whereNotNull("{$table}.our_weight_kg")
-            ->selectRaw("SUM({$table}.kg)::text AS their_kg")
-            ->selectRaw("SUM({$table}.our_weight_kg)::text AS our_kg")
-            ->selectRaw("SUM({$difference})::text AS difference")
+            ->selectRaw("SUM({$table}.kg) AS their_kg")
+            ->selectRaw("SUM({$table}.our_weight_kg) AS our_kg")
+            ->selectRaw("SUM({$difference}) AS difference")
             ->orderBy('party')
             ->orderBy("{$table}.party_id")
             ->orderBy('month')
@@ -216,7 +216,7 @@ final class RateWeightReports
                 ->where('rate_status', RateStatus::Fixed->value)
                 ->whereBetween('entry_date', [$filters['from'], $filters['to']])
                 ->toBase()
-                ->selectRaw('COALESCE(SUM(amount), 0)::numeric(16,2)::text AS total')
+                ->selectRaw('CAST(COALESCE(SUM(amount), 0) AS DECIMAL(16,2)) AS total')
                 ->value('total');
 
             return [...$g, 'base' => $base, 'percent' => Decimal::isZero($base) ? null : Decimal::divide(Decimal::multiply($g['total'], '100', 6), $base, 2)];
@@ -242,7 +242,7 @@ final class RateWeightReports
             ->join('parties', 'parties.id', '=', "{$table}.party_id")
             ->toBase()
             ->select("{$table}.party_id", 'parties.name AS party')
-            ->selectRaw("to_char({$table}.entry_date, 'YYYY-MM') AS month")
+            ->selectRaw("DATE_FORMAT({$table}.entry_date, '%Y-%m') AS month")
             ->groupBy("{$table}.party_id", 'parties.name', 'month');
     }
 

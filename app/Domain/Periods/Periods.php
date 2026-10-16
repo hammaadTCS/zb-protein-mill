@@ -18,9 +18,6 @@ use Illuminate\Validation\ValidationException;
  */
 final class Periods
 {
-    /** The advisory lock of the periods, one per company (any fixed number). */
-    private const LOCK_KEY = 460201;
-
     /** A month is closed only when its periods row says so; months without a row are open. */
     public static function isClosed(string $ymd): bool
     {
@@ -78,18 +75,38 @@ final class Periods
      * Every save that checks a date holds this lock until it commits, and closing a
      * month takes it alone (lockExclusive). So a month cannot close while an entry
      * dated in it is half saved, and the entry is refused once the month is closed.
+     *
+     * Q-4: MariaDB has no advisory locks, so the shared lock is the company's
+     * company_locks row taken LOCK IN SHARE MODE (MariaDB 11.8 has no `FOR SHARE`;
+     * it is the older spelling of the same lock). Like pg_advisory_xact_lock_shared
+     * it is held until commit or rollback, and only when there is a transaction to
+     * hold it.
      */
     public static function lockShared(): void
     {
         if (DB::transactionLevel() > 0) {
-            DB::select('SELECT pg_advisory_xact_lock_shared(?, ?)', [self::LOCK_KEY, CurrentCompany::id()]);
+            self::lockRow();
+
+            DB::select('SELECT company_id FROM company_locks WHERE company_id = ? LOCK IN SHARE MODE', [CurrentCompany::id()]);
         }
     }
 
     /** Month-end close and its cash adjustments: no entry is half saved meanwhile. */
     public static function lockExclusive(): void
     {
-        DB::select('SELECT pg_advisory_xact_lock(?, ?)', [self::LOCK_KEY, CurrentCompany::id()]);
+        self::lockRow();
+
+        DB::select('SELECT company_id FROM company_locks WHERE company_id = ? FOR UPDATE', [CurrentCompany::id()]);
+    }
+
+    /**
+     * The company's lock row. It is created on first use, so a company that predates
+     * this table (or one a test made) still has one; afterwards INSERT IGNORE writes
+     * nothing and only reads the primary key.
+     */
+    private static function lockRow(): void
+    {
+        DB::table('company_locks')->insertOrIgnore(['company_id' => CurrentCompany::id()]);
     }
 
     /**

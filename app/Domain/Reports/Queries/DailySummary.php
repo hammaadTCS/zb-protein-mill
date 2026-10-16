@@ -34,7 +34,7 @@ final class DailySummary
             ->orderBy('expense_categories.sort_order')
             ->orderBy('expense_categories.name')
             ->toBase()
-            ->selectRaw('expense_categories.name AS category, SUM(expenses.amount)::numeric(16,2)::text AS amount')
+            ->selectRaw('expense_categories.name AS category, CAST(SUM(expenses.amount) AS DECIMAL(16,2)) AS amount')
             ->get()
             ->map(fn (object $row): array => ['category' => (string) $row->category, 'amount' => (string) $row->amount])
             ->all();

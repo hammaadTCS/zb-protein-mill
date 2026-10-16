@@ -395,11 +395,11 @@ final class AcceptanceRunner
 
         foreach ([Purchase::class, Sale::class] as $model) {
             $kg = $filter($model::query()->where('status', 'active')->where('rate_status', 'pending'))
-                ->toBase()->selectRaw('COALESCE(SUM(kg), 0)::text AS kg')->value('kg');
-            $total = (string) DB::selectOne('SELECT (?::numeric + ?::numeric)::text AS t', [$total, $kg])->t;
+                ->toBase()->selectRaw('CAST(COALESCE(SUM(kg), 0) AS DECIMAL(14,3)) AS kg')->value('kg');
+            $total = (string) DB::selectOne('SELECT CAST(CAST(? AS DECIMAL(14,3)) + CAST(? AS DECIMAL(14,3)) AS CHAR) AS t', [$total, $kg])->t;
         }
 
-        return (string) DB::selectOne('SELECT ?::numeric(14,3)::text AS t', [$total])->t;
+        return (string) DB::selectOne('SELECT CAST(? AS DECIMAL(14,3)) AS t', [$total])->t;
     }
 
     /** `<Item name>_bought` or `<Item name>_sold`: kg of active entries. */
@@ -412,7 +412,7 @@ final class AcceptanceRunner
             ->where('status', 'active')
             ->where('item_id', Item::query()->where('name', $item)->sole()->id)
             ->toBase()
-            ->selectRaw('COALESCE(SUM(kg), 0)::numeric(14,3)::text AS kg')
+            ->selectRaw('CAST(COALESCE(SUM(kg), 0) AS DECIMAL(14,3)) AS kg')
             ->value('kg');
     }
 

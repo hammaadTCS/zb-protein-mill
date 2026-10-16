@@ -22,7 +22,7 @@ final class Adjustments
             ->where('status', EntryStatus::Active->value)
             ->when($exceptId, fn ($q, int $id) => $q->whereKeyNot($id))
             ->toBase()
-            ->selectRaw('COALESCE(SUM(amount), 0)::numeric(16,2)::text AS total')
+            ->selectRaw('CAST(COALESCE(SUM(amount), 0) AS DECIMAL(16,2)) AS total')
             ->value('total');
 
         return (string) ($total ?? '0.00');

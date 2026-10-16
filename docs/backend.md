@@ -55,10 +55,10 @@ If any step fails, **everything rolls back**: no half-saved record, no used vouc
 
 ## 5. Database design and protections (spec §9, ADR-0002 replaced by ADR-0016, ADR-0007 replaced by ADR-0014)
 
-- 27 tables plus the permission tables; exact names and columns in spec §9. Common columns: `id`, `company_id`, `created_by`, `updated_by`, timestamps in UTC (`DATETIME(3)`).
+- 29 tables plus the permission tables; exact names and columns in spec §9. Common columns: `id`, `company_id`, `created_by`, `updated_by`, timestamps in UTC (`DATETIME(3)`).
 - Transaction tables also carry `voucher_no`, `entry_date`, `status`, cancel fields, `journal_entry_id` and `idempotency_key` (unique per company).
 - **Connection settings enforced in code** (`config/database.php`, conventions §14a): the connection is `mysql` (MariaDB), with `READ COMMITTED` isolation, a strict `sql_mode` that includes `ONLY_FULL_GROUP_BY`, `time_zone = '+00:00'`, engine `InnoDB` and `utf8mb4`/`utf8mb4_unicode_ci`. They are set by the app on every connection, never trusted from the host, whose own server defaults have no strict mode and no `ONLY_FULL_GROUP_BY`.
-- **Raw SQL is MariaDB only** (`scripts/guard.sh` fails on the PostgreSQL-only forms, conventions §14b): `CAST(… AS DECIMAL(…))` not `::numeric`, `LIKE` not `ilike`, `CASE WHEN` not `FILTER (WHERE …)`, `DATE_FORMAT` not `to_char`, `DATEDIFF()` never date subtraction, `FOR UPDATE`/`FOR SHARE` on a `company_locks` row not `pg_advisory_xact_lock`, MariaDB error `1062` not SQLSTATE `23505`, and every key compared only with a value of its own type.
+- **Raw SQL is MariaDB only** (`scripts/guard.sh` fails on the PostgreSQL-only forms, conventions §14b): `CAST(… AS DECIMAL(…))` not `::numeric`, `LIKE` not `ilike`, `CASE WHEN` not `FILTER (WHERE …)`, `DATE_FORMAT` not `to_char`, `DATEDIFF()` never date subtraction, `FOR UPDATE`/`LOCK IN SHARE MODE` on a `company_locks` row not `pg_advisory_xact_lock`, MariaDB error `1062` not SQLSTATE `23505`, and every key compared only with a value of its own type.
 - **Database triggers:**
   - block UPDATE and DELETE on journal entries, journal lines, audit logs, rate changes and period events;
   - block DELETE on every master and transaction table;

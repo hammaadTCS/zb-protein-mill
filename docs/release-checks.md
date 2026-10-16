@@ -44,6 +44,37 @@ Checked on 13 October 2026 on branch `claude/lucid-ptolemy-w3fhsy` (T8.1). "Wher
 | BR-OPS-09 health check every 15 minutes | `infra/hostinger/zb-health-check`, the scheduler (hPanel cron) | `infra/tests/test-health-check.sh` | **Verify on staging** |
 | BR-OPS-10 releases from CI tags, SHA-256, deploy script, migrations safe with the previous release | `.github/workflows/release.yml`, `infra/hostinger/zb-deploy-release`; every migration's `up()` only adds tables, columns, indexes or triggers (column drops exist only in `down()`) | `infra/tests/test-deploy.sh`; migrations reviewed in each task (no column drops or renames) | Repository: pass. First deploy: **verify on staging** (T8.3) |
 
+## MariaDB migration (T10.2, T10.3)
+
+Checked on 16 October 2026 on branch `task/M10-mariadb` against MariaDB 11.8.9-log (InnoDB). The rule
+for the port: **the same answer to the paisa and the same rows in the same order** as PostgreSQL, and
+only then is PostgreSQL removed (T10.3).
+
+| Gate | How verified | Result |
+| --- | --- | --- |
+| Full suite green on MariaDB (stop-gate 1) | `php artisan test` | 597 tests, 597 passed, 6,557 assertions |
+| Same answers, same rows, same order (stop-gate 2) | AT-1…AT-6, which compare the live answers to `tests/Acceptance/…/controls.json` recorded from the PostgreSQL system | 6 tests, 131 assertions — pass, no difference |
+| PostgreSQL removed (stop-gate 3) | `config/database.php` no longer defines `pgsql` or `pgsql_migrator`; `MigratorConnectionTest` (BR-SEC-12, D-43) | Pass |
+| The 7 `zb:verify` checks (T10.2) | `php artisan zb:verify` | All OK: database, journals_balance, seals, trial_balance, voucher_numbers, control_account_parties, entry_journals |
+| Startup connection check | `php artisan zb:db-check` | OK — "MariaDB with the enforced connection settings" |
+| No PostgreSQL-only SQL left | `bash scripts/guard.sh` (conventions §14b) | Pass |
+
+**Row order (Q-2).** Every `ORDER BY` in the app was checked in T10.3 to be on a `NOT NULL` column (or
+an alias of one), so MariaDB's NULL-sorts-first made no result order differ from PostgreSQL's
+NULL-sorts-last; the acceptance tests assert report row order.
+
+**Test-only changes made while porting** (no application behaviour changed):
+
+- `tests/Support/AcceptanceRunner.php`: the four PostgreSQL casts became `CAST(… AS DECIMAL(14,3))` /
+  `CAST(… AS CHAR)`, the same precision, so the checked kg totals stay byte-identical.
+- `tests/Feature/Settings/RememberSettingsTest.php`: the query counter matched PostgreSQL's
+  double-quoted table name (`"settings"`); MariaDB quotes with backticks, so it now matches
+  `` `settings` `` — the test was silently counting nothing before.
+- `tests/Feature/Support/IdempotencyTest.php`: two tests wrapped a save in `DB::transaction()`. MariaDB
+  has no transactional DDL, and the file creates its probe table in `beforeEach`, so that `CREATE
+  TABLE` commits the test's wrapping transaction and its savepoints are gone — the wrapper failed with
+  `1305 SAVEPOINT does not exist`. The wrapper was incidental; the duplicate-key assertion is unchanged.
+
 ## Restore tests
 
 The first entry is the shared-hosting restore proved on staging in T10.6 (the T7.6 human gate, T10.8). Never amounts or names.

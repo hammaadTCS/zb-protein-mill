@@ -242,13 +242,13 @@ Never write PostgreSQL-only SQL. `scripts/guard.sh` and a test fail on the old f
 | Never (PostgreSQL) | Use instead (MariaDB) |
 | --- | --- |
 | `::numeric(16,2)`, `::text`, any `::cast` | `CAST(… AS DECIMAL(16,2))`, `CAST(… AS CHAR)`; the **same precision** so result strings stay byte-identical |
-| `ilike` | `LIKE` (the column's collation decides case) |
+| `ilike` | `LIKE` (the column's collation decides case); a `utf8mb4_nopad_bin` column (a voucher number, a party name or code) needs `whereRaw('<col> COLLATE utf8mb4_unicode_ci LIKE ?')` so the search stays case-insensitive |
 | `SUM(…) FILTER (WHERE …)` | `SUM(CASE WHEN … THEN … END)` |
 | `to_char(date, 'YYYY-MM')` | `DATE_FORMAT(date, '%Y-%m')` |
 | date subtraction (`a - b` on dates) | `DATEDIFF(a, b)` — **never subtract dates** (`20261101 − 20261031 = 70`, not 1; Q-1) |
 | `ON CONFLICT … DO NOTHING` | `INSERT … ON DUPLICATE KEY UPDATE` or a caught duplicate-key error |
 | `SET CONSTRAINTS … IMMEDIATE` | the seal row (BR-LED-11) |
-| `pg_advisory_xact_lock(_shared)`, any `pg_*` | one `company_locks` row per company, `FOR UPDATE` (exclusive) or `FOR SHARE` (shared) inside the same transaction (Q-4) |
+| `pg_advisory_xact_lock(_shared)`, any `pg_*` | one `company_locks` row per company, `FOR UPDATE` (exclusive) or `LOCK IN SHARE MODE` (shared) inside the same transaction (Q-4); MariaDB 11.8 rejects `FOR SHARE` (error 1064) |
 | PostgreSQL SQLSTATE `23505` | MariaDB error `1062` / SQLSTATE `23000` (Q-11) |
 | `(VALUES …)` CTE | `UNION ALL` selects |
 | comparing a key with a value of another type | cast both sides to the key's own type — MySQL turns `'12abc' = 12` into true (Q-12) |
@@ -256,7 +256,7 @@ Never write PostgreSQL-only SQL. `scripts/guard.sh` and a test fail on the old f
 ### 14c. Collation and ordering
 
 - Columns with a **unique rule** (party, account, item and category names, codes, e-mails, voucher numbers, idempotency keys) use the binary collation **`utf8mb4_nopad_bin`** — MariaDB's `utf8mb4_bin` is PAD SPACE, so it would treat "Aslam" and "Aslam " as equal — so "Aslam", "aslam" and "Aslam " are three different values (Q-6). Search columns (`name_ur`, notes, references) keep `utf8mb4_unicode_ci`.
-- **Every `ORDER BY` on a column that can be empty states the NULL order explicitly** (`ORDER BY code IS NULL, code` style), because MariaDB sorts `NULL` first where PostgreSQL sorted it last (Q-2). A guard rule and a test check report order.
+- **Every `ORDER BY` on a column that can be empty states the NULL order explicitly** (`ORDER BY code IS NULL, code` style), because MariaDB sorts `NULL` first where PostgreSQL sorted it last (Q-2). The port checked every `ORDER BY` in the app (T10.3): each is on a `NOT NULL` column, so no result order changed; the acceptance tests assert report row order.
 
 ### 14d. Types
 
